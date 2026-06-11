@@ -1,0 +1,325 @@
+'use client';
+
+import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { 
+  ArrowLeft,
+  Calendar,
+  Coffee,
+  Utensils,
+  Moon,
+  TrendingUp,
+  Percent,
+  CheckCircle,
+  Clock,
+  RefreshCw,
+  SlidersHorizontal,
+  ChevronDown
+} from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
+
+interface Stats {
+  total: number;
+  breakfast: number;
+  lunch: number;
+  dinner: number;
+  collected: number;
+  pending: number;
+}
+
+interface ReportResponse {
+  employeeStats: { total: number; active: number };
+  todayStats: Stats;
+  monthlyStats: Stats;
+  chartData: Array<{
+    date: string;
+    dayName: string;
+    breakfast: number;
+    lunch: number;
+    dinner: number;
+  }>;
+}
+
+function ReportsPageContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { toast } = useToast();
+  
+  const initialTab = searchParams.get('tab') === 'monthly' ? 'monthly' : 'daily';
+  
+  const [activeTab, setActiveTab] = useState<'daily' | 'monthly'>(initialTab);
+  const [reportData, setReportData] = useState<ReportResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  
+  // Select Month Filter (YYYY-MM format)
+  const currentMonthStr = format(new Date(), 'yyyy-MM');
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthStr);
+
+  const fetchReportStats = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/admin/reports?month=${selectedMonth}`);
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          router.push('/auth/login');
+          return;
+        }
+        throw new Error('Failed to load report analytics');
+      }
+      const stats = await res.json();
+      setReportData(stats);
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: err.message || 'Could not fetch reports data',
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedMonth, router, toast]);
+
+  useEffect(() => {
+    fetchReportStats();
+  }, [fetchReportStats]);
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-50">
+        <RefreshCw className="h-7 w-7 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
+  const todayStats = reportData?.todayStats;
+  const monthlyStats = reportData?.monthlyStats;
+
+  const activeStats = activeTab === 'daily' ? todayStats : monthlyStats;
+  
+  const totalRequests = activeStats?.total || 0;
+  const collectedCount = activeStats?.collected || 0;
+  const pendingCount = activeStats?.pending || 0;
+  const fulfillmentRate = totalRequests > 0 ? Math.round((collectedCount / totalRequests) * 100) : 0;
+
+  return (
+    <div className="flex flex-col min-h-screen bg-slate-50">
+      {/* Sticky Header */}
+      <header className="sticky top-0 z-30 h-16 bg-white border-b border-slate-100 flex items-center px-4 shadow-sm">
+        <button 
+          onClick={() => router.push('/admin/dashboard')}
+          className="p-2 mr-2 rounded-full hover:bg-slate-100 transition-colors"
+        >
+          <ArrowLeft className="h-5 w-5 text-slate-700" />
+        </button>
+        <div>
+          <h1 className="text-base font-bold text-slate-800 tracking-tight">Reports &amp; Analytics</h1>
+          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Metrics Portal</p>
+        </div>
+      </header>
+
+      {/* Content */}
+      <div className="flex-1 p-5 space-y-5 overflow-y-auto pb-24">
+        
+        {/* Toggle tabs (Daily vs Monthly) */}
+        <div className="bg-white p-1 rounded-xl border border-slate-200/60 shadow-sm flex gap-1">
+          <button
+            onClick={() => setActiveTab('daily')}
+            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
+              activeTab === 'daily' 
+                ? 'bg-blue-600 text-white shadow-sm' 
+                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            Daily Summary
+          </button>
+          <button
+            onClick={() => setActiveTab('monthly')}
+            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
+              activeTab === 'monthly' 
+                ? 'bg-blue-600 text-white shadow-sm' 
+                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            Monthly Summary
+          </button>
+        </div>
+
+        {/* Date / Month Picker Filter */}
+        {activeTab === 'monthly' && (
+          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.015)] flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-655 flex items-center gap-1.5">
+              <Calendar className="h-4.5 w-4.5 text-blue-600" />
+              Reporting Month
+            </span>
+            <input 
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 focus:outline-none focus:border-blue-500"
+            />
+          </div>
+        )}
+
+        {/* High-level Summary Cards */}
+        <div className="grid grid-cols-2 gap-4">
+          {/* Fulfillment Rate */}
+          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col justify-between">
+            <div className="h-9 w-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+              <Percent className="h-5 w-5 stroke-[2.25]" />
+            </div>
+            <div className="mt-3">
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Fulfillment Rate</p>
+              <p className="text-2xl font-bold text-slate-800 mt-0.5">{fulfillmentRate}%</p>
+            </div>
+          </div>
+
+          {/* Total Requests */}
+          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col justify-between">
+            <div className="h-9 w-9 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center">
+              <TrendingUp className="h-5 w-5 stroke-[2.25]" />
+            </div>
+            <div className="mt-3">
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Total Requests</p>
+              <p className="text-2xl font-bold text-slate-800 mt-0.5">{totalRequests}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Status breakdown list */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm divide-y divide-slate-100 overflow-hidden">
+          <div className="p-4 bg-slate-50/50 flex justify-between items-center">
+            <span className="text-xs font-bold text-slate-800">Fulfillment Breakdown</span>
+            <span className="text-[10px] font-semibold text-slate-400 uppercase">
+              {activeTab === 'daily' ? 'Today' : selectedMonth}
+            </span>
+          </div>
+
+          <div className="p-4 flex justify-between items-center text-xs">
+            <span className="font-semibold text-slate-600 flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-green-500" /> Fulfilled (Collected)
+            </span>
+            <span className="font-bold text-slate-800">{collectedCount}</span>
+          </div>
+
+          <div className="p-4 flex justify-between items-center text-xs">
+            <span className="font-semibold text-slate-600 flex items-center gap-2">
+              <Clock className="h-4 w-4 text-orange-500" /> Pending (Ordered)
+            </span>
+            <span className="font-bold text-slate-800">{pendingCount}</span>
+          </div>
+        </div>
+
+        {/* Meal Type Distribution Section */}
+        <div className="space-y-3">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Meal Distribution</h3>
+
+          <div className="space-y-3">
+            {/* Breakfast Stats Card */}
+            <div className="p-4 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+              <div className="flex items-center gap-3.5">
+                <div className="h-9 w-9 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center">
+                  <Coffee className="h-5 w-5 stroke-[2.25]" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-800">Breakfast</h4>
+                  <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">Total Requests</p>
+                </div>
+              </div>
+              <span className="text-sm font-bold text-slate-800">
+                {activeStats?.breakfast || 0}
+              </span>
+            </div>
+
+            {/* Lunch Stats Card */}
+            <div className="p-4 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+              <div className="flex items-center gap-3.5">
+                <div className="h-9 w-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <Utensils className="h-5 w-5 stroke-[2.25]" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-800">Lunch</h4>
+                  <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">Total Requests</p>
+                </div>
+              </div>
+              <span className="text-sm font-bold text-slate-800">
+                {activeStats?.lunch || 0}
+              </span>
+            </div>
+
+            {/* Dinner Stats Card */}
+            <div className="p-4 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+              <div className="flex items-center gap-3.5">
+                <div className="h-9 w-9 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center">
+                  <Moon className="h-5 w-5 stroke-[2.25]" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-800">Dinner</h4>
+                  <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">Total Requests</p>
+                </div>
+              </div>
+              <span className="text-sm font-bold text-slate-800">
+                {activeStats?.dinner || 0}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Aggregated distribution table */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+          <div className="p-4 bg-slate-50/50 text-xs font-bold text-slate-800">
+            {activeTab === 'daily' ? "Today's Distribution Summary" : "Monthly Distribution Summary"}
+          </div>
+          <div className="p-4 overflow-x-auto">
+            <table className="w-full text-left text-xs font-medium text-slate-500 border-collapse">
+              <thead>
+                <tr className="border-b border-slate-150 text-[10px] uppercase font-bold text-slate-400">
+                  <th className="pb-2">Meal Type</th>
+                  <th className="pb-2 text-right">Requested</th>
+                  <th className="pb-2 text-right">Ratio</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                <tr>
+                  <td className="py-2.5 font-semibold text-slate-700">Breakfast</td>
+                  <td className="py-2.5 text-right font-bold text-slate-800">{activeStats?.breakfast || 0}</td>
+                  <td className="py-2.5 text-right text-slate-500">
+                    {totalRequests > 0 ? Math.round(((activeStats?.breakfast || 0) / totalRequests) * 100) : 0}%
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-2.5 font-semibold text-slate-700">Lunch</td>
+                  <td className="py-2.5 text-right font-bold text-slate-800">{activeStats?.lunch || 0}</td>
+                  <td className="py-2.5 text-right text-slate-500">
+                    {totalRequests > 0 ? Math.round(((activeStats?.lunch || 0) / totalRequests) * 100) : 0}%
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-2.5 font-semibold text-slate-700">Dinner</td>
+                  <td className="py-2.5 text-right font-bold text-slate-800">{activeStats?.dinner || 0}</td>
+                  <td className="py-2.5 text-right text-slate-500">
+                    {totalRequests > 0 ? Math.round(((activeStats?.dinner || 0) / totalRequests) * 100) : 0}%
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+export default function AdminReportsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-screen items-center justify-center bg-slate-50">
+        <RefreshCw className="h-7 w-7 animate-spin text-blue-600" />
+      </div>
+    }>
+      <ReportsPageContent />
+    </Suspense>
+  );
+}
+
