@@ -48,7 +48,7 @@ const OrderSchema: Schema = new Schema(
   { timestamps: true }
 );
 
-// Compounded index: An employee can request only one meal in total per day
-OrderSchema.index({ userId: 1, requestDate: 1 }, { unique: true });
+// Compounded index: An employee can request only one meal of each type per day
+OrderSchema.index({ userId: 1, requestDate: 1, mealType: 1 }, { unique: true });
 
 export default mongoose.models.Order || mongoose.model<IOrder>('Order', OrderSchema);

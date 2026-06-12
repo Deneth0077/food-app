@@ -151,12 +151,12 @@ export default function EmployeeDashboard() {
     }
   };
 
-  const handleUpdateNotes = async (notes: string) => {
+  const handleUpdateOrder = async (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER', mealOption: 'VEGETARIAN' | 'MEAT', notes: string) => {
     try {
       const res = await fetch('/api/orders', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes }),
+        body: JSON.stringify({ mealType, mealOption, notes }),
       });
 
       const data = await res.json();
@@ -167,7 +167,7 @@ export default function EmployeeDashboard() {
 
       toast({
         title: 'Request Updated',
-        description: 'Successfully updated your special requests.',
+        description: `Successfully updated your ${mealType.toLowerCase()} request.`,
       });
 
       // Refresh data
@@ -181,10 +181,10 @@ export default function EmployeeDashboard() {
     }
   };
 
-  const handleCancelOrder = async () => {
-    if (!confirm('Are you sure you want to cancel your order?')) return;
+  const handleCancelOrder = async (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER') => {
+    if (!confirm(`Are you sure you want to cancel your ${mealType.toLowerCase()} order?`)) return;
     try {
-      const res = await fetch('/api/orders', {
+      const res = await fetch(`/api/orders?mealType=${mealType}`, {
         method: 'DELETE',
       });
 
@@ -193,7 +193,7 @@ export default function EmployeeDashboard() {
 
       toast({
         title: 'Order Cancelled',
-        description: 'Successfully cancelled your meal request.',
+        description: `Successfully cancelled your ${mealType.toLowerCase()} meal request.`,
       });
 
       // Refresh data
@@ -204,6 +204,28 @@ export default function EmployeeDashboard() {
         title: 'Cancellation Failed',
         description: error.message || 'Something went wrong',
       });
+    }
+  };
+
+  const handleCardClick = (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER') => {
+    const existingOrder = todayOrders.find(o => o.mealType === mealType);
+    if (existingOrder) {
+      if (existingOrder.status === 'COLLECTED') {
+        toast({
+          title: 'Meal Collected',
+          description: `You have already collected today's ${mealType.toLowerCase()}.`,
+        });
+        return;
+      }
+      setIsUpdatingNotesOnly(true);
+      setSelectedOption(existingOrder.mealOption || null);
+      setOrderNotes(existingOrder.notes || '');
+      setActiveMealSelection(mealType);
+    } else {
+      setIsUpdatingNotesOnly(false);
+      setSelectedOption(null);
+      setOrderNotes('');
+      setActiveMealSelection(mealType);
     }
   };
 
@@ -344,19 +366,7 @@ export default function EmployeeDashboard() {
           <div className="space-y-3">
             {/* Breakfast Request Card */}
             <div 
-              onClick={() => {
-                const hasOrderedToday = todayOrders.length > 0;
-                if (hasOrderedToday) {
-                  setIsUpdatingNotesOnly(true);
-                  setOrderNotes(todayOrders[0]?.notes || '');
-                  setActiveMealSelection('BREAKFAST');
-                } else if (breakfastStatus === 'Not Requested' && submittingMeal !== 'BREAKFAST') {
-                  setIsUpdatingNotesOnly(false);
-                  setSelectedOption(null);
-                  setOrderNotes('');
-                  setActiveMealSelection('BREAKFAST');
-                }
-              }}
+              onClick={() => handleCardClick('BREAKFAST')}
               className="p-4 bg-white rounded-2xl border border-slate-100 flex items-center justify-between transition-all duration-300 transform cursor-pointer hover:border-blue-300 hover:shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 active:scale-[0.99]"
             >
               <div className="flex items-center gap-3.5">
@@ -373,10 +383,6 @@ export default function EmployeeDashboard() {
                   <div className="h-9 w-9 rounded-full flex items-center justify-center bg-green-50 text-green-600 border border-green-100">
                     <Check className="h-4.5 w-4.5 stroke-[2.5]" />
                   </div>
-                ) : todayOrders.length > 0 ? (
-                  <span className="text-[10px] text-slate-450 font-bold bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100/50 hover:bg-slate-100 transition-colors">
-                    Add notes/tea
-                  </span>
                 ) : submittingMeal === 'BREAKFAST' ? (
                   <div className="h-9 w-9 rounded-full flex items-center justify-center bg-slate-100 text-slate-500">
                     <RefreshCw className="h-4.5 w-4.5 animate-spin" />
@@ -387,19 +393,7 @@ export default function EmployeeDashboard() {
 
             {/* Lunch Request Card */}
             <div 
-              onClick={() => {
-                const hasOrderedToday = todayOrders.length > 0;
-                if (hasOrderedToday) {
-                  setIsUpdatingNotesOnly(true);
-                  setOrderNotes(todayOrders[0]?.notes || '');
-                  setActiveMealSelection('LUNCH');
-                } else if (lunchStatus === 'Not Requested' && submittingMeal !== 'LUNCH') {
-                  setIsUpdatingNotesOnly(false);
-                  setSelectedOption(null);
-                  setOrderNotes('');
-                  setActiveMealSelection('LUNCH');
-                }
-              }}
+              onClick={() => handleCardClick('LUNCH')}
               className="p-4 bg-white rounded-2xl border border-slate-100 flex items-center justify-between transition-all duration-300 transform cursor-pointer hover:border-blue-300 hover:shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 active:scale-[0.99]"
             >
               <div className="flex items-center gap-3.5">
@@ -416,10 +410,6 @@ export default function EmployeeDashboard() {
                   <div className="h-9 w-9 rounded-full flex items-center justify-center bg-green-50 text-green-600 border border-green-100">
                     <Check className="h-4.5 w-4.5 stroke-[2.5]" />
                   </div>
-                ) : todayOrders.length > 0 ? (
-                  <span className="text-[10px] text-slate-450 font-bold bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100/50 hover:bg-slate-100 transition-colors">
-                    Add notes/tea
-                  </span>
                 ) : submittingMeal === 'LUNCH' ? (
                   <div className="h-9 w-9 rounded-full flex items-center justify-center bg-slate-100 text-slate-500">
                     <RefreshCw className="h-4.5 w-4.5 animate-spin" />
@@ -430,19 +420,7 @@ export default function EmployeeDashboard() {
 
             {/* Dinner Request Card */}
             <div 
-              onClick={() => {
-                const hasOrderedToday = todayOrders.length > 0;
-                if (hasOrderedToday) {
-                  setIsUpdatingNotesOnly(true);
-                  setOrderNotes(todayOrders[0]?.notes || '');
-                  setActiveMealSelection('DINNER');
-                } else if (dinnerStatus === 'Not Requested' && submittingMeal !== 'DINNER') {
-                  setIsUpdatingNotesOnly(false);
-                  setSelectedOption(null);
-                  setOrderNotes('');
-                  setActiveMealSelection('DINNER');
-                }
-              }}
+              onClick={() => handleCardClick('DINNER')}
               className="p-4 bg-white rounded-2xl border border-slate-100 flex items-center justify-between transition-all duration-300 transform cursor-pointer hover:border-blue-300 hover:shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 active:scale-[0.99]"
             >
               <div className="flex items-center gap-3.5">
@@ -459,10 +437,6 @@ export default function EmployeeDashboard() {
                   <div className="h-9 w-9 rounded-full flex items-center justify-center bg-green-50 text-green-600 border border-green-100">
                     <Check className="h-4.5 w-4.5 stroke-[2.5]" />
                   </div>
-                ) : todayOrders.length > 0 ? (
-                  <span className="text-[10px] text-slate-450 font-bold bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100/50 hover:bg-slate-100 transition-colors">
-                    Add notes/tea
-                  </span>
                 ) : submittingMeal === 'DINNER' ? (
                   <div className="h-9 w-9 rounded-full flex items-center justify-center bg-slate-100 text-slate-500">
                     <RefreshCw className="h-4.5 w-4.5 animate-spin" />
@@ -531,7 +505,7 @@ export default function EmployeeDashboard() {
                         </span>
                         <button
                           type="button"
-                          onClick={handleCancelOrder}
+                          onClick={() => handleCancelOrder('BREAKFAST')}
                           className="px-2.5 py-1 text-[9px] font-bold text-red-700 bg-red-100 hover:bg-red-200 rounded-lg active:scale-95 transition-all shadow-sm"
                         >
                           Cancel Order
@@ -592,7 +566,7 @@ export default function EmployeeDashboard() {
                         </span>
                         <button
                           type="button"
-                          onClick={handleCancelOrder}
+                          onClick={() => handleCancelOrder('LUNCH')}
                           className="px-2.5 py-1 text-[9px] font-bold text-red-700 bg-red-100 hover:bg-red-200 rounded-lg active:scale-95 transition-all shadow-sm"
                         >
                           Cancel Order
@@ -653,7 +627,7 @@ export default function EmployeeDashboard() {
                         </span>
                         <button
                           type="button"
-                          onClick={handleCancelOrder}
+                          onClick={() => handleCancelOrder('DINNER')}
                           className="px-2.5 py-1 text-[9px] font-bold text-red-700 bg-red-100 hover:bg-red-200 rounded-lg active:scale-95 transition-all shadow-sm"
                         >
                           Cancel Order
@@ -757,68 +731,80 @@ export default function EmployeeDashboard() {
             <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-4 sm:hidden" />
             
             <h3 className="text-lg font-bold text-slate-800 tracking-tight">
-              {isUpdatingNotesOnly ? 'Update Request Notes' : `Select ${activeMealSelection.toLowerCase()} Preference`}
+              {isUpdatingNotesOnly ? `Update ${activeMealSelection.toLowerCase()} Request` : `Select ${activeMealSelection.toLowerCase()} Preference`}
             </h3>
             <p className="text-xs text-slate-500 mt-1 font-semibold">
-              {isUpdatingNotesOnly ? 'Add or append a tea request / special note to today\'s active order.' : 'Please choose your meal type below before confirming.'}
+              {isUpdatingNotesOnly ? 'Modify your meal option or special requests for today\'s order.' : 'Please choose your meal type below before confirming.'}
             </p>
             
-            {!isUpdatingNotesOnly ? (
-              <div className="grid grid-cols-2 gap-4 mt-5">
-                {/* Vegetarian Option Card */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedOption('VEGETARIAN')}
-                  className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all duration-300 transform shadow-[0_2px_8px_rgba(0,0,0,0.01)] ${
-                    selectedOption === 'VEGETARIAN'
-                      ? 'border-green-500 bg-green-50/45 text-green-700 shadow-green-100/50 shadow-md -translate-y-0.5 scale-[1.02]'
-                      : 'border-slate-150 hover:border-slate-350 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] bg-white text-slate-600'
-                  }`}
-                >
-                  <div className={`h-10 w-10 rounded-full flex items-center justify-center mb-2.5 ${selectedOption === 'VEGETARIAN' ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-500'}`}>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 3.5 1 9.8a7 7 0 0 1-9 8.2Z"/><path d="M9 22v-4h-2.5a2.5 2.5 0 0 1 0-5H9m2-5.5v4"/></svg>
-                  </div>
-                  <span className="text-xs font-extrabold uppercase tracking-wider">Vegetarian</span>
-                </button>
-   
-                {/* Meat Option Card */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedOption('MEAT')}
-                  className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all duration-300 transform shadow-[0_2px_8px_rgba(0,0,0,0.01)] ${
-                    selectedOption === 'MEAT'
-                      ? 'border-blue-500 bg-blue-50/45 text-blue-700 shadow-blue-100/50 shadow-md -translate-y-0.5 scale-[1.02]'
-                      : 'border-slate-150 hover:border-slate-350 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] bg-white text-slate-600'
-                  }`}
-                >
-                  <div className={`h-10 w-10 rounded-full flex items-center justify-center mb-2.5 ${selectedOption === 'MEAT' ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-500'}`}>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a5 5 0 1 0 10 0V2Z"/><path d="m15.4 7.6-6.1 6.1m-2.1.3a2.5 2.5 0 1 0-3.5 3.5m4.3-1.4a2.5 2.5 0 1 0 3.5-3.5m-3.5 3.5h0Z"/></svg>
-                  </div>
-                  <span className="text-xs font-extrabold uppercase tracking-wider">Meat</span>
-                </button>
-              </div>
-            ) : (
-              todayOrders[0] && (
-                <div className="mt-4 p-3.5 bg-slate-50 border border-slate-100 rounded-xl text-left text-xs font-semibold text-slate-655 flex flex-col gap-1.5 shadow-inner">
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-400">Today's Ordered Meal:</span>
-                    <span className="font-bold text-slate-800 bg-white px-2.5 py-0.5 rounded border border-slate-200 uppercase tracking-wider text-[10px]">
-                      {todayOrders[0].mealType}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-400">Preference Choice:</span>
-                    <span className={`font-bold px-2.5 py-0.5 rounded text-[10px] ${
-                      todayOrders[0].mealOption === 'VEGETARIAN' 
-                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
-                        : 'bg-rose-50 text-rose-700 border border-rose-100'
-                    }`}>
-                      {todayOrders[0].mealOption === 'VEGETARIAN' ? 'Veg' : 'Meat'}
-                    </span>
-                  </div>
+            <div className="grid grid-cols-2 gap-4 mt-5">
+              {/* Vegetarian Option Card */}
+              <button
+                type="button"
+                onClick={() => setSelectedOption('VEGETARIAN')}
+                className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all duration-300 transform shadow-[0_2px_8px_rgba(0,0,0,0.01)] ${
+                  selectedOption === 'VEGETARIAN'
+                    ? 'border-green-500 bg-green-50/45 text-green-700 shadow-green-100/50 shadow-md -translate-y-0.5 scale-[1.02]'
+                    : 'border-slate-150 hover:border-slate-350 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] bg-white text-slate-600'
+                }`}
+              >
+                <div className={`h-10 w-10 rounded-full flex items-center justify-center mb-2.5 ${selectedOption === 'VEGETARIAN' ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-500'}`}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 3.5 1 9.8a7 7 0 0 1-9 8.2Z"/><path d="M9 22v-4h-2.5a2.5 2.5 0 0 1 0-5H9m2-5.5v4"/></svg>
                 </div>
-              )
-            )}
+                <span className="text-xs font-extrabold uppercase tracking-wider">Vegetarian</span>
+              </button>
+ 
+              {/* Meat Option Card */}
+              <button
+                type="button"
+                onClick={() => setSelectedOption('MEAT')}
+                className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all duration-300 transform shadow-[0_2px_8px_rgba(0,0,0,0.01)] ${
+                  selectedOption === 'MEAT'
+                    ? 'border-blue-500 bg-blue-50/45 text-blue-700 shadow-blue-100/50 shadow-md -translate-y-0.5 scale-[1.02]'
+                    : 'border-slate-150 hover:border-slate-350 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] bg-white text-slate-600'
+                }`}
+              >
+                <div className={`h-10 w-10 rounded-full flex items-center justify-center mb-2.5 ${selectedOption === 'MEAT' ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-500'}`}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a5 5 0 1 0 10 0V2Z"/><path d="m15.4 7.6-6.1 6.1m-2.1.3a2.5 2.5 0 1 0-3.5 3.5m4.3-1.4a2.5 2.5 0 1 0 3.5-3.5m-3.5 3.5h0Z"/></svg>
+                </div>
+                <span className="text-xs font-extrabold uppercase tracking-wider">Meat</span>
+              </button>
+            </div>
+
+            {/* Cancel countdown timer inside the modal */}
+            {isUpdatingNotesOnly && (() => {
+              const order = todayOrders.find(o => o.mealType === activeMealSelection);
+              if (order && order.status === 'ORDERED') {
+                const msRemaining = (new Date(order.requestedAt).getTime() + 10 * 60 * 1000) - currentTime.getTime();
+                if (msRemaining > 0) {
+                  const mins = Math.floor(msRemaining / (1000 * 60));
+                  const secs = Math.floor((msRemaining % (1000 * 60)) / 1000);
+                  const formattedTime = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                  
+                  return (
+                    <div className="mt-4 flex items-center justify-between bg-red-50/40 border border-red-100/50 rounded-xl p-2.5 animate-in fade-in duration-200">
+                      <span className="text-[10px] font-bold text-red-600 flex items-center gap-1">
+                        <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-ping shrink-0" />
+                        Cancel available: {formattedTime}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await handleCancelOrder(activeMealSelection);
+                          setActiveMealSelection(null);
+                          setSelectedOption(null);
+                          setOrderNotes('');
+                        }}
+                        className="px-2.5 py-1 text-[9px] font-bold text-red-700 bg-red-100 hover:bg-red-200 rounded-lg active:scale-95 transition-all shadow-sm"
+                      >
+                        Cancel Order
+                      </button>
+                    </div>
+                  );
+                }
+              }
+              return null;
+            })()}
  
             {/* Snack / Special Request Text Area */}
             <div className="mt-4 space-y-1.5 text-left">
@@ -859,24 +845,26 @@ export default function EmployeeDashboard() {
               </button>
               <button
                 type="button"
-                disabled={!isUpdatingNotesOnly && !selectedOption}
+                disabled={!selectedOption}
                 onClick={async () => {
-                  if (isUpdatingNotesOnly) {
-                    const notes = orderNotes;
-                    setActiveMealSelection(null);
-                    setOrderNotes('');
-                    await handleUpdateNotes(notes);
-                  } else if (selectedOption) {
+                  if (activeMealSelection && selectedOption) {
                     const mealType = activeMealSelection;
+                    const mealOption = selectedOption;
                     const notes = orderNotes;
+                    
                     setActiveMealSelection(null);
-                    setOrderNotes('');
-                    await handleRequestMeal(mealType, selectedOption, notes);
                     setSelectedOption(null);
+                    setOrderNotes('');
+                    
+                    if (isUpdatingNotesOnly) {
+                      await handleUpdateOrder(mealType, mealOption, notes);
+                    } else {
+                      await handleRequestMeal(mealType, mealOption, notes);
+                    }
                   }
                 }}
                 className={`flex-1 h-11 font-bold rounded-xl text-xs active:scale-98 transition-all flex items-center justify-center gap-1.5 ${
-                  isUpdatingNotesOnly || selectedOption 
+                  selectedOption 
                     ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm' 
                     : 'bg-slate-100 text-slate-400 cursor-not-allowed'
                 }`}

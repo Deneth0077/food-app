@@ -104,15 +104,16 @@ export async function POST(request: Request) {
 
     const todayStr = format(new Date(), 'yyyy-MM-dd');
 
-    // Prevent duplicates: Check if any order already exists for this user and date
+    // Prevent duplicates: Check if an order already exists for this user, date, and meal type
     const existingOrder = await Order.findOne({
       userId: dbUser._id,
-      requestDate: todayStr
+      requestDate: todayStr,
+      mealType
     });
 
     if (existingOrder) {
       return NextResponse.json(
-        { error: `You have already requested a meal (${existingOrder.mealType.toLowerCase()}) for today. You can only request one meal per day.` },
+        { error: `You have already requested ${mealType.toLowerCase()} for today. You cannot place duplicate requests for the same mealtime.` },
         { status: 400 }
       );
     }
@@ -209,43 +210,57 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json();
-    const { notes } = body;
+    const { mealType, mealOption, notes } = body;
+
+    if (!mealType || !['BREAKFAST', 'LUNCH', 'DINNER'].includes(mealType)) {
+      return NextResponse.json({ error: 'Invalid or missing meal type.' }, { status: 400 });
+    }
 
     const todayStr = format(new Date(), 'yyyy-MM-dd');
 
-    // Find today's order for this user
+    // Find today's order for this user and specific mealType
     const order = await Order.findOne({
       userId: authUser.userId,
-      requestDate: todayStr
+      requestDate: todayStr,
+      mealType
     });
 
     if (!order) {
-      return NextResponse.json({ error: 'No active order found for today to update.' }, { status: 404 });
+      return NextResponse.json({ error: `No active ${mealType.toLowerCase()} order found for today to update.` }, { status: 404 });
     }
 
-    // Update notes
-    order.notes = notes ? notes.trim() : undefined;
+    // Update fields
+    if (mealOption) {
+      if (!['VEGETARIAN', 'MEAT'].includes(mealOption)) {
+        return NextResponse.json({ error: 'Invalid preference choice.' }, { status: 400 });
+      }
+      order.mealOption = mealOption;
+    }
+    order.notes = notes !== undefined ? (notes ? notes.trim() : undefined) : order.notes;
     await order.save();
 
-    // Also update notification if it exists for this user and today
+    // Also update notification if it exists for this user, today, and matching mealType
     try {
       const dbUser = await User.findById(authUser.userId);
       if (dbUser) {
-        // Find notification created today for this user
         const notification = await Notification.findOne({
           employeeNo: dbUser.employeeNo,
+          mealType,
           createdAt: {
             $gte: new Date(new Date().setHours(0, 0, 0, 0)),
             $lt: new Date(new Date().setHours(23, 59, 59, 999))
           }
         });
         if (notification) {
-          notification.notes = notes ? notes.trim() : undefined;
+          if (mealOption) {
+            notification.mealOption = mealOption;
+          }
+          notification.notes = notes !== undefined ? (notes ? notes.trim() : undefined) : notification.notes;
           await notification.save();
         }
       }
     } catch (notifErr) {
-      console.error('Failed to update notification notes:', notifErr);
+      console.error('Failed to update notification:', notifErr);
     }
 
     return NextResponse.json({ message: 'Request notes updated successfully', order });
@@ -269,12 +284,20 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const mealType = searchParams.get('mealType');
+
+    if (!mealType || !['BREAKFAST', 'LUNCH', 'DINNER'].includes(mealType)) {
+      return NextResponse.json({ error: 'Invalid or missing meal type to cancel.' }, { status: 400 });
+    }
+
     const todayStr = format(new Date(), 'yyyy-MM-dd');
 
-    // Find today's order for this user
+    // Find today's order for this user and specific mealType
     const order = await Order.findOne({
       userId: authUser.userId,
-      requestDate: todayStr
+      requestDate: todayStr,
+      mealType
     });
 
     if (!order) {
