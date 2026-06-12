@@ -103,10 +103,14 @@ export default function AdminEmployeesPage() {
 
   // Filter list
   const filteredEmployees = employees.filter(emp => {
+    const fullName = emp.fullName || '';
+    const employeeNo = emp.employeeNo || '';
+    const phoneNumber = emp.phoneNumber || '';
+
     const matchesSearch = 
-      emp.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      emp.employeeNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      emp.phoneNumber.includes(searchQuery);
+      fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      employeeNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      phoneNumber.includes(searchQuery);
 
     const matchesRole = selectedRoleFilter === 'ALL' || emp.role === selectedRoleFilter;
 
@@ -187,7 +191,7 @@ export default function AdminEmployeesPage() {
                 <div className="flex items-center gap-3.5">
                   {/* Avatar or Icon */}
                   <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-xs text-slate-500 relative">
-                    {emp.fullName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase()}
+                    {(emp.fullName || 'Employee').split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase()}
                     {/* Status dot */}
                     <span className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border border-white ${
                       emp.isActive ? 'bg-green-500' : 'bg-slate-300'
@@ -196,10 +200,10 @@ export default function AdminEmployeesPage() {
 
                   <div>
                     <h4 className="text-xs font-bold text-slate-800 tracking-tight flex items-center gap-1.5">
-                      {emp.fullName}
+                      {emp.fullName || 'No Name'}
                     </h4>
                     <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">
-                      {emp.employeeNo} • {emp.phoneNumber}
+                      {emp.employeeNo || 'N/A'} • {emp.phoneNumber || 'N/A'}
                     </p>
                     <span className="inline-block mt-1 bg-slate-50 border border-slate-200/50 rounded px-1.5 py-0.5 text-[8px] font-bold text-slate-500">
                       {emp.role}

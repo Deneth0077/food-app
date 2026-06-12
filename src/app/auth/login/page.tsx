@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
@@ -23,6 +23,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const [checkingSession, setCheckingSession] = useState(true);
   const [loading, setLoading] = useState(false);
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormValues>({
@@ -32,6 +33,33 @@ export default function LoginPage() {
       password: '',
     }
   });
+
+  // Check if session is already active on this device
+  useEffect(() => {
+    async function checkSession() {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.user) {
+            let redirectUrl = '/employee/dashboard';
+            if (data.user.role === 'ADMIN') {
+              redirectUrl = '/admin/dashboard';
+            } else if (data.user.role === 'CANTEEN') {
+              redirectUrl = '/canteen/dashboard';
+            }
+            router.replace(redirectUrl);
+            return;
+          }
+        }
+      } catch (err) {
+        console.error('Session check failed:', err);
+      } finally {
+        setCheckingSession(false);
+      }
+    }
+    checkSession();
+  }, [router]);
 
   const onSubmit = async (data: LoginFormValues) => {
     setLoading(true);
@@ -69,13 +97,24 @@ export default function LoginPage() {
     }
   };
 
+  if (checkingSession) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+          <p className="text-sm font-semibold text-slate-500">Checking session...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center p-6 bg-slate-50">
       <Card className="w-full max-w-sm border-slate-200/80 shadow-md rounded-2xl bg-white">
         <CardHeader className="space-y-2 text-center pb-6">
           <div className="flex justify-center mb-3">
             <div className="h-14 w-14 rounded-full bg-blue-50 flex items-center justify-center border border-blue-100">
-              <Utensils className="h-7 w-7 text-blue-600" />
+              <Utensils className="h-7 w-7 text-blue-600 animate-pulse" />
             </div>
           </div>
           <CardTitle className="text-2xl font-bold text-slate-800 tracking-tight">Meal Portal Login</CardTitle>
@@ -91,7 +130,7 @@ export default function LoginPage() {
                 id="employeeNo"
                 type="text"
                 placeholder="EMP-XXXXX"
-                className="h-12 border-slate-200 rounded-xl px-4 text-slate-850 placeholder:text-slate-400 focus-visible:ring-blue-600 focus-visible:border-blue-600"
+                className="h-12 border-slate-200 rounded-xl px-4 text-slate-850 placeholder:text-slate-400 focus-visible:ring-blue-600 focus-visible:border-blue-600 font-semibold"
                 disabled={loading}
                 {...register('employeeNo')}
               />
@@ -106,7 +145,7 @@ export default function LoginPage() {
                 id="password"
                 type="password"
                 placeholder="••••••••"
-                className="h-12 border-slate-200 rounded-xl px-4 text-slate-850 placeholder:text-slate-400 focus-visible:ring-blue-600 focus-visible:border-blue-600"
+                className="h-12 border-slate-200 rounded-xl px-4 text-slate-850 placeholder:text-slate-400 focus-visible:ring-blue-600 focus-visible:border-blue-600 font-semibold"
                 disabled={loading}
                 {...register('password')}
               />

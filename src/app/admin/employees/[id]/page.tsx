@@ -152,10 +152,10 @@ export default function EmployeeDetailsPage() {
           <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] space-y-4">
             <div className="flex items-center gap-4">
               <div className="h-14 w-14 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-lg border border-blue-100 shadow-sm">
-                {employee.fullName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase()}
+                {(employee.fullName || 'Employee').split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase()}
               </div>
               <div className="flex-1">
-                <h3 className="text-base font-bold text-slate-800 tracking-tight">{employee.fullName}</h3>
+                <h3 className="text-base font-bold text-slate-800 tracking-tight">{employee.fullName || 'No Name'}</h3>
                 <span className="inline-block bg-slate-100 text-slate-500 rounded px-2 py-0.5 text-[9px] font-bold border border-slate-200 mt-1 uppercase">
                   {employee.role}
                 </span>
