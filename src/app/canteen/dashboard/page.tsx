@@ -30,6 +30,7 @@ interface Order {
   requestedAt: string;
   collectedAt?: string;
   requestDate: string;
+  notes?: string;
 }
 
 export default function CanteenDashboard() {
@@ -341,6 +342,12 @@ export default function CanteenDashboard() {
                       <p className="text-[10px] text-slate-400 font-semibold mt-1">
                         {order.employeeNo} • {order.phoneNumber}
                       </p>
+                      {order.notes && (
+                        <div className="mt-2 text-xs bg-amber-50 border border-amber-100 text-amber-850 rounded-lg p-2 font-medium">
+                          <span className="font-bold text-amber-750 block text-[9px] uppercase tracking-wider mb-0.5">Note / Snack Request</span>
+                          &ldquo;{order.notes}&rdquo;
+                        </div>
+                      )}
                     </div>
 
                     <div className="h-10 w-10 rounded-full bg-slate-100 text-slate-655 flex items-center justify-center font-bold text-xs">

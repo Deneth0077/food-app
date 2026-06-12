@@ -276,6 +276,11 @@ export default function AdminDashboard() {
                                 </span>
                               )}
                             </p>
+                            {notif.notes && (
+                              <p className="text-[10px] mt-1 bg-slate-50 border border-slate-100 rounded p-1.5 font-medium text-slate-500 italic leading-snug">
+                                &ldquo;{notif.notes}&rdquo;
+                              </p>
+                            )}
                             <span className="text-[9px] font-semibold text-slate-400 flex items-center gap-1 mt-1">
                               <Clock className="h-2.5 w-2.5" />
                               {formatDistanceToNow(new Date(notif.createdAt), { addSuffix: true })}

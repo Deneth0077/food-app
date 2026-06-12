@@ -47,7 +47,7 @@ export function BottomNav() {
     : employeeNavItems;
 
   return (
-    <div className="absolute bottom-0 left-0 right-0 h-16 bg-white border-t border-slate-200 shadow-[0_-4px_12px_rgba(0,0,0,0.03)] flex items-center justify-around px-4 z-40">
+    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] h-16 bg-white border-t border-slate-200 shadow-[0_-4px_12px_rgba(0,0,0,0.03)] flex items-center justify-around px-4 z-40">
       {navItems.map((item) => {
         // Active if exact match or path starts with href (and is not dashboard base path matching other subpaths)
         const isActive = pathname === item.href || (item.href.endsWith('/dashboard') ? pathname === item.href : pathname.startsWith(item.href));

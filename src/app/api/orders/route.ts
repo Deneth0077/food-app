@@ -86,7 +86,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { mealType, mealOption } = body;
+    const { mealType, mealOption, notes } = body;
 
     if (!mealType || !['BREAKFAST', 'LUNCH', 'DINNER'].includes(mealType)) {
       return NextResponse.json({ error: 'Invalid meal type requested' }, { status: 400 });
@@ -126,6 +126,7 @@ export async function POST(request: Request) {
       phoneNumber: dbUser.phoneNumber,
       mealType,
       mealOption,
+      notes: notes ? notes.trim() : undefined,
       status: 'ORDERED',
       requestDate: todayStr,
       requestedAt: new Date(),
@@ -138,6 +139,7 @@ export async function POST(request: Request) {
         employeeNo: dbUser.employeeNo,
         mealType,
         mealOption,
+        notes: notes ? notes.trim() : undefined,
       });
     } catch (notifError) {
       // Log notification error but don't fail the order submission

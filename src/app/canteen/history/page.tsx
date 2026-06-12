@@ -27,6 +27,7 @@ interface Order {
   requestedAt: string;
   collectedAt?: string;
   requestDate: string;
+  notes?: string;
 }
 
 export default function CanteenHistoryPage() {
@@ -201,6 +202,12 @@ export default function CanteenHistoryPage() {
                     </span>
                   </div>
                 </div>
+                {order.notes && (
+                  <div className="mt-2.5 pt-2.5 border-t border-slate-50 text-[10px] text-slate-500 font-medium">
+                    <span className="block text-slate-400 text-[8px] uppercase tracking-wider font-bold mb-0.5">Snack / Special Request</span>
+                    &ldquo;{order.notes}&rdquo;
+                  </div>
+                )}
               </div>
             ))
           )}

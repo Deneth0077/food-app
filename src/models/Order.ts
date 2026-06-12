@@ -7,6 +7,7 @@ export interface IOrder extends Document {
   phoneNumber: string;
   mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER';
   mealOption?: 'VEGETARIAN' | 'MEAT';
+  notes?: string;
   status: 'ORDERED' | 'COLLECTED';
   requestDate: string; // YYYY-MM-DD format
   requestedAt: Date;
@@ -29,6 +30,10 @@ const OrderSchema: Schema = new Schema(
     mealOption: {
       type: String,
       enum: ['VEGETARIAN', 'MEAT'],
+      required: false
+    },
+    notes: {
+      type: String,
       required: false
     },
     status: { 

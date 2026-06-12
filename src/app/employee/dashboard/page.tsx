@@ -35,6 +35,7 @@ interface Order {
   status: 'ORDERED' | 'COLLECTED';
   requestDate: string;
   requestedAt: string;
+  notes?: string;
 }
 
 export default function EmployeeDashboard() {
@@ -47,6 +48,7 @@ export default function EmployeeDashboard() {
   const [submittingMeal, setSubmittingMeal] = useState<string | null>(null);
   const [activeMealSelection, setActiveMealSelection] = useState<'BREAKFAST' | 'LUNCH' | 'DINNER' | null>(null);
   const [selectedOption, setSelectedOption] = useState<'VEGETARIAN' | 'MEAT' | null>(null);
+  const [orderNotes, setOrderNotes] = useState('');
 
   const todayStr = format(new Date(), 'yyyy-MM-dd');
 
@@ -85,13 +87,13 @@ export default function EmployeeDashboard() {
   }, [fetchData]);
 
   // Handle meal request submission
-  const handleRequestMeal = async (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER', mealOption?: 'VEGETARIAN' | 'MEAT') => {
+  const handleRequestMeal = async (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER', mealOption?: 'VEGETARIAN' | 'MEAT', notes?: string) => {
     setSubmittingMeal(mealType);
     try {
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mealType, mealOption }),
+        body: JSON.stringify({ mealType, mealOption, notes }),
       });
 
       const data = await res.json();
@@ -334,78 +336,102 @@ export default function EmployeeDashboard() {
 
           <div className="divide-y divide-slate-100">
             {/* Breakfast Status */}
-            <div className="py-2.5 flex items-center justify-between text-xs">
-              <span className="font-semibold text-slate-600 flex items-center gap-2">
-                <Coffee className="h-4 w-4 text-amber-500" /> Breakfast
-                {todayOrders.find(o => o.mealType === 'BREAKFAST')?.mealOption && (
-                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                    todayOrders.find(o => o.mealType === 'BREAKFAST')?.mealOption === 'VEGETARIAN' 
-                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
-                      : 'bg-rose-50 text-rose-700 border border-rose-100'
-                  }`}>
-                    {todayOrders.find(o => o.mealType === 'BREAKFAST')?.mealOption === 'VEGETARIAN' ? 'Veg' : 'Meat'}
-                  </span>
-                )}
-              </span>
-              <span className={`px-2 py-0.5 font-bold rounded-full text-[10px] ${
-                breakfastStatus === 'Collected'
-                  ? 'bg-green-100 text-green-700'
-                  : breakfastStatus === 'Pending'
-                  ? 'bg-orange-100 text-orange-700'
-                  : 'bg-slate-100 text-slate-500'
-              }`}>
-                {breakfastStatus}
-              </span>
+            <div className="py-3 flex flex-col gap-1 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-slate-600 flex items-center gap-2">
+                  <Coffee className="h-4 w-4 text-amber-500" /> Breakfast
+                  {todayOrders.find(o => o.mealType === 'BREAKFAST')?.mealOption && (
+                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                      todayOrders.find(o => o.mealType === 'BREAKFAST')?.mealOption === 'VEGETARIAN' 
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
+                        : 'bg-rose-50 text-rose-700 border border-rose-100'
+                    }`}>
+                      {todayOrders.find(o => o.mealType === 'BREAKFAST')?.mealOption === 'VEGETARIAN' ? 'Veg' : 'Meat'}
+                    </span>
+                  )}
+                </span>
+                <span className={`px-2 py-0.5 font-bold rounded-full text-[10px] ${
+                  breakfastStatus === 'Collected'
+                    ? 'bg-green-100 text-green-700'
+                    : breakfastStatus === 'Pending'
+                    ? 'bg-orange-100 text-orange-700'
+                    : 'bg-slate-100 text-slate-500'
+                }`}>
+                  {breakfastStatus}
+                </span>
+              </div>
+              {todayOrders.find(o => o.mealType === 'BREAKFAST')?.notes && (
+                <div className="text-[10px] bg-slate-50 border border-slate-100 text-slate-500 rounded-lg p-2 font-medium">
+                  <span className="font-bold text-slate-700 block text-[9px] uppercase tracking-wider mb-0.5">Snack / Special Request</span>
+                  &ldquo;{todayOrders.find(o => o.mealType === 'BREAKFAST')?.notes}&rdquo;
+                </div>
+              )}
             </div>
 
             {/* Lunch Status */}
-            <div className="py-2.5 flex items-center justify-between text-xs">
-              <span className="font-semibold text-slate-600 flex items-center gap-2">
-                <Utensils className="h-4 w-4 text-blue-500" /> Lunch
-                {todayOrders.find(o => o.mealType === 'LUNCH')?.mealOption && (
-                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                    todayOrders.find(o => o.mealType === 'LUNCH')?.mealOption === 'VEGETARIAN' 
-                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
-                      : 'bg-rose-50 text-rose-700 border border-rose-100'
-                  }`}>
-                    {todayOrders.find(o => o.mealType === 'LUNCH')?.mealOption === 'VEGETARIAN' ? 'Veg' : 'Meat'}
-                  </span>
-                )}
-              </span>
-              <span className={`px-2 py-0.5 font-bold rounded-full text-[10px] ${
-                lunchStatus === 'Collected'
-                  ? 'bg-green-100 text-green-700'
-                  : lunchStatus === 'Pending'
-                  ? 'bg-orange-100 text-orange-700'
-                  : 'bg-slate-100 text-slate-500'
-              }`}>
-                {lunchStatus}
-              </span>
+            <div className="py-3 flex flex-col gap-1 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-slate-600 flex items-center gap-2">
+                  <Utensils className="h-4 w-4 text-blue-500" /> Lunch
+                  {todayOrders.find(o => o.mealType === 'LUNCH')?.mealOption && (
+                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                      todayOrders.find(o => o.mealType === 'LUNCH')?.mealOption === 'VEGETARIAN' 
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
+                        : 'bg-rose-50 text-rose-700 border border-rose-100'
+                    }`}>
+                      {todayOrders.find(o => o.mealType === 'LUNCH')?.mealOption === 'VEGETARIAN' ? 'Veg' : 'Meat'}
+                    </span>
+                  )}
+                </span>
+                <span className={`px-2 py-0.5 font-bold rounded-full text-[10px] ${
+                  lunchStatus === 'Collected'
+                    ? 'bg-green-100 text-green-700'
+                    : lunchStatus === 'Pending'
+                    ? 'bg-orange-100 text-orange-700'
+                    : 'bg-slate-100 text-slate-500'
+                }`}>
+                  {lunchStatus}
+                </span>
+              </div>
+              {todayOrders.find(o => o.mealType === 'LUNCH')?.notes && (
+                <div className="text-[10px] bg-slate-50 border border-slate-100 text-slate-500 rounded-lg p-2 font-medium">
+                  <span className="font-bold text-slate-700 block text-[9px] uppercase tracking-wider mb-0.5">Snack / Special Request</span>
+                  &ldquo;{todayOrders.find(o => o.mealType === 'LUNCH')?.notes}&rdquo;
+                </div>
+              )}
             </div>
 
             {/* Dinner Status */}
-            <div className="py-2.5 flex items-center justify-between text-xs">
-              <span className="font-semibold text-slate-600 flex items-center gap-2">
-                <Moon className="h-4 w-4 text-indigo-500" /> Dinner
-                {todayOrders.find(o => o.mealType === 'DINNER')?.mealOption && (
-                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                    todayOrders.find(o => o.mealType === 'DINNER')?.mealOption === 'VEGETARIAN' 
-                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
-                      : 'bg-rose-50 text-rose-700 border border-rose-100'
-                  }`}>
-                    {todayOrders.find(o => o.mealType === 'DINNER')?.mealOption === 'VEGETARIAN' ? 'Veg' : 'Meat'}
-                  </span>
-                )}
-              </span>
-              <span className={`px-2 py-0.5 font-bold rounded-full text-[10px] ${
-                dinnerStatus === 'Collected'
-                  ? 'bg-green-100 text-green-700'
-                  : dinnerStatus === 'Pending'
-                  ? 'bg-orange-100 text-orange-700'
-                  : 'bg-slate-100 text-slate-500'
-              }`}>
-                {dinnerStatus}
-              </span>
+            <div className="py-3 flex flex-col gap-1 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-slate-600 flex items-center gap-2">
+                  <Moon className="h-4 w-4 text-indigo-500" /> Dinner
+                  {todayOrders.find(o => o.mealType === 'DINNER')?.mealOption && (
+                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                      todayOrders.find(o => o.mealType === 'DINNER')?.mealOption === 'VEGETARIAN' 
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
+                        : 'bg-rose-50 text-rose-700 border border-rose-100'
+                    }`}>
+                      {todayOrders.find(o => o.mealType === 'DINNER')?.mealOption === 'VEGETARIAN' ? 'Veg' : 'Meat'}
+                    </span>
+                  )}
+                </span>
+                <span className={`px-2 py-0.5 font-bold rounded-full text-[10px] ${
+                  dinnerStatus === 'Collected'
+                    ? 'bg-green-100 text-green-700'
+                    : dinnerStatus === 'Pending'
+                    ? 'bg-orange-100 text-orange-700'
+                    : 'bg-slate-100 text-slate-500'
+                }`}>
+                  {dinnerStatus}
+                </span>
+              </div>
+              {todayOrders.find(o => o.mealType === 'DINNER')?.notes && (
+                <div className="text-[10px] bg-slate-50 border border-slate-100 text-slate-500 rounded-lg p-2 font-medium">
+                  <span className="font-bold text-slate-700 block text-[9px] uppercase tracking-wider mb-0.5">Snack / Special Request</span>
+                  &ldquo;{todayOrders.find(o => o.mealType === 'DINNER')?.notes}&rdquo;
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -479,13 +505,11 @@ export default function EmployeeDashboard() {
             )}
           </div>
         </div>
-      </div>
-
-      {/* Meal Preference Selection Modal */}
+      </div>      {/* Meal Preference Selection Modal */}
       {activeMealSelection && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 ease-out animate-in fade-in">
           {/* Click outside to close */}
-          <div className="absolute inset-0" onClick={() => { setActiveMealSelection(null); setSelectedOption(null); }}></div>
+          <div className="absolute inset-0" onClick={() => { setActiveMealSelection(null); setSelectedOption(null); setOrderNotes(''); }}></div>
           
           <div className="relative bg-white w-full max-w-sm rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl border border-slate-100 transition-all duration-300 ease-out transform animate-in slide-in-from-bottom-8 sm:zoom-in-95">
             {/* Grab handle for mobile aesthetics */}
@@ -510,7 +534,7 @@ export default function EmployeeDashboard() {
                 </div>
                 <span className="text-xs font-extrabold uppercase tracking-wider">Vegetarian</span>
               </button>
-
+ 
               {/* Meat Option Card */}
               <button
                 type="button"
@@ -528,10 +552,25 @@ export default function EmployeeDashboard() {
               </button>
             </div>
 
-            <div className="flex gap-3 mt-6">
+            {/* Snack / Special Request Text Area */}
+            <div className="mt-4 space-y-1.5 text-left">
+              <label htmlFor="orderNotes" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                Snack / Special Request (Optional)
+              </label>
+              <textarea
+                id="orderNotes"
+                rows={2}
+                placeholder="e.g. Snack needed (banana, fruit pack), no spicy food..."
+                value={orderNotes}
+                onChange={(e) => setOrderNotes(e.target.value)}
+                className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white focus-visible:outline-none transition-all placeholder:text-slate-400 font-medium resize-none"
+              />
+            </div>
+ 
+            <div className="flex gap-3 mt-5">
               <button
                 type="button"
-                onClick={() => { setActiveMealSelection(null); setSelectedOption(null); }}
+                onClick={() => { setActiveMealSelection(null); setSelectedOption(null); setOrderNotes(''); }}
                 className="flex-1 h-11 border border-slate-200 text-slate-500 font-bold rounded-xl text-xs hover:bg-slate-50 active:scale-98 transition-all"
               >
                 Cancel
@@ -542,8 +581,10 @@ export default function EmployeeDashboard() {
                 onClick={async () => {
                   if (selectedOption) {
                     const mealType = activeMealSelection;
+                    const notes = orderNotes;
                     setActiveMealSelection(null);
-                    await handleRequestMeal(mealType, selectedOption);
+                    setOrderNotes('');
+                    await handleRequestMeal(mealType, selectedOption, notes);
                     setSelectedOption(null);
                   }
                 }}
