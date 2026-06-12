@@ -154,7 +154,7 @@ function ReportsPageContent() {
         {/* Date / Month Picker Filter */}
         {activeTab === 'monthly' && (
           <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.015)] flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-655 flex items-center gap-1.5">
+            <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
               <Calendar className="h-4.5 w-4.5 text-blue-600" />
               Reporting Month
             </span>
@@ -231,7 +231,7 @@ function ReportsPageContent() {
                   <h4 className="text-xs font-bold text-slate-800">Breakfast</h4>
                   <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">Total Requests</p>
                   {activeStats?.breakfastVeg !== undefined && (
-                    <p className="text-[9px] text-slate-450 font-bold mt-0.5 normal-case">
+                    <p className="text-[9px] text-slate-400 font-bold mt-0.5 normal-case">
                       Veg: {activeStats.breakfastVeg} • Meat: {activeStats.breakfastMeat}
                     </p>
                   )}
@@ -252,7 +252,7 @@ function ReportsPageContent() {
                   <h4 className="text-xs font-bold text-slate-800">Lunch</h4>
                   <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">Total Requests</p>
                   {activeStats?.lunchVeg !== undefined && (
-                    <p className="text-[9px] text-slate-450 font-bold mt-0.5 normal-case">
+                    <p className="text-[9px] text-slate-400 font-bold mt-0.5 normal-case">
                       Veg: {activeStats.lunchVeg} • Meat: {activeStats.lunchMeat}
                     </p>
                   )}
@@ -273,7 +273,7 @@ function ReportsPageContent() {
                   <h4 className="text-xs font-bold text-slate-800">Dinner</h4>
                   <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">Total Requests</p>
                   {activeStats?.dinnerVeg !== undefined && (
-                    <p className="text-[9px] text-slate-450 font-bold mt-0.5 normal-case">
+                    <p className="text-[9px] text-slate-400 font-bold mt-0.5 normal-case">
                       Veg: {activeStats.dinnerVeg} • Meat: {activeStats.dinnerMeat}
                     </p>
                   )}
@@ -294,7 +294,7 @@ function ReportsPageContent() {
           <div className="p-4 overflow-x-auto">
             <table className="w-full text-left text-xs font-medium text-slate-500 border-collapse">
               <thead>
-                <tr className="border-b border-slate-150 text-[10px] uppercase font-bold text-slate-400">
+                <tr className="border-b border-slate-200 text-[10px] uppercase font-bold text-slate-400">
                   <th className="pb-2">Meal Type</th>
                   <th className="pb-2 text-right">Requested</th>
                   <th className="pb-2 text-right">Ratio</th>

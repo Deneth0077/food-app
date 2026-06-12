@@ -14,7 +14,8 @@ import {
   User as UserIcon,
   CircleAlert,
   Loader2,
-  LogOut
+  LogOut,
+  Download
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -41,9 +42,12 @@ export default function CanteenDashboard() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMealFilter, setSelectedMealFilter] = useState<'ALL' | 'BREAKFAST' | 'LUNCH' | 'DINNER'>('ALL');
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState<'ALL' | 'ORDERED' | 'COLLECTED'>('ALL');
+  const [selectedPreferenceFilter, setSelectedPreferenceFilter] = useState<'ALL' | 'VEGETARIAN' | 'MEAT'>('ALL');
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<'ALL' | 'ORDERED' | 'COLLECTED'>('ORDERED'); // Default to Pending (ORDERED)
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [viewMode, setViewMode] = useState<'TABLE' | 'CARDS'>('TABLE');
+  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -106,6 +110,329 @@ export default function CanteenDashboard() {
     }
   };
 
+  const handleBulkMarkAsCollected = async () => {
+    if (selectedOrderIds.length === 0) return;
+    setUpdatingOrderId('BULK');
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderIds: selectedOrderIds }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update orders');
+
+      toast({
+        title: 'Bulk Collections Successful',
+        description: `Successfully marked ${data.modifiedCount || selectedOrderIds.length} orders as collected.`,
+      });
+
+      // Update state locally
+      const now = new Date().toISOString();
+      setOrders(prev => prev.map(o => 
+        selectedOrderIds.includes(o._id) 
+          ? { ...o, status: 'COLLECTED', collectedAt: now } 
+          : o
+      ));
+      setSelectedOrderIds([]);
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Bulk Update Failed',
+        description: err.message || 'Something went wrong',
+      });
+    }
+  };
+
+  const handleCollectAllListed = async () => {
+    const pendingFiltered = filteredOrders.filter(o => o.status === 'ORDERED');
+    if (pendingFiltered.length === 0) return;
+    
+    const pendingIds = pendingFiltered.map(o => o._id);
+    setUpdatingOrderId('BULK');
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderIds: pendingIds }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update orders');
+
+      toast({
+        title: 'Bulk Collections Successful',
+        description: `Successfully marked all ${data.modifiedCount || pendingIds.length} listed pending orders as collected.`,
+      });
+
+      const now = new Date().toISOString();
+      setOrders(prev => prev.map(o => 
+        pendingIds.includes(o._id) 
+          ? { ...o, status: 'COLLECTED', collectedAt: now } 
+          : o
+      ));
+      setSelectedOrderIds([]);
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Bulk Update Failed',
+        description: err.message || 'Something went wrong',
+      });
+    } finally {
+      setUpdatingOrderId(null);
+    }
+  };
+
+  const handleDownloadPDF = () => {
+    const todayDate = format(new Date(), 'EEEE, MMMM dd, yyyy');
+    
+    // Group orders
+    const breakfasts = orders.filter(o => o.mealType === 'BREAKFAST');
+    const lunches = orders.filter(o => o.mealType === 'LUNCH');
+    const dinners = orders.filter(o => o.mealType === 'DINNER');
+    
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast({
+        variant: 'destructive',
+        title: 'Pop-up Blocked',
+        description: 'Please allow pop-ups to download the PDF report.',
+      });
+      return;
+    }
+    
+    const htmlContent = `
+      <html>
+        <head>
+          <title>Meal Logistics Daily Report - ${format(new Date(), 'yyyy-MM-dd')}</title>
+          <style>
+            body {
+              font-family: 'Inter', sans-serif;
+              color: #333;
+              padding: 20px;
+              line-height: 1.4;
+            }
+            .header {
+              text-align: center;
+              border-bottom: 2px solid #333;
+              padding-bottom: 15px;
+              margin-bottom: 25px;
+            }
+            .header h1 {
+              margin: 0;
+              font-size: 20px;
+              text-transform: uppercase;
+              letter-spacing: 1px;
+            }
+            .header p {
+              margin: 5px 0 0 0;
+              font-size: 12px;
+              color: #666;
+              font-weight: bold;
+            }
+            .summary-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 30px;
+            }
+            .summary-table th, .summary-table td {
+              border: 1px solid #ddd;
+              padding: 8px 12px;
+              text-align: left;
+              font-size: 11px;
+            }
+            .summary-table th {
+              background-color: #f5f5f5;
+              font-weight: bold;
+            }
+            .meal-section {
+              margin-bottom: 30px;
+              page-break-inside: avoid;
+            }
+            .meal-title {
+              font-size: 14px;
+              font-weight: bold;
+              border-bottom: 1.5px solid #666;
+              padding-bottom: 4px;
+              margin-bottom: 10px;
+              text-transform: uppercase;
+            }
+            .order-table {
+              width: 100%;
+              border-collapse: collapse;
+            }
+            .order-table th, .order-table td {
+              border: 1px solid #eee;
+              padding: 7px 10px;
+              text-align: left;
+              font-size: 10px;
+            }
+            .order-table th {
+              background-color: #fafafa;
+              font-weight: bold;
+            }
+            .veg-pill {
+              background-color: #e8f5e9;
+              color: #2e7d32;
+              font-weight: bold;
+              padding: 2px 6px;
+              border-radius: 4px;
+              font-size: 9px;
+            }
+            .meat-pill {
+              background-color: #ffebee;
+              color: #c62828;
+              font-weight: bold;
+              padding: 2px 6px;
+              border-radius: 4px;
+              font-size: 9px;
+            }
+            .notes-text {
+              font-style: italic;
+              color: #555;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>ZPMC Lanka Meal Logistics</h1>
+            <p>Daily Operations Report - ${todayDate}</p>
+          </div>
+          
+          <h2>Summary</h2>
+          <table class="summary-table">
+            <thead>
+              <tr>
+                <th>Meal Time</th>
+                <th>Vegetarian</th>
+                <th>Meat</th>
+                <th>Total Orders</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Breakfast</strong></td>
+                <td>${breakfasts.filter(o => o.mealOption === 'VEGETARIAN').length}</td>
+                <td>${breakfasts.filter(o => o.mealOption === 'MEAT').length}</td>
+                <td><strong>${breakfasts.length}</strong></td>
+              </tr>
+              <tr>
+                <td><strong>Lunch</strong></td>
+                <td>${lunches.filter(o => o.mealOption === 'VEGETARIAN').length}</td>
+                <td>${lunches.filter(o => o.mealOption === 'MEAT').length}</td>
+                <td><strong>${lunches.length}</strong></td>
+              </tr>
+              <tr>
+                <td><strong>Dinner</strong></td>
+                <td>${dinners.filter(o => o.mealOption === 'VEGETARIAN').length}</td>
+                <td>${dinners.filter(o => o.mealOption === 'MEAT').length}</td>
+                <td><strong>${dinners.length}</strong></td>
+              </tr>
+            </tbody>
+          </table>
+          
+          <!-- Breakfast Section -->
+          <div class="meal-section">
+            <div class="meal-title">Breakfast Orders (${breakfasts.length})</div>
+            ${breakfasts.length === 0 ? '<p style="font-size: 10px; color: #777;">No breakfast orders placed today.</p>' : `
+              <table class="order-table">
+                <thead>
+                  <tr>
+                    <th>Emp ID</th>
+                    <th>Name</th>
+                    <th>Phone</th>
+                    <th>Option</th>
+                    <th>Notes / Requests</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${breakfasts.map(o => `
+                    <tr>
+                      <td>${o.employeeNo}</td>
+                      <td><strong>${o.employeeName}</strong></td>
+                      <td>${o.phoneNumber}</td>
+                      <td><span class="${o.mealOption === 'VEGETARIAN' ? 'veg-pill' : 'meat-pill'}">${o.mealOption === 'VEGETARIAN' ? 'VEG' : 'MEAT'}</span></td>
+                      <td class="notes-text">${o.notes || '-'}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            `}
+          </div>
+
+          <!-- Lunch Section -->
+          <div class="meal-section">
+            <div class="meal-title">Lunch Orders (${lunches.length})</div>
+            ${lunches.length === 0 ? '<p style="font-size: 10px; color: #777;">No lunch orders placed today.</p>' : `
+              <table class="order-table">
+                <thead>
+                  <tr>
+                    <th>Emp ID</th>
+                    <th>Name</th>
+                    <th>Phone</th>
+                    <th>Option</th>
+                    <th>Notes / Requests</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${lunches.map(o => `
+                    <tr>
+                      <td>${o.employeeNo}</td>
+                      <td><strong>${o.employeeName}</strong></td>
+                      <td>${o.phoneNumber}</td>
+                      <td><span class="${o.mealOption === 'VEGETARIAN' ? 'veg-pill' : 'meat-pill'}">${o.mealOption === 'VEGETARIAN' ? 'VEG' : 'MEAT'}</span></td>
+                      <td class="notes-text">${o.notes || '-'}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            `}
+          </div>
+
+          <!-- Dinner Section -->
+          <div class="meal-section">
+            <div class="meal-title">Dinner Orders (${dinners.length})</div>
+            ${dinners.length === 0 ? '<p style="font-size: 10px; color: #777;">No dinner orders placed today.</p>' : `
+              <table class="order-table">
+                <thead>
+                  <tr>
+                    <th>Emp ID</th>
+                    <th>Name</th>
+                    <th>Phone</th>
+                    <th>Option</th>
+                    <th>Notes / Requests</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${dinners.map(o => `
+                    <tr>
+                      <td>${o.employeeNo}</td>
+                      <td><strong>${o.employeeName}</strong></td>
+                      <td>${o.phoneNumber}</td>
+                      <td><span class="${o.mealOption === 'VEGETARIAN' ? 'veg-pill' : 'meat-pill'}">${o.mealOption === 'VEGETARIAN' ? 'VEG' : 'MEAT'}</span></td>
+                      <td class="notes-text">${o.notes || '-'}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            `}
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() { window.close(); }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `;
+    
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
+
   const handleLogout = async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
@@ -116,28 +443,53 @@ export default function CanteenDashboard() {
     }
   };
 
+  const toggleSelectOrder = (orderId: string) => {
+    setSelectedOrderIds(prev => 
+      prev.includes(orderId) ? prev.filter(id => id !== orderId) : [...prev, orderId]
+    );
+  };
+
+  const toggleSelectAll = (pendingOrders: Order[]) => {
+    const pendingIds = pendingOrders.map(o => o._id);
+    const allSelected = pendingIds.every(id => selectedOrderIds.includes(id));
+    if (allSelected) {
+      setSelectedOrderIds(prev => prev.filter(id => !pendingIds.includes(id)));
+    } else {
+      setSelectedOrderIds(prev => Array.from(new Set([...prev, ...pendingIds])));
+    }
+  };
+
   // Filtered orders list
   const filteredOrders = orders.filter(order => {
     const matchesSearch = 
       order.employeeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.employeeNo.toLowerCase().includes(searchQuery.toLowerCase());
+      order.employeeNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.phoneNumber.toLowerCase().includes(searchQuery.toLowerCase());
       
     const matchesMeal = selectedMealFilter === 'ALL' || order.mealType === selectedMealFilter;
+    const matchesPreference = selectedPreferenceFilter === 'ALL' || order.mealOption === selectedPreferenceFilter;
     const matchesStatus = selectedStatusFilter === 'ALL' || order.status === selectedStatusFilter;
 
-    return matchesSearch && matchesMeal && matchesStatus;
+    return matchesSearch && matchesMeal && matchesPreference && matchesStatus;
   });
 
   // Expected stats counts for today
-  const breakfastExpected = orders.filter(o => o.mealType === 'BREAKFAST').length;
-  const breakfastVegExpected = orders.filter(o => o.mealType === 'BREAKFAST' && o.mealOption === 'VEGETARIAN').length;
-  const breakfastMeatExpected = orders.filter(o => o.mealType === 'BREAKFAST' && o.mealOption === 'MEAT').length;
-  const lunchExpected = orders.filter(o => o.mealType === 'LUNCH').length;
-  const lunchVegExpected = orders.filter(o => o.mealType === 'LUNCH' && o.mealOption === 'VEGETARIAN').length;
-  const lunchMeatExpected = orders.filter(o => o.mealType === 'LUNCH' && o.mealOption === 'MEAT').length;
-  const dinnerExpected = orders.filter(o => o.mealType === 'DINNER').length;
-  const dinnerVegExpected = orders.filter(o => o.mealType === 'DINNER' && o.mealOption === 'VEGETARIAN').length;
-  const dinnerMeatExpected = orders.filter(o => o.mealType === 'DINNER' && o.mealOption === 'MEAT').length;
+  const getMealProgress = (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER') => {
+    const mealOrders = orders.filter(o => o.mealType === mealType);
+    const total = mealOrders.length;
+    const collected = mealOrders.filter(o => o.status === 'COLLECTED').length;
+    const pct = total > 0 ? Math.round((collected / total) * 100) : 0;
+    
+    // Veg/Meat stats
+    const vegCount = mealOrders.filter(o => o.mealOption === 'VEGETARIAN').length;
+    const meatCount = mealOrders.filter(o => o.mealOption === 'MEAT').length;
+    
+    return { total, collected, pct, vegCount, meatCount };
+  };
+
+  const breakfastProgress = getMealProgress('BREAKFAST');
+  const lunchProgress = getMealProgress('LUNCH');
+  const dinnerProgress = getMealProgress('DINNER');
 
   const pendingActiveCount = orders.filter(o => o.status === 'ORDERED').length;
 
@@ -164,166 +516,311 @@ export default function CanteenDashboard() {
       </header>
 
       {/* Content */}
-      <div className="flex-1 p-5 space-y-5 overflow-y-auto pb-24">
+      <div className="flex-1 p-5 space-y-5 overflow-y-auto pb-32">
         {/* Today's Overview scroll cards */}
         <div className="space-y-2.5">
-          <h2 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Today's Overview</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Today's Overview</h2>
+            <button 
+              onClick={fetchOrders}
+              className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+              title="Refresh Stats"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
           <div className="grid grid-cols-3 gap-3">
-            {/* Breakfast Stats */}
+            {/* Breakfast Stats Card */}
             <div className="bg-white rounded-2xl p-3 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between">
-              <div className="h-8 w-8 rounded-lg bg-amber-50 text-amber-500 flex items-center justify-center">
-                <Coffee className="h-4.5 w-4.5" />
+              <div className="flex justify-between items-start">
+                <div className="h-8 w-8 rounded-lg bg-amber-50 text-amber-500 flex items-center justify-center">
+                  <Coffee className="h-4.5 w-4.5" />
+                </div>
+                <span className="text-[9px] font-extrabold text-slate-400 bg-slate-50 px-1 rounded">{breakfastProgress.pct}%</span>
               </div>
-              <div className="mt-2">
-                <p className="text-xl font-bold text-slate-800 leading-tight">{breakfastExpected}</p>
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mt-0.5 leading-none">Breakfast</p>
-                <p className="text-[8px] font-bold text-slate-450 mt-1 leading-none">V: {breakfastVegExpected} • M: {breakfastMeatExpected}</p>
+              <div className="mt-2.5">
+                <p className="text-xl font-bold text-slate-800 leading-tight">{breakfastProgress.total}</p>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mt-1 leading-none">Breakfast</p>
+                <div className="w-full bg-slate-100 h-1 rounded-full mt-2 overflow-hidden">
+                  <div className="bg-amber-500 h-full rounded-full transition-all duration-300" style={{ width: `${breakfastProgress.pct}%` }} />
+                </div>
+                <p className="text-[8px] font-extrabold text-slate-400 mt-1.5 leading-none">
+                  {breakfastProgress.collected}/{breakfastProgress.total} Coll. • V:{breakfastProgress.vegCount} M:{breakfastProgress.meatCount}
+                </p>
               </div>
             </div>
 
-            {/* Lunch Stats */}
-            <div className="bg-blue-600 rounded-2xl p-3 text-white shadow-md flex flex-col justify-between">
-              <div className="h-8 w-8 rounded-lg bg-white/20 text-white flex items-center justify-center">
-                <Utensils className="h-4.5 w-4.5" />
+            {/* Lunch Stats Card */}
+            <div className="bg-white rounded-2xl p-3 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between">
+              <div className="flex justify-between items-start">
+                <div className="h-8 w-8 rounded-lg bg-blue-50 text-blue-505 flex items-center justify-center">
+                  <Utensils className="h-4.5 w-4.5" />
+                </div>
+                <span className="text-[9px] font-extrabold text-slate-400 bg-slate-50 px-1 rounded">{lunchProgress.pct}%</span>
               </div>
-              <div className="mt-2">
-                <p className="text-xl font-bold leading-tight">{lunchExpected}</p>
-                <p className="text-[9px] font-bold text-blue-100 uppercase tracking-wide mt-0.5 leading-none">Lunch</p>
-                <p className="text-[8px] font-bold text-blue-100/90 mt-1 leading-none">V: {lunchVegExpected} • M: {lunchMeatExpected}</p>
+              <div className="mt-2.5">
+                <p className="text-xl font-bold text-slate-800 leading-tight">{lunchProgress.total}</p>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mt-1 leading-none">Lunch</p>
+                <div className="w-full bg-slate-100 h-1 rounded-full mt-2 overflow-hidden">
+                  <div className="bg-blue-600 h-full rounded-full transition-all duration-300" style={{ width: `${lunchProgress.pct}%` }} />
+                </div>
+                <p className="text-[8px] font-extrabold text-slate-400 mt-1.5 leading-none">
+                  {lunchProgress.collected}/{lunchProgress.total} Coll. • V:{lunchProgress.vegCount} M:{lunchProgress.meatCount}
+                </p>
               </div>
             </div>
 
-            {/* Dinner Stats */}
+            {/* Dinner Stats Card */}
             <div className="bg-white rounded-2xl p-3 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between">
-              <div className="h-8 w-8 rounded-lg bg-indigo-50 text-indigo-500 flex items-center justify-center">
-                <Moon className="h-4.5 w-4.5" />
+              <div className="flex justify-between items-start">
+                <div className="h-8 w-8 rounded-lg bg-indigo-50 text-indigo-500 flex items-center justify-center">
+                  <Moon className="h-4.5 w-4.5" />
+                </div>
+                <span className="text-[9px] font-extrabold text-slate-400 bg-slate-50 px-1 rounded">{dinnerProgress.pct}%</span>
               </div>
-              <div className="mt-2">
-                <p className="text-xl font-bold text-slate-800 leading-tight">{dinnerExpected}</p>
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mt-0.5 leading-none">Dinner</p>
-                <p className="text-[8px] font-bold text-slate-450 mt-1 leading-none">V: {dinnerVegExpected} • M: {dinnerMeatExpected}</p>
+              <div className="mt-2.5">
+                <p className="text-xl font-bold text-slate-800 leading-tight">{dinnerProgress.total}</p>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mt-1 leading-none">Dinner</p>
+                <div className="w-full bg-slate-100 h-1 rounded-full mt-2 overflow-hidden">
+                  <div className="bg-indigo-500 h-full rounded-full transition-all duration-300" style={{ width: `${dinnerProgress.pct}%` }} />
+                </div>
+                <p className="text-[8px] font-extrabold text-slate-400 mt-1.5 leading-none">
+                  {dinnerProgress.collected}/{dinnerProgress.total} Coll. • V:{dinnerProgress.vegCount} M:{dinnerProgress.meatCount}
+                </p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Requests List Area */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
-              Pending Requests
-              <span className="bg-orange-100 text-orange-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                {pendingActiveCount} Active
-              </span>
-            </h3>
+        <div className="space-y-4">
+          <div className="flex flex-col gap-2.5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                Active Meal Requests
+                <span className="bg-orange-100 text-orange-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  {pendingActiveCount} Pending
+                </span>
+              </h3>
+            </div>
             
-            <button 
-              onClick={() => setShowFilters(!showFilters)}
-              className={`p-2 rounded-xl border transition-colors flex items-center justify-center ${
-                showFilters ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-            </button>
+            <div className="flex gap-2.5">
+              <button
+                onClick={handleDownloadPDF}
+                className="flex-1 h-10 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-[10px] font-extrabold tracking-wide flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Download PDF
+              </button>
+              <button
+                onClick={handleCollectAllListed}
+                disabled={filteredOrders.filter(o => o.status === 'ORDERED').length === 0 || updatingOrderId === 'BULK'}
+                className="flex-1 h-10 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-100 disabled:text-slate-400 disabled:border-slate-200 text-white rounded-xl text-[10px] font-extrabold tracking-wide flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95 border border-blue-500/10"
+              >
+                {updatingOrderId === 'BULK' ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <CheckCircle className="h-3.5 w-3.5 stroke-[2.25]" />
+                )}
+                Collect All Listed
+              </button>
+            </div>
           </div>
 
-          {/* Search bar & Filter Panel */}
-          <div className="space-y-3">
-            <div className="relative">
-              <Search className="absolute left-4 top-3.5 h-4 w-4 text-slate-400" />
-              <input 
-                type="text"
-                placeholder="Search ID or Name..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-11 pl-11 pr-4 bg-white border border-slate-200 rounded-xl text-xs font-medium focus-visible:outline-none focus:border-blue-500"
-              />
+          {/* Quick Filters Area */}
+          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] space-y-3">
+            {/* Search Input and Toggle */}
+            <div className="flex flex-col gap-3">
+              <div className="relative">
+                <Search className="absolute left-4 top-3.5 h-4 w-4 text-slate-400" />
+                <input 
+                  type="text"
+                  placeholder="Search Employee ID, Name, or Phone..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full h-11 pl-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus-visible:outline-none focus:border-blue-500 focus:bg-white transition-all placeholder:text-slate-400"
+                />
+                {searchQuery && (
+                  <button 
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setViewMode('TABLE')}
+                  className={`flex-1 h-11 rounded-xl border font-bold text-xs flex items-center justify-center gap-1.5 transition-all ${
+                    viewMode === 'TABLE' ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
+                  }`}
+                >
+                  List Layout
+                </button>
+                <button
+                  onClick={() => setViewMode('CARDS')}
+                  className={`flex-1 h-11 rounded-xl border font-bold text-xs flex items-center justify-center gap-1.5 transition-all ${
+                    viewMode === 'CARDS' ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
+                  }`}
+                >
+                  Cards Layout
+                </button>
+              </div>
             </div>
 
-            {showFilters && (
-              <div className="p-3.5 bg-white border border-slate-100 rounded-2xl shadow-inner space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
-                {/* Meal filters */}
-                <div className="space-y-1">
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Meal Type</span>
-                  <div className="flex gap-1.5 overflow-x-auto">
-                    {['ALL', 'BREAKFAST', 'LUNCH', 'DINNER'].map(meal => (
-                      <button
-                        key={meal}
-                        onClick={() => setSelectedMealFilter(meal as any)}
-                        className={`px-3 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap border ${
-                          selectedMealFilter === meal 
-                            ? 'bg-blue-50 border-blue-250 text-blue-600' 
-                            : 'bg-slate-50 border-slate-100 text-slate-600 hover:bg-slate-100'
-                        }`}
-                      >
-                        {meal}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Status filters */}
-                <div className="space-y-1">
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Status</span>
-                  <div className="flex gap-1.5">
-                    {['ALL', 'ORDERED', 'COLLECTED'].map(status => (
-                      <button
-                        key={status}
-                        onClick={() => setSelectedStatusFilter(status as any)}
-                        className={`px-3 py-1 rounded-lg text-[10px] font-bold border ${
-                          selectedStatusFilter === status 
-                            ? 'bg-blue-50 border-blue-250 text-blue-600' 
-                            : 'bg-slate-50 border-slate-100 text-slate-600 hover:bg-slate-100'
-                        }`}
-                      >
-                        {status === 'ORDERED' ? 'Ordered (Pending)' : status === 'COLLECTED' ? 'Collected' : 'All'}
-                      </button>
-                    ))}
-                  </div>
+            {/* Quick Segment Controls (ALWAYS Stacked Vertically on Desktop in 480px frame) */}
+            <div className="flex flex-col gap-3 pt-3 border-t border-slate-100">
+              {/* Meal Filter Tabs */}
+              <div className="space-y-1">
+                <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Meal Time</span>
+                <div className="flex bg-slate-50 p-1 rounded-xl gap-1">
+                  {['ALL', 'BREAKFAST', 'LUNCH', 'DINNER'].map(meal => (
+                    <button
+                      key={meal}
+                      onClick={() => { setSelectedMealFilter(meal as any); setSelectedOrderIds([]); }}
+                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all uppercase ${
+                        selectedMealFilter === meal 
+                          ? 'bg-white text-blue-600 shadow-sm border border-slate-200' 
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      {meal === 'ALL' ? 'All' : meal.charAt(0) + meal.slice(1).toLowerCase()}
+                    </button>
+                  ))}
                 </div>
               </div>
-            )}
+
+              {/* Preference Filter Tabs */}
+              <div className="space-y-1">
+                <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Preference</span>
+                <div className="flex bg-slate-50 p-1 rounded-xl gap-1">
+                  {['ALL', 'VEGETARIAN', 'MEAT'].map(pref => (
+                    <button
+                      key={pref}
+                      onClick={() => { setSelectedPreferenceFilter(pref as any); setSelectedOrderIds([]); }}
+                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all uppercase ${
+                        selectedPreferenceFilter === pref 
+                          ? 'bg-white text-blue-600 shadow-sm border border-slate-200' 
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      {pref === 'ALL' ? 'All' : pref === 'VEGETARIAN' ? 'Veg' : 'Meat'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Status Filter Tabs */}
+              <div className="space-y-1">
+                <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Collection Status</span>
+                <div className="flex bg-slate-50 p-1 rounded-xl gap-1">
+                  {['ORDERED', 'COLLECTED', 'ALL'].map(status => (
+                    <button
+                      key={status}
+                      onClick={() => { setSelectedStatusFilter(status as any); setSelectedOrderIds([]); }}
+                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all uppercase ${
+                        selectedStatusFilter === status 
+                          ? 'bg-white text-blue-600 shadow-sm border border-slate-200' 
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      {status === 'ORDERED' ? 'Pending' : status === 'COLLECTED' ? 'Collected' : 'All'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* List items */}
+          {/* List/Cards Container */}
           <div className="space-y-3">
             {loading ? (
               <div className="flex flex-col items-center justify-center py-20 gap-3">
                 <Loader2 className="h-7 w-7 animate-spin text-blue-600" />
-                <p className="text-xs text-slate-450 font-bold">Refreshing list...</p>
+                <p className="text-xs text-slate-400 font-bold">Refreshing list...</p>
               </div>
             ) : filteredOrders.length === 0 ? (
-              <div className="bg-white rounded-2xl p-8 text-center border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-                <CircleAlert className="h-10 w-10 text-slate-350 mx-auto mb-3" />
+              <div className="bg-white rounded-2xl p-12 text-center border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+                <CircleAlert className="h-10 w-10 text-slate-300 mx-auto mb-3" />
                 <p className="text-sm text-slate-500 font-bold">No meal requests found</p>
                 <p className="text-xs text-slate-400 mt-1 max-w-[220px] mx-auto leading-relaxed">
                   Try adjusting filters or searching a different employee name/ID.
                 </p>
               </div>
-            ) : (
-              filteredOrders.map((order) => (
-                <div 
-                  key={order._id}
-                  className={`bg-white rounded-2xl border flex flex-col transition-all overflow-hidden ${
-                    order.status === 'COLLECTED' 
-                      ? 'border-slate-100 opacity-70 shadow-sm' 
-                      : 'border-blue-100 border-l-[3.5px] border-l-blue-600 shadow-sm'
-                  }`}
-                >
-                  <div className="p-4 flex justify-between items-start gap-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className={`px-2 py-0.5 rounded font-bold text-[9px] tracking-wider ${
+            ) : viewMode === 'TABLE' ? (
+              /* High-density Scroll-free Stacked Flex List layout */
+              <div className="space-y-2.5">
+                {filteredOrders.map((order) => (
+                  <div 
+                    key={order._id}
+                    className={`bg-white rounded-2xl border p-3 flex flex-col gap-2.5 transition-all shadow-sm ${
+                      order.status === 'COLLECTED' 
+                        ? 'border-slate-100 opacity-70' 
+                        : 'border-slate-100 hover:border-blue-200'
+                    } ${selectedOrderIds.includes(order._id) ? 'bg-blue-50/10 border-blue-200 shadow-[0_0_12px_rgba(59,130,246,0.05)]' : ''}`}
+                  >
+                    {/* Top Row: Checkbox, Avatar, Name & ID, and Action Button */}
+                    <div className="flex items-center justify-between gap-2.5">
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        {order.status === 'ORDERED' && (
+                          <input 
+                            type="checkbox"
+                            checked={selectedOrderIds.includes(order._id)}
+                            onChange={() => toggleSelectOrder(order._id)}
+                            className="h-4 w-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer shrink-0"
+                          />
+                        )}
+                        
+                        <div className="h-8.5 w-8.5 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-[10px] shrink-0 border border-slate-200">
+                          {order.employeeName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase()}
+                        </div>
+                        
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-slate-800 text-[11px] truncate leading-tight">{order.employeeName}</p>
+                          <p className="text-[9px] text-slate-400 font-semibold mt-0.5 truncate leading-none">
+                            {order.employeeNo} • {order.phoneNumber}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="shrink-0">
+                        {order.status === 'ORDERED' ? (
+                          <button
+                            onClick={() => handleMarkAsCollected(order._id)}
+                            disabled={updatingOrderId === order._id || updatingOrderId === 'BULK'}
+                            className="h-7 px-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-100 disabled:text-slate-400 text-white font-bold rounded-lg text-[9px] shadow-sm transition-all active:scale-95 inline-flex items-center justify-center gap-1"
+                          >
+                            {updatingOrderId === order._id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <CheckCircle className="h-3 w-3 stroke-[2.25]" />
+                            )}
+                            Collect
+                          </button>
+                        ) : (
+                          <span className="text-[9px] font-bold text-green-600 flex items-center gap-1">
+                            <CheckCircle className="h-3.5 w-3.5 fill-green-50 stroke-green-600" />
+                            Collected
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Bottom Row: Badges, Notes, and Time */}
+                    <div className="flex items-center justify-between gap-2 border-t border-slate-50 pt-2 text-[10px]">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className={`px-2 py-0.5 rounded font-extrabold text-[8px] tracking-wider uppercase ${
                           order.mealType === 'BREAKFAST'
-                            ? 'bg-amber-50 text-amber-600'
+                            ? 'bg-amber-50 text-amber-600 border border-amber-100'
                             : order.mealType === 'LUNCH'
-                            ? 'bg-blue-50 text-blue-600'
-                            : 'bg-indigo-50 text-indigo-600'
+                            ? 'bg-blue-50 text-blue-600 border border-blue-100'
+                            : 'bg-indigo-50 text-indigo-600 border border-indigo-100'
                         }`}>
                           {order.mealType}
                         </span>
                         {order.mealOption && (
-                          <span className={`px-2 py-0.5 rounded font-bold text-[9px] tracking-wider ${
+                          <span className={`px-2 py-0.5 rounded font-extrabold text-[8px] tracking-wider ${
                             order.mealOption === 'VEGETARIAN'
                               ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
                               : 'bg-rose-50 text-rose-700 border border-rose-100'
@@ -331,72 +828,160 @@ export default function CanteenDashboard() {
                             {order.mealOption === 'VEGETARIAN' ? 'VEG' : 'MEAT'}
                           </span>
                         )}
-                        <span className="text-[10px] text-slate-455 font-semibold">
-                          {(() => {
-                            const dateObj = new Date(order.requestedAt);
-                            const todayStr = format(new Date(), 'yyyy-MM-dd');
-                            const isTodayOrder = order.requestDate === todayStr;
-                            if (isTodayOrder) {
-                              return `Today ${order.mealType.charAt(0) + order.mealType.slice(1).toLowerCase()} at ${format(dateObj, 'h:mm a')}`;
-                            } else {
-                              return `${format(dateObj, 'MMM dd, yyyy')} at ${format(dateObj, 'h:mm a')}`;
-                            }
-                          })()}
-                        </span>
+                        {order.notes && (
+                          <span className="px-2 py-0.5 bg-amber-50 border border-amber-100 text-amber-800 rounded font-bold text-[8px] flex items-center gap-0.5 truncate max-w-[155px]" title={order.notes}>
+                            🍵 {order.notes}
+                          </span>
+                        )}
                       </div>
                       
-                      <h4 className="text-sm font-bold text-slate-800 mt-1.5 leading-snug">
-                        {order.employeeName}
-                      </h4>
-                      <p className="text-[10px] text-slate-400 font-semibold mt-1">
-                        {order.employeeNo} • {order.phoneNumber}
-                      </p>
-                      {order.notes && (
-                        <div className="mt-2 text-xs bg-amber-50 border border-amber-100 text-amber-850 rounded-lg p-2 font-medium">
-                          <span className="font-bold text-amber-750 block text-[9px] uppercase tracking-wider mb-0.5">Note / Snack Request</span>
-                          &ldquo;{order.notes}&rdquo;
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="h-10 w-10 rounded-full bg-slate-100 text-slate-655 flex items-center justify-center font-bold text-xs">
-                      {order.employeeName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase()}
+                      <span className="text-[9px] text-slate-400 font-bold shrink-0">
+                        {(() => {
+                          const dateObj = new Date(order.status === 'COLLECTED' && order.collectedAt ? order.collectedAt : order.requestedAt);
+                          return format(dateObj, 'h:mm a');
+                        })()}
+                      </span>
                     </div>
                   </div>
-
-                  {/* Actions area */}
-                  {order.status === 'ORDERED' ? (
-                    <div className="px-4 pb-4">
-                      <button
-                        onClick={() => handleMarkAsCollected(order._id)}
-                        disabled={updatingOrderId === order._id}
-                        className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-sm transition-all active:scale-98 flex items-center justify-center gap-1.5"
-                      >
-                        {updatingOrderId === order._id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <CheckCircle className="h-4 w-4 stroke-[2.25]" />
+                ))}
+              </div>
+            ) : (
+              /* Single-Column Card layout for MobileFrame */
+              <div className="grid grid-cols-1 gap-4">
+                {filteredOrders.map((order) => (
+                  <div 
+                    key={order._id}
+                    className={`bg-white rounded-2xl border flex flex-col transition-all overflow-hidden relative shadow-sm ${
+                      order.status === 'COLLECTED' 
+                        ? 'border-slate-100 opacity-70' 
+                        : 'border-slate-100 hover:border-blue-200'
+                    } ${selectedOrderIds.includes(order._id) ? 'bg-blue-50/10 border-blue-200 shadow-[0_0_12px_rgba(59,130,246,0.05)]' : ''}`}
+                  >
+                    {/* Header Row */}
+                    <div className="px-4 pt-4 pb-2 border-b border-slate-50 flex items-center justify-between gap-2.5">
+                      <div className="flex items-center gap-2">
+                        {order.status === 'ORDERED' && (
+                          <input 
+                            type="checkbox"
+                            checked={selectedOrderIds.includes(order._id)}
+                            onChange={() => toggleSelectOrder(order._id)}
+                            className="h-4 w-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer shrink-0"
+                          />
                         )}
-                        Mark as Collected
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="px-4 py-2 bg-slate-50/50 border-t border-slate-100/50 flex items-center justify-between text-[10px] font-bold text-green-600">
-                      <span className="flex items-center gap-1">
-                        <CheckCircle className="h-3.5 w-3.5 fill-green-50 stroke-green-600" />
-                        Collected
+                        <span className={`px-2 py-0.5 rounded font-extrabold text-[8px] tracking-wider uppercase ${
+                          order.mealType === 'BREAKFAST'
+                            ? 'bg-amber-50 text-amber-600 border border-amber-100'
+                            : order.mealType === 'LUNCH'
+                            ? 'bg-blue-50 text-blue-600 border border-blue-100'
+                            : 'bg-indigo-50 text-indigo-600 border border-indigo-100'
+                        }`}>
+                          {order.mealType}
+                        </span>
+                        {order.mealOption && (
+                          <span className={`px-2 py-0.5 rounded font-extrabold text-[8px] tracking-wider ${
+                            order.mealOption === 'VEGETARIAN'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                              : 'bg-rose-50 text-rose-700 border border-rose-100'
+                          }`}>
+                            {order.mealOption === 'VEGETARIAN' ? 'VEG' : 'MEAT'}
+                          </span>
+                        )}
+                      </div>
+                      
+                      <span className="text-[9px] text-slate-400 font-bold shrink-0">
+                        {format(new Date(order.requestedAt), 'h:mm a')}
                       </span>
-                      <span className="text-slate-400">
-                        {order.collectedAt ? format(new Date(order.collectedAt), 'h:mm a') : ''}
-                      </span>
                     </div>
-                  )}
-                </div>
-              ))
+
+                    {/* Card Body */}
+                    <div className="p-4 flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-xs font-extrabold text-slate-800 leading-tight">
+                          {order.employeeName}
+                        </h4>
+                        <p className="text-[10px] text-slate-400 font-bold mt-1 leading-none">
+                          {order.employeeNo} • {order.phoneNumber}
+                        </p>
+                        
+                        {order.notes && (
+                          <div className="mt-2.5 text-xs bg-amber-50 border border-amber-100 text-amber-850 rounded-xl p-2.5 font-medium leading-relaxed">
+                            <span className="font-extrabold text-amber-700 block text-[9px] uppercase tracking-wider mb-1">Note / Snack Request</span>
+                            &ldquo;{order.notes}&rdquo;
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="h-10 w-10 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs shrink-0 border border-slate-200">
+                        {order.employeeName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase()}
+                      </div>
+                    </div>
+
+                    {/* Actions Area */}
+                    {order.status === 'ORDERED' ? (
+                      <div className="px-4 pb-4">
+                        <button
+                          onClick={() => handleMarkAsCollected(order._id)}
+                          disabled={updatingOrderId === order._id || updatingOrderId === 'BULK'}
+                          className="w-full h-10 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-100 disabled:text-slate-400 text-white text-xs font-bold rounded-xl shadow-sm transition-all active:scale-98 flex items-center justify-center gap-1.5"
+                        >
+                          {updatingOrderId === order._id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <CheckCircle className="h-4 w-4 stroke-[2.25]" />
+                          )}
+                          Mark as Collected
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-[10px] font-bold text-green-600">
+                        <span className="flex items-center gap-1.5">
+                          <CheckCircle className="h-3.5 w-3.5 fill-green-50 stroke-green-600" />
+                          Collected
+                        </span>
+                        <span className="text-slate-400">
+                          {order.collectedAt ? format(new Date(order.collectedAt), 'h:mm a') : ''}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>
       </div>
+
+      {/* Floating Bulk Action Bar */}
+      {selectedOrderIds.length > 0 && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 z-40 animate-in slide-in-from-bottom-5 duration-250">
+          <div className="bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl flex items-center justify-between gap-4 border border-slate-800">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+              <span className="text-xs font-bold">{selectedOrderIds.length} selected</span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setSelectedOrderIds([])}
+                className="h-9 px-3 border border-slate-800 hover:bg-slate-800 rounded-xl text-[10px] font-bold transition-all text-slate-300"
+              >
+                Deselect
+              </button>
+              <button
+                onClick={handleBulkMarkAsCollected}
+                disabled={updatingOrderId === 'BULK'}
+                className="h-9 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-800 text-white font-bold rounded-xl text-[10px] shadow-md transition-all active:scale-95 flex items-center gap-1.5"
+              >
+                {updatingOrderId === 'BULK' ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <CheckCircle className="h-3.5 w-3.5 stroke-[2.25]" />
+                )}
+                Mark Collected
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

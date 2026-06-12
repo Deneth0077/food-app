@@ -262,7 +262,7 @@ export default function EmployeeProfilePage() {
               <Button 
                 type="button"
                 onClick={() => setIsEditing(true)}
-                className="w-full h-12 bg-blue-550 hover:bg-blue-600 text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-100 font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                className="w-full h-12 text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-100 font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-1.5 shadow-sm"
               >
                 <Edit3 className="h-4.5 w-4.5" />
                 Edit Profile

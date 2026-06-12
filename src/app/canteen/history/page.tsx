@@ -118,7 +118,7 @@ export default function CanteenHistoryPage() {
                 className={`px-3 py-1 rounded-lg text-[10px] font-bold border transition-colors ${
                   selectedMealFilter === meal 
                     ? 'bg-blue-50 border-blue-200 text-blue-600' 
-                    : 'bg-white border-slate-200 text-slate-655 hover:bg-slate-50'
+                    : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
                 }`}
               >
                 {meal}
@@ -132,11 +132,11 @@ export default function CanteenHistoryPage() {
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-3">
               <Loader2 className="h-7 w-7 animate-spin text-blue-600" />
-              <p className="text-xs text-slate-450 font-bold">Loading records...</p>
+              <p className="text-xs text-slate-400 font-bold">Loading records...</p>
             </div>
           ) : filteredOrders.length === 0 ? (
             <div className="bg-white rounded-2xl p-8 text-center border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-              <CircleAlert className="h-10 w-10 text-slate-350 mx-auto mb-3" />
+              <CircleAlert className="h-10 w-10 text-slate-300 mx-auto mb-3" />
               <p className="text-sm text-slate-500 font-bold">No collections found</p>
               <p className="text-xs text-slate-400 mt-1 max-w-[200px] mx-auto leading-relaxed">
                 Ensure meal requests have been submitted and marked collected.

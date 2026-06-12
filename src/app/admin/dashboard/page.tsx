@@ -207,7 +207,7 @@ export default function AdminDashboard() {
           <div className="relative">
             <button
               onClick={() => setShowNotifications(!showNotifications)}
-              className="p-2.5 text-slate-450 hover:text-blue-600 rounded-full hover:bg-slate-50 transition-colors relative"
+              className="p-2.5 text-slate-400 hover:text-blue-600 rounded-full hover:bg-slate-50 transition-colors relative"
               title="Notifications"
             >
               <Bell className="h-5 w-5" />
@@ -221,7 +221,7 @@ export default function AdminDashboard() {
             {showNotifications && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)}></div>
-                <div className="absolute right-0 mt-2.5 w-80 bg-white border border-slate-150 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="absolute right-0 mt-2.5 w-80 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                     <h3 className="text-xs font-bold text-slate-800">Notifications</h3>
                     {unreadCount > 0 && (
@@ -297,7 +297,7 @@ export default function AdminDashboard() {
 
           <button 
             onClick={handleLogout}
-            className="p-2.5 text-slate-450 hover:text-red-500 rounded-full hover:bg-slate-50 transition-colors"
+            className="p-2.5 text-slate-400 hover:text-red-500 rounded-full hover:bg-slate-50 transition-colors"
             title="Logout"
           >
             <LogOut className="h-5 w-5" />

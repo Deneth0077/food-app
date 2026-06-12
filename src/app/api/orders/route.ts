@@ -153,7 +153,7 @@ export async function POST(request: Request) {
   }
 }
 
-// PATCH: Mark meal request as collected (Canteen or Admin)
+// PATCH: Mark meal request(s) as collected (Canteen or Admin)
 export async function PATCH(request: Request) {
   try {
     await dbConnect();
@@ -168,27 +168,23 @@ export async function PATCH(request: Request) {
     }
 
     const body = await request.json();
-    const { orderId } = body;
+    const { orderId, orderIds } = body;
 
-    if (!orderId) {
-      return NextResponse.json({ error: 'Order ID is required' }, { status: 400 });
+    if (!orderId && (!orderIds || !Array.isArray(orderIds) || orderIds.length === 0)) {
+      return NextResponse.json({ error: 'Order ID or Order IDs are required' }, { status: 400 });
     }
 
-    const order = await Order.findById(orderId);
-    if (!order) {
-      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
-    }
+    const targetIds = orderId ? [orderId] : orderIds;
 
-    if (order.status === 'COLLECTED') {
-      return NextResponse.json({ error: 'Order has already been collected' }, { status: 400 });
-    }
+    const result = await Order.updateMany(
+      { _id: { $in: targetIds }, status: 'ORDERED' },
+      { $set: { status: 'COLLECTED', collectedAt: new Date() } }
+    );
 
-    // Update status to COLLECTED
-    order.status = 'COLLECTED';
-    order.collectedAt = new Date();
-    await order.save();
-
-    return NextResponse.json({ message: 'Order marked as collected', order });
+    return NextResponse.json({ 
+      message: `${result.modifiedCount} order(s) successfully marked as collected.`,
+      modifiedCount: result.modifiedCount
+    });
   } catch (error: any) {
     console.error('Update Order Status Error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

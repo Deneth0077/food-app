@@ -157,7 +157,7 @@ export default function AdminEmployeesPage() {
                 className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-colors ${
                   selectedRoleFilter === role 
                     ? 'bg-blue-50 border-blue-200 text-blue-600' 
-                    : 'bg-white border-slate-200 text-slate-655 hover:bg-slate-50'
+                    : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
                 }`}
               >
                 {role}
@@ -171,11 +171,11 @@ export default function AdminEmployeesPage() {
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-3">
               <Loader2 className="h-7 w-7 animate-spin text-blue-600" />
-              <p className="text-xs text-slate-450 font-bold">Loading directory...</p>
+              <p className="text-xs text-slate-400 font-bold">Loading directory...</p>
             </div>
           ) : filteredEmployees.length === 0 ? (
             <div className="bg-white rounded-2xl p-8 text-center border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-              <CircleAlert className="h-10 w-10 text-slate-350 mx-auto mb-3" />
+              <CircleAlert className="h-10 w-10 text-slate-300 mx-auto mb-3" />
               <p className="text-sm text-slate-500 font-bold">No employees found</p>
               <p className="text-xs text-slate-400 mt-1 max-w-[200px] mx-auto leading-relaxed">
                 Check that spelling matches or register a new employee.
@@ -217,7 +217,7 @@ export default function AdminEmployeesPage() {
                     disabled={togglingId === emp._id}
                     className={`px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all ${
                       emp.isActive
-                        ? 'bg-red-50 text-red-655 hover:bg-red-100/50 border border-red-100'
+                        ? 'bg-red-50 text-red-600 hover:bg-red-100/50 border border-red-100'
                         : 'bg-green-50 text-green-700 hover:bg-green-100/50 border border-green-100'
                     }`}
                   >
@@ -229,7 +229,7 @@ export default function AdminEmployeesPage() {
                       'Activate'
                     )}
                   </button>
-                  <ChevronRight className="h-4 w-4 text-slate-350" />
+                  <ChevronRight className="h-4 w-4 text-slate-300" />
                 </div>
               </div>
             ))

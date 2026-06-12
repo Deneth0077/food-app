@@ -20,6 +20,7 @@ import {
   XCircle,
   LogOut
 } from 'lucide-react';
+import InstallAppButton from '@/components/InstallAppButton';
 
 interface UserProfile {
   _id: string;
@@ -293,7 +294,7 @@ export default function EmployeeDashboard() {
                 className="fixed inset-0 z-40" 
                 onClick={() => setShowProfileDropdown(false)} 
               />
-              <div className="absolute right-0 top-12 w-44 bg-white border border-slate-150 rounded-xl shadow-lg py-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+              <div className="absolute right-0 top-12 w-44 bg-white border border-slate-200 rounded-xl shadow-lg py-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                 <div className="px-3 py-1.5 border-b border-slate-100">
                   <p className="text-xs font-bold text-slate-800 truncate">{user?.fullName}</p>
                   <p className="text-[10px] text-slate-400 truncate">{user?.employeeNo}</p>
@@ -326,6 +327,9 @@ export default function EmployeeDashboard() {
 
       {/* Content wrapper */}
       <div className="flex-1 p-5 space-y-5 overflow-y-auto pb-24">
+        {/* Install App Banner */}
+        <InstallAppButton />
+
         {/* Welcome Card */}
         <div className="bg-gradient-to-br from-blue-800 to-blue-600 rounded-2xl p-5 text-white shadow-md relative overflow-hidden">
           <div className="absolute right-[-20px] bottom-[-20px] opacity-10">
@@ -745,7 +749,7 @@ export default function EmployeeDashboard() {
                 className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all duration-300 transform shadow-[0_2px_8px_rgba(0,0,0,0.01)] ${
                   selectedOption === 'VEGETARIAN'
                     ? 'border-green-500 bg-green-50/45 text-green-700 shadow-green-100/50 shadow-md -translate-y-0.5 scale-[1.02]'
-                    : 'border-slate-150 hover:border-slate-350 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] bg-white text-slate-600'
+                    : 'border-slate-200 hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] bg-white text-slate-600'
                 }`}
               >
                 <div className={`h-10 w-10 rounded-full flex items-center justify-center mb-2.5 ${selectedOption === 'VEGETARIAN' ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-500'}`}>
@@ -761,7 +765,7 @@ export default function EmployeeDashboard() {
                 className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all duration-300 transform shadow-[0_2px_8px_rgba(0,0,0,0.01)] ${
                   selectedOption === 'MEAT'
                     ? 'border-blue-500 bg-blue-50/45 text-blue-700 shadow-blue-100/50 shadow-md -translate-y-0.5 scale-[1.02]'
-                    : 'border-slate-150 hover:border-slate-350 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] bg-white text-slate-600'
+                    : 'border-slate-200 hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] bg-white text-slate-600'
                 }`}
               >
                 <div className={`h-10 w-10 rounded-full flex items-center justify-center mb-2.5 ${selectedOption === 'MEAT' ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-500'}`}>

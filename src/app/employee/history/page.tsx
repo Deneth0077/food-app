@@ -124,11 +124,11 @@ export default function EmployeeHistoryPage() {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
             <RefreshCw className="h-7 w-7 animate-spin text-blue-600" />
-            <p className="text-xs text-slate-450 font-bold">Loading your history...</p>
+            <p className="text-xs text-slate-400 font-bold">Loading your history...</p>
           </div>
         ) : orders.length === 0 ? (
           <div className="bg-white rounded-2xl p-8 text-center border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-            <CircleAlert className="h-10 w-10 text-slate-350 mx-auto mb-3" />
+            <CircleAlert className="h-10 w-10 text-slate-300 mx-auto mb-3" />
             <p className="text-sm text-slate-500 font-bold">No history available</p>
             <p className="text-xs text-slate-400 mt-1 max-w-[200px] mx-auto leading-relaxed">
               When you start submitting breakfast, lunch, or dinner requests, they will show up here.
@@ -136,7 +136,7 @@ export default function EmployeeHistoryPage() {
           </div>
         ) : filteredOrders.length === 0 ? (
           <div className="bg-white rounded-2xl p-8 text-center border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-            <CircleAlert className="h-9 w-9 text-slate-350 mx-auto mb-2" />
+            <CircleAlert className="h-9 w-9 text-slate-300 mx-auto mb-2" />
             <p className="text-xs text-slate-500 font-bold">No records found matching this filter</p>
           </div>
         ) : (
