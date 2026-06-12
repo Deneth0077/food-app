@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Order from '@/models/Order';
 import User from '@/models/User';
+import Notification from '@/models/Notification';
 import { getAuthUser } from '@/lib/jwt';
 import { format } from 'date-fns';
 
@@ -85,10 +86,14 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { mealType } = body;
+    const { mealType, mealOption } = body;
 
     if (!mealType || !['BREAKFAST', 'LUNCH', 'DINNER'].includes(mealType)) {
       return NextResponse.json({ error: 'Invalid meal type requested' }, { status: 400 });
+    }
+
+    if (!mealOption || !['VEGETARIAN', 'MEAT'].includes(mealOption)) {
+      return NextResponse.json({ error: `Please select Vegetarian or Meat for ${mealType.toLowerCase()}.` }, { status: 400 });
     }
 
     // Fetch full user details to ensure they are active and get phone number
@@ -120,10 +125,24 @@ export async function POST(request: Request) {
       employeeNo: dbUser.employeeNo,
       phoneNumber: dbUser.phoneNumber,
       mealType,
+      mealOption,
       status: 'ORDERED',
       requestDate: todayStr,
       requestedAt: new Date(),
     });
+
+    // Create Admin Notification
+    try {
+      await Notification.create({
+        employeeName: dbUser.fullName,
+        employeeNo: dbUser.employeeNo,
+        mealType,
+        mealOption,
+      });
+    } catch (notifError) {
+      // Log notification error but don't fail the order submission
+      console.error('Failed to create notification:', notifError);
+    }
 
     return NextResponse.json({ message: 'Request submitted successfully', order: newOrder }, { status: 201 });
   } catch (error: any) {

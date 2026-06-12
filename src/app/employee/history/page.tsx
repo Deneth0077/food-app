@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 interface Order {
   _id: string;
   mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER';
+  mealOption?: 'VEGETARIAN' | 'MEAT';
   status: 'ORDERED' | 'COLLECTED';
   requestDate: string;
   requestedAt: string;
@@ -130,13 +131,21 @@ export default function EmployeeHistoryPage() {
                   </span>
                 </div>
 
-                <div className="pt-3 border-t border-slate-100 grid grid-cols-2 gap-4 text-[11px] text-slate-500 font-semibold">
+                <div className={`pt-3 border-t border-slate-100 grid ${item.mealOption ? 'grid-cols-3' : 'grid-cols-2'} gap-4 text-[11px] text-slate-500 font-semibold`}>
                   <div>
                     <span className="block text-slate-400 text-[9px] uppercase tracking-wider font-bold">Ordered At</span>
                     <span className="text-slate-700 block mt-0.5">
                       {format(new Date(item.requestedAt), 'h:mm a')}
                     </span>
                   </div>
+                  {item.mealOption && (
+                    <div>
+                      <span className="block text-slate-400 text-[9px] uppercase tracking-wider font-bold">Meal Choice</span>
+                      <span className={`block mt-0.5 font-bold ${item.mealOption === 'VEGETARIAN' ? 'text-green-600' : 'text-rose-600'}`}>
+                        {item.mealOption === 'VEGETARIAN' ? 'Vegetarian' : 'Meat'}
+                      </span>
+                    </div>
+                  )}
                   <div>
                     <span className="block text-slate-400 text-[9px] uppercase tracking-wider font-bold">Collected At</span>
                     <span className="text-slate-700 block mt-0.5">

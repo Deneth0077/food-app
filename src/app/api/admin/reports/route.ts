@@ -32,8 +32,14 @@ export async function GET(request: Request) {
     const todayStats = {
       total: todayOrders.length,
       breakfast: todayOrders.filter(o => o.mealType === 'BREAKFAST').length,
+      breakfastVeg: todayOrders.filter(o => o.mealType === 'BREAKFAST' && o.mealOption === 'VEGETARIAN').length,
+      breakfastMeat: todayOrders.filter(o => o.mealType === 'BREAKFAST' && o.mealOption === 'MEAT').length,
       lunch: todayOrders.filter(o => o.mealType === 'LUNCH').length,
+      lunchVeg: todayOrders.filter(o => o.mealType === 'LUNCH' && o.mealOption === 'VEGETARIAN').length,
+      lunchMeat: todayOrders.filter(o => o.mealType === 'LUNCH' && o.mealOption === 'MEAT').length,
       dinner: todayOrders.filter(o => o.mealType === 'DINNER').length,
+      dinnerVeg: todayOrders.filter(o => o.mealType === 'DINNER' && o.mealOption === 'VEGETARIAN').length,
+      dinnerMeat: todayOrders.filter(o => o.mealType === 'DINNER' && o.mealOption === 'MEAT').length,
       collected: todayOrders.filter(o => o.status === 'COLLECTED').length,
       pending: todayOrders.filter(o => o.status === 'ORDERED').length,
     };
@@ -47,8 +53,14 @@ export async function GET(request: Request) {
     const monthlyStats = {
       total: monthlyOrders.length,
       breakfast: monthlyOrders.filter(o => o.mealType === 'BREAKFAST').length,
+      breakfastVeg: monthlyOrders.filter(o => o.mealType === 'BREAKFAST' && o.mealOption === 'VEGETARIAN').length,
+      breakfastMeat: monthlyOrders.filter(o => o.mealType === 'BREAKFAST' && o.mealOption === 'MEAT').length,
       lunch: monthlyOrders.filter(o => o.mealType === 'LUNCH').length,
+      lunchVeg: monthlyOrders.filter(o => o.mealType === 'LUNCH' && o.mealOption === 'VEGETARIAN').length,
+      lunchMeat: monthlyOrders.filter(o => o.mealType === 'LUNCH' && o.mealOption === 'MEAT').length,
       dinner: monthlyOrders.filter(o => o.mealType === 'DINNER').length,
+      dinnerVeg: monthlyOrders.filter(o => o.mealType === 'DINNER' && o.mealOption === 'VEGETARIAN').length,
+      dinnerMeat: monthlyOrders.filter(o => o.mealType === 'DINNER' && o.mealOption === 'MEAT').length,
       collected: monthlyOrders.filter(o => o.status === 'COLLECTED').length,
       pending: monthlyOrders.filter(o => o.status === 'ORDERED').length,
     };

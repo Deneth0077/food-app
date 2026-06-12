@@ -22,6 +22,7 @@ interface Order {
   employeeNo: string;
   phoneNumber: string;
   mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER';
+  mealOption?: 'VEGETARIAN' | 'MEAT';
   status: 'ORDERED' | 'COLLECTED';
   requestedAt: string;
   collectedAt?: string;
@@ -178,13 +179,21 @@ export default function CanteenHistoryPage() {
                   </span>
                 </div>
 
-                <div className="pt-3 border-t border-slate-100 grid grid-cols-2 gap-4 text-[10px] text-slate-500 font-semibold">
+                <div className={`pt-3 border-t border-slate-100 grid ${order.mealOption ? 'grid-cols-3' : 'grid-cols-2'} gap-4 text-[10px] text-slate-500 font-semibold`}>
                   <div>
                     <span className="block text-slate-400 text-[8px] uppercase tracking-wider font-bold">Ordered At</span>
                     <span className="text-slate-700 block mt-0.5">
                       {format(new Date(order.requestedAt), 'h:mm a')}
                     </span>
                   </div>
+                  {order.mealOption && (
+                    <div>
+                      <span className="block text-slate-400 text-[8px] uppercase tracking-wider font-bold">Meal Choice</span>
+                      <span className={`block mt-0.5 font-bold ${order.mealOption === 'VEGETARIAN' ? 'text-green-600' : 'text-rose-600'}`}>
+                        {order.mealOption === 'VEGETARIAN' ? 'Vegetarian' : 'Meat'}
+                      </span>
+                    </div>
+                  )}
                   <div>
                     <span className="block text-slate-400 text-[8px] uppercase tracking-wider font-bold">Collected At</span>
                     <span className="text-slate-700 block mt-0.5">

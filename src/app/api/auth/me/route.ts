@@ -1,21 +1,17 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
 import { verifyJWT } from '@/lib/jwt';
 
 export const dynamic = 'force-dynamic';
 
-
 export async function GET(request: Request) {
   try {
     await dbConnect();
     
-    // Get cookies
-    const cookieHeader = request.headers.get('cookie') || '';
-    const cookies = Object.fromEntries(
-      cookieHeader.split(';').map((c) => c.trim().split('='))
-    );
-    const token = cookies['token'];
+    // Get token using Next.js cookies() helper (robust and standard)
+    const token = cookies().get('token')?.value;
 
     if (!token) {
       return NextResponse.json(

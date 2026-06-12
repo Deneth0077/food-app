@@ -22,8 +22,14 @@ import { format } from 'date-fns';
 interface Stats {
   total: number;
   breakfast: number;
+  breakfastVeg?: number;
+  breakfastMeat?: number;
   lunch: number;
+  lunchVeg?: number;
+  lunchMeat?: number;
   dinner: number;
+  dinnerVeg?: number;
+  dinnerMeat?: number;
   collected: number;
   pending: number;
 }
@@ -224,6 +230,11 @@ function ReportsPageContent() {
                 <div>
                   <h4 className="text-xs font-bold text-slate-800">Breakfast</h4>
                   <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">Total Requests</p>
+                  {activeStats?.breakfastVeg !== undefined && (
+                    <p className="text-[9px] text-slate-450 font-bold mt-0.5 normal-case">
+                      Veg: {activeStats.breakfastVeg} • Meat: {activeStats.breakfastMeat}
+                    </p>
+                  )}
                 </div>
               </div>
               <span className="text-sm font-bold text-slate-800">
@@ -240,6 +251,11 @@ function ReportsPageContent() {
                 <div>
                   <h4 className="text-xs font-bold text-slate-800">Lunch</h4>
                   <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">Total Requests</p>
+                  {activeStats?.lunchVeg !== undefined && (
+                    <p className="text-[9px] text-slate-450 font-bold mt-0.5 normal-case">
+                      Veg: {activeStats.lunchVeg} • Meat: {activeStats.lunchMeat}
+                    </p>
+                  )}
                 </div>
               </div>
               <span className="text-sm font-bold text-slate-800">
@@ -256,6 +272,11 @@ function ReportsPageContent() {
                 <div>
                   <h4 className="text-xs font-bold text-slate-800">Dinner</h4>
                   <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">Total Requests</p>
+                  {activeStats?.dinnerVeg !== undefined && (
+                    <p className="text-[9px] text-slate-450 font-bold mt-0.5 normal-case">
+                      Veg: {activeStats.dinnerVeg} • Meat: {activeStats.dinnerMeat}
+                    </p>
+                  )}
                 </div>
               </div>
               <span className="text-sm font-bold text-slate-800">
@@ -282,21 +303,42 @@ function ReportsPageContent() {
               <tbody className="divide-y divide-slate-100">
                 <tr>
                   <td className="py-2.5 font-semibold text-slate-700">Breakfast</td>
-                  <td className="py-2.5 text-right font-bold text-slate-800">{activeStats?.breakfast || 0}</td>
+                  <td className="py-2.5 text-right font-bold text-slate-800">
+                    {activeStats?.breakfast || 0}
+                    {activeStats?.breakfastVeg !== undefined && (
+                      <span className="text-[10px] text-slate-400 block font-normal mt-0.5">
+                        (Veg: {activeStats.breakfastVeg} / Meat: {activeStats.breakfastMeat})
+                      </span>
+                    )}
+                  </td>
                   <td className="py-2.5 text-right text-slate-500">
                     {totalRequests > 0 ? Math.round(((activeStats?.breakfast || 0) / totalRequests) * 100) : 0}%
                   </td>
                 </tr>
-                <tr>
+                 <tr>
                   <td className="py-2.5 font-semibold text-slate-700">Lunch</td>
-                  <td className="py-2.5 text-right font-bold text-slate-800">{activeStats?.lunch || 0}</td>
+                  <td className="py-2.5 text-right font-bold text-slate-800">
+                    {activeStats?.lunch || 0}
+                    {activeStats?.lunchVeg !== undefined && (
+                      <span className="text-[10px] text-slate-400 block font-normal mt-0.5">
+                        (Veg: {activeStats.lunchVeg} / Meat: {activeStats.lunchMeat})
+                      </span>
+                    )}
+                  </td>
                   <td className="py-2.5 text-right text-slate-500">
                     {totalRequests > 0 ? Math.round(((activeStats?.lunch || 0) / totalRequests) * 100) : 0}%
                   </td>
                 </tr>
                 <tr>
                   <td className="py-2.5 font-semibold text-slate-700">Dinner</td>
-                  <td className="py-2.5 text-right font-bold text-slate-800">{activeStats?.dinner || 0}</td>
+                  <td className="py-2.5 text-right font-bold text-slate-800">
+                    {activeStats?.dinner || 0}
+                    {activeStats?.dinnerVeg !== undefined && (
+                      <span className="text-[10px] text-slate-400 block font-normal mt-0.5">
+                        (Veg: {activeStats.dinnerVeg} / Meat: {activeStats.dinnerMeat})
+                      </span>
+                    )}
+                  </td>
                   <td className="py-2.5 text-right text-slate-500">
                     {totalRequests > 0 ? Math.round(((activeStats?.dinner || 0) / totalRequests) * 100) : 0}%
                   </td>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -13,26 +13,43 @@ import {
   FileText, 
   LogOut,
   SlidersHorizontal,
-  ChevronDown
+  ChevronDown,
+  Bell,
+  Clock,
+  Check,
+  Coffee,
+  Moon
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 
 interface ReportData {
   employeeStats: { total: number; active: number };
   todayStats: {
     total: number;
     breakfast: number;
+    breakfastVeg?: number;
+    breakfastMeat?: number;
     lunch: number;
+    lunchVeg?: number;
+    lunchMeat?: number;
     dinner: number;
+    dinnerVeg?: number;
+    dinnerMeat?: number;
     collected: number;
     pending: number;
   };
   monthlyStats: {
     total: number;
     breakfast: number;
+    breakfastVeg?: number;
+    breakfastMeat?: number;
     lunch: number;
+    lunchVeg?: number;
+    lunchMeat?: number;
     dinner: number;
+    dinnerVeg?: number;
+    dinnerMeat?: number;
     collected: number;
     pending: number;
   };
@@ -51,6 +68,66 @@ export default function AdminDashboard() {
   
   const [data, setData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Notification states
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/notifications');
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(data.notifications || []);
+        setUnreadCount((data.notifications || []).filter((n: any) => !n.isRead).length);
+      }
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
+  }, []);
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      const res = await fetch('/api/admin/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ markAll: true }),
+      });
+      if (res.ok) {
+        setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+        setUnreadCount(0);
+        toast({
+          title: 'Notifications Updated',
+          description: 'All notifications marked as read.',
+        });
+      }
+    } catch (error) {
+      console.error('Error marking all as read:', error);
+    }
+  };
+
+  const handleMarkAsRead = async (id: string) => {
+    try {
+      const res = await fetch('/api/admin/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notificationId: id }),
+      });
+      if (res.ok) {
+        setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 15000); // Poll every 15 seconds
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
 
   useEffect(() => {
     const fetchDashboardStats = async () => {
@@ -117,22 +194,110 @@ export default function AdminDashboard() {
       {/* Header */}
       <header className="sticky top-0 z-30 h-16 bg-white border-b border-slate-100 flex items-center justify-between px-5 shadow-sm">
         <div className="flex items-center gap-2.5">
-          <div className="h-10 w-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold shadow-sm">
-            SA
-          </div>
+          <img src="/logo.png" className="h-11 object-contain" alt="ZPMC Lanka" />
+          <div className="h-6 w-[1px] bg-slate-200" />
           <div>
-            <h1 className="text-base font-bold text-slate-800 tracking-tight">System Admin</h1>
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Dashboard Overview</p>
+            <h1 className="text-sm font-bold text-slate-850 tracking-tight leading-none">System Admin</h1>
+            <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider mt-1.5 leading-none">Dashboard Overview</p>
           </div>
         </div>
         
-        <button 
-          onClick={handleLogout}
-          className="p-2.5 text-slate-450 hover:text-red-500 rounded-full hover:bg-slate-50 transition-colors"
-          title="Logout"
-        >
-          <LogOut className="h-5 w-5" />
-        </button>
+        <div className="flex items-center gap-1.5">
+          {/* Notifications Bell Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="p-2.5 text-slate-450 hover:text-blue-600 rounded-full hover:bg-slate-50 transition-colors relative"
+              title="Notifications"
+            >
+              <Bell className="h-5 w-5" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1.5 right-1.5 h-4 w-4 rounded-full bg-red-500 text-[9px] font-bold text-white flex items-center justify-center ring-2 ring-white">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+
+            {showNotifications && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)}></div>
+                <div className="absolute right-0 mt-2.5 w-80 bg-white border border-slate-150 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                    <h3 className="text-xs font-bold text-slate-800">Notifications</h3>
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={handleMarkAllAsRead}
+                        className="text-[10px] font-bold text-blue-600 hover:underline flex items-center gap-1"
+                      >
+                        <Check className="h-3 w-3" /> Mark all read
+                      </button>
+                    )}
+                  </div>
+                  
+                  <div className="max-h-72 overflow-y-auto divide-y divide-slate-100">
+                    {notifications.length === 0 ? (
+                      <div className="p-6 text-center text-slate-400 text-xs font-semibold">
+                        No notifications yet
+                      </div>
+                    ) : (
+                      notifications.map(notif => (
+                        <div
+                          key={notif._id}
+                          onClick={() => handleMarkAsRead(notif._id)}
+                          className={`p-3.5 text-left transition-colors cursor-pointer flex gap-3 ${
+                            notif.isRead ? 'hover:bg-slate-50' : 'bg-blue-50/40 hover:bg-blue-50/70 border-l-[3px] border-l-blue-600 pl-[11px]'
+                          }`}
+                        >
+                          <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${
+                            notif.mealType === 'BREAKFAST'
+                              ? 'bg-amber-50 text-amber-500'
+                              : notif.mealType === 'LUNCH'
+                              ? 'bg-blue-50 text-blue-600'
+                              : 'bg-indigo-50 text-indigo-500'
+                          }`}>
+                            {notif.mealType === 'BREAKFAST' ? (
+                              <Coffee className="h-4 w-4" />
+                            ) : notif.mealType === 'LUNCH' ? (
+                              <Utensils className="h-4 w-4" />
+                            ) : (
+                              <Moon className="h-4 w-4" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-slate-800 leading-snug">
+                              <span className="font-bold">{notif.employeeName}</span> ({notif.employeeNo}) requested <span className="font-bold capitalize">{notif.mealType.toLowerCase()}</span>
+                              {notif.mealOption && (
+                                <span className={`ml-1.5 px-1 rounded text-[8px] font-bold ${
+                                  notif.mealOption === 'VEGETARIAN' 
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
+                                    : 'bg-rose-50 text-rose-700 border border-rose-100'
+                                }`}>
+                                  {notif.mealOption === 'VEGETARIAN' ? 'VEG' : 'MEAT'}
+                                </span>
+                              )}
+                            </p>
+                            <span className="text-[9px] font-semibold text-slate-400 flex items-center gap-1 mt-1">
+                              <Clock className="h-2.5 w-2.5" />
+                              {formatDistanceToNow(new Date(notif.createdAt), { addSuffix: true })}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          <button 
+            onClick={handleLogout}
+            className="p-2.5 text-slate-450 hover:text-red-500 rounded-full hover:bg-slate-50 transition-colors"
+            title="Logout"
+          >
+            <LogOut className="h-5 w-5" />
+          </button>
+        </div>
       </header>
 
       {/* Main Content */}
@@ -166,9 +331,16 @@ export default function AdminDashboard() {
                 ↑ 5%
               </span>
             </div>
-            <div className="mt-4">
+            <div className="mt-3">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Requests Today</p>
               <p className="text-2xl font-bold text-slate-800 mt-0.5">{requestsToday}</p>
+              {data?.todayStats.lunchVeg !== undefined && (
+                <div className="text-[9px] font-bold text-slate-500 mt-1 space-y-0.5 leading-none">
+                  <p>BF • V: {data.todayStats.breakfastVeg} M: {data.todayStats.breakfastMeat}</p>
+                  <p>LH • V: {data.todayStats.lunchVeg} M: {data.todayStats.lunchMeat}</p>
+                  <p>DN • V: {data.todayStats.dinnerVeg} M: {data.todayStats.dinnerMeat}</p>
+                </div>
+              )}
             </div>
           </div>
 

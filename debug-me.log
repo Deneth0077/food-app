@@ -1,0 +1,18 @@
+Cookie Header: token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2YTJhZDllNDczOWM0MGE5ODljMjYyY2YiLCJmdWxsTmFtZSI6IlRlc3QgRW1wbG95ZWUiLCJlbXBsb3llZU5vIjoiRU1QLTEyMzQ1Iiwicm9sZSI6IkVNUExPWUVFIn0.rf-l2LgxDZOJzsuD6MPxTXkVURQmK6WucP9OlX00THE
+Parsed Token: eyJhbGciOiJIUzI...
+Timestamp: 2026-06-11T16:40:24.333Z
+
+Payload Verified: true
+Payload details: {"userId":"6a2ad9e4739c40a989c262cf","fullName":"Test Employee","employeeNo":"EMP-12345","role":"EMPLOYEE"}
+Cookie Header: token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2YTJhZDllNDczOWM0MGE5ODljMjYyY2YiLCJmdWxsTmFtZSI6IlRlc3QgRW1wbG95ZWUiLCJlbXBsb3llZU5vIjoiRU1QLTEyMzQ1Iiwicm9sZSI6IkVNUExPWUVFIn0.rf-l2LgxDZOJzsuD6MPxTXkVURQmK6WucP9OlX00THE
+Parsed Token: eyJhbGciOiJIUzI...
+Timestamp: 2026-06-11T16:40:30.432Z
+
+Payload Verified: true
+Payload details: {"userId":"6a2ad9e4739c40a989c262cf","fullName":"Test Employee","employeeNo":"EMP-12345","role":"EMPLOYEE"}
+Cookie Header: token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2YTJhZDllNDczOWM0MGE5ODljMjYyY2YiLCJmdWxsTmFtZSI6IlRlc3QgRW1wbG95ZWUiLCJlbXBsb3llZU5vIjoiRU1QLTEyMzQ1Iiwicm9sZSI6IkVNUExPWUVFIn0.rf-l2LgxDZOJzsuD6MPxTXkVURQmK6WucP9OlX00THE
+Parsed Token: eyJhbGciOiJIUzI...
+Timestamp: 2026-06-11T16:43:32.251Z
+
+Payload Verified: true
+Payload details: {"userId":"6a2ad9e4739c40a989c262cf","fullName":"Test Employee","employeeNo":"EMP-12345","role":"EMPLOYEE"}

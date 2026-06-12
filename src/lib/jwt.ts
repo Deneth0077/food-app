@@ -27,14 +27,14 @@ function arrayBufferToBase64Url(buffer: ArrayBuffer): string {
   return base64UrlEncode(binary);
 }
 
-function base64UrlToArrayBuffer(str: string): ArrayBuffer {
+function base64UrlToUint8Array(str: string): Uint8Array {
   const binaryString = base64UrlDecode(str);
   const len = binaryString.length;
   const bytes = new Uint8Array(len);
   for (let i = 0; i < len; i++) {
     bytes[i] = binaryString.charCodeAt(i);
   }
-  return bytes.buffer;
+  return bytes;
 }
 
 export async function signJWT(payload: any, secret: string): Promise<string> {
@@ -79,8 +79,8 @@ export async function verifyJWT(token: string, secret: string): Promise<any | nu
       ['verify']
     );
 
-    const signatureBuffer = base64UrlToArrayBuffer(signature);
-    const isValid = await crypto.subtle.verify('HMAC', key, signatureBuffer, dataToVerify);
+    const signatureBuffer = base64UrlToUint8Array(signature);
+    const isValid = await crypto.subtle.verify('HMAC', key, signatureBuffer as any, dataToVerify);
 
     if (!isValid) return null;
 

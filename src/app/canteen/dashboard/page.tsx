@@ -25,6 +25,7 @@ interface Order {
   employeeNo: string;
   phoneNumber: string;
   mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER';
+  mealOption?: 'VEGETARIAN' | 'MEAT';
   status: 'ORDERED' | 'COLLECTED';
   requestedAt: string;
   collectedAt?: string;
@@ -128,8 +129,14 @@ export default function CanteenDashboard() {
 
   // Expected stats counts for today
   const breakfastExpected = orders.filter(o => o.mealType === 'BREAKFAST').length;
+  const breakfastVegExpected = orders.filter(o => o.mealType === 'BREAKFAST' && o.mealOption === 'VEGETARIAN').length;
+  const breakfastMeatExpected = orders.filter(o => o.mealType === 'BREAKFAST' && o.mealOption === 'MEAT').length;
   const lunchExpected = orders.filter(o => o.mealType === 'LUNCH').length;
+  const lunchVegExpected = orders.filter(o => o.mealType === 'LUNCH' && o.mealOption === 'VEGETARIAN').length;
+  const lunchMeatExpected = orders.filter(o => o.mealType === 'LUNCH' && o.mealOption === 'MEAT').length;
   const dinnerExpected = orders.filter(o => o.mealType === 'DINNER').length;
+  const dinnerVegExpected = orders.filter(o => o.mealType === 'DINNER' && o.mealOption === 'VEGETARIAN').length;
+  const dinnerMeatExpected = orders.filter(o => o.mealType === 'DINNER' && o.mealOption === 'MEAT').length;
 
   const pendingActiveCount = orders.filter(o => o.status === 'ORDERED').length;
 
@@ -138,12 +145,11 @@ export default function CanteenDashboard() {
       {/* Header */}
       <header className="sticky top-0 z-30 h-16 bg-white border-b border-slate-100 flex items-center justify-between px-5 shadow-sm">
         <div className="flex items-center gap-2.5">
-          <div className="h-10 w-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold shadow-sm">
-            CO
-          </div>
+          <img src="/logo.png" className="h-11 object-contain" alt="ZPMC Lanka" />
+          <div className="h-6 w-[1px] bg-slate-200" />
           <div>
-            <h1 className="text-base font-bold text-slate-800 tracking-tight">Canteen Operations</h1>
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Dashboard</p>
+            <h1 className="text-sm font-bold text-slate-850 tracking-tight leading-none">Canteen Operations</h1>
+            <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider mt-1.5 leading-none">Dashboard</p>
           </div>
         </div>
         
@@ -167,9 +173,10 @@ export default function CanteenDashboard() {
               <div className="h-8 w-8 rounded-lg bg-amber-50 text-amber-500 flex items-center justify-center">
                 <Coffee className="h-4.5 w-4.5" />
               </div>
-              <div className="mt-3">
-                <p className="text-xl font-bold text-slate-800">{breakfastExpected}</p>
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mt-0.5">Breakfast</p>
+              <div className="mt-2">
+                <p className="text-xl font-bold text-slate-800 leading-tight">{breakfastExpected}</p>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mt-0.5 leading-none">Breakfast</p>
+                <p className="text-[8px] font-bold text-slate-450 mt-1 leading-none">V: {breakfastVegExpected} • M: {breakfastMeatExpected}</p>
               </div>
             </div>
 
@@ -178,9 +185,10 @@ export default function CanteenDashboard() {
               <div className="h-8 w-8 rounded-lg bg-white/20 text-white flex items-center justify-center">
                 <Utensils className="h-4.5 w-4.5" />
               </div>
-              <div className="mt-3">
-                <p className="text-xl font-bold">{lunchExpected}</p>
-                <p className="text-[9px] font-bold text-blue-100 uppercase tracking-wide mt-0.5">Lunch</p>
+              <div className="mt-2">
+                <p className="text-xl font-bold leading-tight">{lunchExpected}</p>
+                <p className="text-[9px] font-bold text-blue-100 uppercase tracking-wide mt-0.5 leading-none">Lunch</p>
+                <p className="text-[8px] font-bold text-blue-100/90 mt-1 leading-none">V: {lunchVegExpected} • M: {lunchMeatExpected}</p>
               </div>
             </div>
 
@@ -189,9 +197,10 @@ export default function CanteenDashboard() {
               <div className="h-8 w-8 rounded-lg bg-indigo-50 text-indigo-500 flex items-center justify-center">
                 <Moon className="h-4.5 w-4.5" />
               </div>
-              <div className="mt-3">
-                <p className="text-xl font-bold text-slate-800">{dinnerExpected}</p>
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mt-0.5">Dinner</p>
+              <div className="mt-2">
+                <p className="text-xl font-bold text-slate-800 leading-tight">{dinnerExpected}</p>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mt-0.5 leading-none">Dinner</p>
+                <p className="text-[8px] font-bold text-slate-450 mt-1 leading-none">V: {dinnerVegExpected} • M: {dinnerMeatExpected}</p>
               </div>
             </div>
           </div>
@@ -312,6 +321,15 @@ export default function CanteenDashboard() {
                         }`}>
                           {order.mealType}
                         </span>
+                        {order.mealOption && (
+                          <span className={`px-2 py-0.5 rounded font-bold text-[9px] tracking-wider ${
+                            order.mealOption === 'VEGETARIAN'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                              : 'bg-rose-50 text-rose-700 border border-rose-100'
+                          }`}>
+                            {order.mealOption === 'VEGETARIAN' ? 'VEG' : 'MEAT'}
+                          </span>
+                        )}
                         <span className="text-[10px] text-slate-450 font-semibold">
                           {format(new Date(order.requestedAt), 'h:mm a')}
                         </span>
