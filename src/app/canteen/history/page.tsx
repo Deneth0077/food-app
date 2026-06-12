@@ -170,7 +170,14 @@ export default function CanteenHistoryPage() {
                         {order.employeeName}
                       </h4>
                       <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">
-                        {order.employeeNo} • {format(new Date(order.requestDate + 'T00:00:00'), 'MMM dd, yyyy')}
+                        {order.employeeNo} • {(() => {
+                          const todayStr = format(new Date(), 'yyyy-MM-dd');
+                          if (order.requestDate === todayStr) {
+                            return 'Today';
+                          } else {
+                            return format(new Date(order.requestDate + 'T00:00:00'), 'MMM dd, yyyy');
+                          }
+                        })()}
                       </p>
                     </div>
                   </div>
@@ -184,7 +191,16 @@ export default function CanteenHistoryPage() {
                   <div>
                     <span className="block text-slate-400 text-[8px] uppercase tracking-wider font-bold">Ordered At</span>
                     <span className="text-slate-700 block mt-0.5">
-                      {format(new Date(order.requestedAt), 'h:mm a')}
+                      {(() => {
+                        const dateObj = new Date(order.requestedAt);
+                        const todayStr = format(new Date(), 'yyyy-MM-dd');
+                        const isTodayOrder = order.requestDate === todayStr;
+                        if (isTodayOrder) {
+                          return `Today ${order.mealType.charAt(0) + order.mealType.slice(1).toLowerCase()} at ${format(dateObj, 'h:mm a')}`;
+                        } else {
+                          return `${format(dateObj, 'MMM dd, yyyy')} at ${format(dateObj, 'h:mm a')}`;
+                        }
+                      })()}
                     </span>
                   </div>
                   {order.mealOption && (

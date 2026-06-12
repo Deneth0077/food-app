@@ -18,9 +18,10 @@ export async function POST(request: Request) {
       );
     }
 
-    if (password.length < 8) {
+    const isPinValid = /^\d{4}$/.test(password);
+    if (!isPinValid) {
       return NextResponse.json(
-        { error: 'Password must be at least 8 characters long' },
+        { error: 'PIN must be exactly 4 digits' },
         { status: 400 }
       );
     }

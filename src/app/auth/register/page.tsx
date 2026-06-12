@@ -16,11 +16,11 @@ import { Utensils, Loader2 } from 'lucide-react';
 const registerSchema = z.object({
   fullName: z.string().min(2, 'Full name must be at least 2 characters'),
   employeeNo: z.string().min(3, 'Employee number must be at least 3 characters'),
-  phoneNumber: z.string().min(10, 'Phone number must be at least 10 digits'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  phoneNumber: z.string().min(9, 'Phone number must be at least 9 digits'),
+  password: z.string().regex(/^\d{4}$/, 'PIN must be exactly 4 digits'),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords do not match",
+  message: "PINs do not match",
   path: ["confirmPassword"],
 });
 
@@ -103,7 +103,7 @@ export default function RegisterPage() {
               <Input
                 id="fullName"
                 type="text"
-                placeholder="John Doe"
+                placeholder="Chaminda Silva"
                 className="h-11 border-slate-200 rounded-xl px-4 text-slate-850 focus-visible:ring-blue-600 focus-visible:border-blue-600"
                 disabled={loading}
                 {...register('fullName')}
@@ -136,7 +136,7 @@ export default function RegisterPage() {
               <Input
                 id="phoneNumber"
                 type="tel"
-                placeholder="+1 (555) 000-0000"
+                placeholder="+94 77 123 4567"
                 className="h-11 border-slate-200 rounded-xl px-4 text-slate-850 focus-visible:ring-blue-600 focus-visible:border-blue-600"
                 disabled={loading}
                 {...register('phoneNumber')}
@@ -147,11 +147,14 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-slate-700 font-medium">Password</Label>
+              <Label htmlFor="password" className="text-slate-700 font-medium">4-Digit PIN</Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="Minimum 8 characters"
+                maxLength={4}
+                inputMode="numeric"
+                pattern="[0-9]*"
+                placeholder="Enter 4-digit PIN"
                 className="h-11 border-slate-200 rounded-xl px-4 text-slate-850 focus-visible:ring-blue-600 focus-visible:border-blue-600"
                 disabled={loading}
                 {...register('password')}
@@ -162,11 +165,14 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-slate-700 font-medium">Confirm Password</Label>
+              <Label htmlFor="confirmPassword" className="text-slate-700 font-medium">Confirm PIN</Label>
               <Input
                 id="confirmPassword"
                 type="password"
-                placeholder="Confirm your password"
+                maxLength={4}
+                inputMode="numeric"
+                pattern="[0-9]*"
+                placeholder="Confirm your 4-digit PIN"
                 className="h-11 border-slate-200 rounded-xl px-4 text-slate-850 focus-visible:ring-blue-600 focus-visible:border-blue-600"
                 disabled={loading}
                 {...register('confirmPassword')}

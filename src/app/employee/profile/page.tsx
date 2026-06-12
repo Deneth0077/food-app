@@ -8,7 +8,11 @@ import {
   FileText, 
   LogOut, 
   RefreshCw, 
-  ShieldAlert 
+  ShieldAlert,
+  Lock,
+  Edit3,
+  Save,
+  X
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -27,6 +31,12 @@ export default function EmployeeProfilePage() {
   const [loading, setLoading] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
 
+  // Edit states
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editPin, setEditPin] = useState('');
+  const [updating, setUpdating] = useState(false);
+
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -37,6 +47,7 @@ export default function EmployeeProfilePage() {
         }
         const data = await res.json();
         setUser(data.user);
+        setEditName(data.user.fullName);
       } catch (err) {
         console.error('Profile Load Error:', err);
       } finally {
@@ -65,6 +76,57 @@ export default function EmployeeProfilePage() {
         description: 'Failed to log out. Please try again.',
       });
       setLoggingOut(false);
+    }
+  };
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editName.trim()) {
+      toast({
+        variant: 'destructive',
+        title: 'Validation Error',
+        description: 'Name cannot be empty.',
+      });
+      return;
+    }
+    if (editPin && !/^\d{4}$/.test(editPin.trim())) {
+      toast({
+        variant: 'destructive',
+        title: 'Validation Error',
+        description: 'PIN must be exactly 4 digits.',
+      });
+      return;
+    }
+
+    setUpdating(true);
+    try {
+      const res = await fetch('/api/auth/me', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName: editName,
+          pin: editPin ? editPin : undefined
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update profile');
+
+      toast({
+        title: 'Profile Updated',
+        description: 'Your changes have been saved successfully.',
+      });
+      setUser(data.user);
+      setEditPin('');
+      setIsEditing(false);
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Update Failed',
+        description: err.message || 'Something went wrong',
+      });
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -99,44 +161,121 @@ export default function EmployeeProfilePage() {
           </span>
         </div>
 
-        {/* Details List */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.025)] divide-y divide-slate-100">
-          <div className="p-4 flex items-center gap-4">
-            <div className="h-9 w-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
-              <UserIcon className="h-5 w-5 stroke-[2.25]" />
+        <form onSubmit={handleUpdateProfile} className="space-y-4">
+          {/* Details List */}
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.025)] divide-y divide-slate-100">
+            {/* Full Name Edit/View */}
+            <div className="p-4 flex items-center gap-4">
+              <div className="h-9 w-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+                <UserIcon className="h-5 w-5 stroke-[2.25]" />
+              </div>
+              <div className="flex-1">
+                <span className="block text-[9px] uppercase tracking-wider text-slate-400 font-bold">Full Name</span>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="w-full text-sm font-bold text-slate-800 border-b border-blue-500 bg-transparent py-0.5 focus:outline-none"
+                    required
+                  />
+                ) : (
+                  <span className="text-sm font-bold text-slate-800">{user?.fullName}</span>
+                )}
+              </div>
             </div>
-            <div>
-              <span className="block text-[9px] uppercase tracking-wider text-slate-400 font-bold">Full Name</span>
-              <span className="text-sm font-bold text-slate-800">{user?.fullName}</span>
+
+            {/* PIN Edit/View (Only shows when editing) */}
+            {isEditing && (
+              <div className="p-4 flex items-center gap-4 animate-in fade-in duration-200">
+                <div className="h-9 w-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+                  <Lock className="h-5 w-5 stroke-[2.25]" />
+                </div>
+                <div className="flex-1">
+                  <span className="block text-[9px] uppercase tracking-wider text-slate-400 font-bold">Change 4-Digit PIN (Optional)</span>
+                  <input
+                    type="password"
+                    maxLength={4}
+                    placeholder="Enter new 4-digit PIN"
+                    value={editPin}
+                    onChange={(e) => setEditPin(e.target.value.replace(/\D/g, ''))}
+                    className="w-full text-sm font-bold text-slate-800 border-b border-blue-500 bg-transparent py-0.5 focus:outline-none placeholder:text-slate-300"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Employee ID */}
+            <div className="p-4 flex items-center gap-4 opacity-80 bg-slate-50/35">
+              <div className="h-9 w-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+                <FileText className="h-5 w-5 stroke-[2.25]" />
+              </div>
+              <div>
+                <span className="block text-[9px] uppercase tracking-wider text-slate-400 font-bold">Employee ID</span>
+                <span className="text-sm font-bold text-slate-850">{user?.employeeNo}</span>
+              </div>
+            </div>
+
+            {/* Phone Number */}
+            <div className="p-4 flex items-center gap-4 opacity-80 bg-slate-50/35">
+              <div className="h-9 w-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+                <Phone className="h-5 w-5 stroke-[2.25]" />
+              </div>
+              <div>
+                <span className="block text-[9px] uppercase tracking-wider text-slate-400 font-bold">Phone Number</span>
+                <span className="text-sm font-bold text-slate-850">{user?.phoneNumber}</span>
+              </div>
             </div>
           </div>
 
-          <div className="p-4 flex items-center gap-4">
-            <div className="h-9 w-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
-              <FileText className="h-5 w-5 stroke-[2.25]" />
-            </div>
-            <div>
-              <span className="block text-[9px] uppercase tracking-wider text-slate-400 font-bold">Employee ID</span>
-              <span className="text-sm font-bold text-slate-800">{user?.employeeNo}</span>
-            </div>
+          {/* Edit Actions buttons */}
+          <div className="space-y-2.5">
+            {isEditing ? (
+              <div className="flex gap-3">
+                <Button 
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsEditing(false);
+                    setEditName(user?.fullName || '');
+                    setEditPin('');
+                  }}
+                  className="flex-1 h-12 border border-slate-200 text-slate-500 font-bold rounded-xl text-sm transition-all hover:bg-slate-50 flex items-center justify-center gap-1.5"
+                >
+                  <X className="h-4.5 w-4.5" />
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit"
+                  disabled={updating}
+                  className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-1.5 shadow-md"
+                >
+                  {updating ? (
+                    <RefreshCw className="h-4.5 w-4.5 animate-spin" />
+                  ) : (
+                    <Save className="h-4.5 w-4.5" />
+                  )}
+                  Save
+                </Button>
+              </div>
+            ) : (
+              <Button 
+                type="button"
+                onClick={() => setIsEditing(true)}
+                className="w-full h-12 bg-blue-550 hover:bg-blue-600 text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-100 font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-1.5 shadow-sm"
+              >
+                <Edit3 className="h-4.5 w-4.5" />
+                Edit Profile
+              </Button>
+            )}
           </div>
-
-          <div className="p-4 flex items-center gap-4">
-            <div className="h-9 w-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
-              <Phone className="h-5 w-5 stroke-[2.25]" />
-            </div>
-            <div>
-              <span className="block text-[9px] uppercase tracking-wider text-slate-400 font-bold">Phone Number</span>
-              <span className="text-sm font-bold text-slate-800">{user?.phoneNumber}</span>
-            </div>
-          </div>
-        </div>
+        </form>
 
         {/* Logout Section */}
         <div className="pt-2">
           <Button 
             onClick={handleLogout}
-            disabled={loggingOut}
+            disabled={loggingOut || isEditing}
             className="w-full h-12 bg-red-50 hover:bg-red-100 text-red-655 font-bold rounded-xl text-sm transition-all border border-red-100 shadow-sm flex items-center justify-center gap-2"
           >
             {loggingOut ? (

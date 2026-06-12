@@ -17,7 +17,8 @@ import {
   CircleAlert,
   ChevronRight,
   TrendingUp,
-  XCircle
+  XCircle,
+  LogOut
 } from 'lucide-react';
 
 interface UserProfile {
@@ -49,6 +50,9 @@ export default function EmployeeDashboard() {
   const [activeMealSelection, setActiveMealSelection] = useState<'BREAKFAST' | 'LUNCH' | 'DINNER' | null>(null);
   const [selectedOption, setSelectedOption] = useState<'VEGETARIAN' | 'MEAT' | null>(null);
   const [orderNotes, setOrderNotes] = useState('');
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [isUpdatingNotesOnly, setIsUpdatingNotesOnly] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   const todayStr = format(new Date(), 'yyyy-MM-dd');
 
@@ -86,6 +90,13 @@ export default function EmployeeDashboard() {
     fetchData();
   }, [fetchData]);
 
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   // Handle meal request submission
   const handleRequestMeal = async (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER', mealOption?: 'VEGETARIAN' | 'MEAT', notes?: string) => {
     setSubmittingMeal(mealType);
@@ -117,6 +128,82 @@ export default function EmployeeDashboard() {
       });
     } finally {
       setSubmittingMeal(null);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      const res = await fetch('/api/auth/logout', { method: 'POST' });
+      if (!res.ok) throw new Error('Logout failed');
+      
+      toast({
+        title: 'Logged Out',
+        description: 'You have been logged out successfully.',
+      });
+      router.push('/auth/login');
+      router.refresh();
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to log out. Please try again.',
+      });
+    }
+  };
+
+  const handleUpdateNotes = async (notes: string) => {
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to update request');
+      }
+
+      toast({
+        title: 'Request Updated',
+        description: 'Successfully updated your special requests.',
+      });
+
+      // Refresh data
+      fetchData();
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Update Failed',
+        description: error.message || 'Something went wrong',
+      });
+    }
+  };
+
+  const handleCancelOrder = async () => {
+    if (!confirm('Are you sure you want to cancel your order?')) return;
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'DELETE',
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to cancel order');
+
+      toast({
+        title: 'Order Cancelled',
+        description: 'Successfully cancelled your meal request.',
+      });
+
+      // Refresh data
+      fetchData();
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Cancellation Failed',
+        description: error.message || 'Something went wrong',
+      });
     }
   };
 
@@ -167,14 +254,51 @@ export default function EmployeeDashboard() {
             <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider mt-1.5 leading-none">Employee Portal</p>
           </div>
         </div>
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 relative">
           <div className="relative p-2 rounded-full hover:bg-slate-100 transition-colors cursor-pointer">
             <Bell className="h-5.5 w-5.5 text-slate-600" />
             <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
           </div>
-          <div className="h-9 w-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-sm select-none">
+          <div 
+            onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+            className="h-9 w-9 rounded-full bg-blue-600 hover:bg-blue-700 active:scale-95 text-white flex items-center justify-center font-bold text-sm shadow-sm select-none cursor-pointer transition-all"
+          >
             {user?.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
           </div>
+          {showProfileDropdown && (
+            <>
+              <div 
+                className="fixed inset-0 z-40" 
+                onClick={() => setShowProfileDropdown(false)} 
+              />
+              <div className="absolute right-0 top-12 w-44 bg-white border border-slate-150 rounded-xl shadow-lg py-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="px-3 py-1.5 border-b border-slate-100">
+                  <p className="text-xs font-bold text-slate-800 truncate">{user?.fullName}</p>
+                  <p className="text-[10px] text-slate-400 truncate">{user?.employeeNo}</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowProfileDropdown(false);
+                    router.push('/employee/profile');
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                >
+                  <UserIcon className="h-4 w-4 text-slate-500" />
+                  View Profile
+                </button>
+                <button
+                  onClick={async () => {
+                    setShowProfileDropdown(false);
+                    await handleLogout();
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors border-t border-slate-100"
+                >
+                  <LogOut className="h-4 w-4 text-red-500" />
+                  Logout
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </header>
 
@@ -221,15 +345,19 @@ export default function EmployeeDashboard() {
             {/* Breakfast Request Card */}
             <div 
               onClick={() => {
-                if (breakfastStatus === 'Not Requested' && submittingMeal !== 'BREAKFAST') {
+                const hasOrderedToday = todayOrders.length > 0;
+                if (hasOrderedToday) {
+                  setIsUpdatingNotesOnly(true);
+                  setOrderNotes(todayOrders[0]?.notes || '');
+                  setActiveMealSelection('BREAKFAST');
+                } else if (breakfastStatus === 'Not Requested' && submittingMeal !== 'BREAKFAST') {
+                  setIsUpdatingNotesOnly(false);
+                  setSelectedOption(null);
+                  setOrderNotes('');
                   setActiveMealSelection('BREAKFAST');
                 }
               }}
-              className={`p-4 bg-white rounded-2xl border border-slate-100 flex items-center justify-between transition-all duration-300 transform ${
-                breakfastStatus === 'Not Requested' 
-                  ? 'cursor-pointer hover:border-blue-300 hover:shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 active:scale-[0.99]' 
-                  : 'opacity-85 shadow-[0_2px_8px_rgba(0,0,0,0.02)]'
-              }`}
+              className="p-4 bg-white rounded-2xl border border-slate-100 flex items-center justify-between transition-all duration-300 transform cursor-pointer hover:border-blue-300 hover:shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 active:scale-[0.99]"
             >
               <div className="flex items-center gap-3.5">
                 <div className="h-10 w-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-500">
@@ -245,6 +373,10 @@ export default function EmployeeDashboard() {
                   <div className="h-9 w-9 rounded-full flex items-center justify-center bg-green-50 text-green-600 border border-green-100">
                     <Check className="h-4.5 w-4.5 stroke-[2.5]" />
                   </div>
+                ) : todayOrders.length > 0 ? (
+                  <span className="text-[10px] text-slate-450 font-bold bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100/50 hover:bg-slate-100 transition-colors">
+                    Add notes/tea
+                  </span>
                 ) : submittingMeal === 'BREAKFAST' ? (
                   <div className="h-9 w-9 rounded-full flex items-center justify-center bg-slate-100 text-slate-500">
                     <RefreshCw className="h-4.5 w-4.5 animate-spin" />
@@ -256,15 +388,19 @@ export default function EmployeeDashboard() {
             {/* Lunch Request Card */}
             <div 
               onClick={() => {
-                if (lunchStatus === 'Not Requested' && submittingMeal !== 'LUNCH') {
+                const hasOrderedToday = todayOrders.length > 0;
+                if (hasOrderedToday) {
+                  setIsUpdatingNotesOnly(true);
+                  setOrderNotes(todayOrders[0]?.notes || '');
+                  setActiveMealSelection('LUNCH');
+                } else if (lunchStatus === 'Not Requested' && submittingMeal !== 'LUNCH') {
+                  setIsUpdatingNotesOnly(false);
+                  setSelectedOption(null);
+                  setOrderNotes('');
                   setActiveMealSelection('LUNCH');
                 }
               }}
-              className={`p-4 bg-white rounded-2xl border border-slate-100 flex items-center justify-between transition-all duration-300 transform ${
-                lunchStatus === 'Not Requested' 
-                  ? 'cursor-pointer hover:border-blue-300 hover:shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 active:scale-[0.99]' 
-                  : 'opacity-85 shadow-[0_2px_8px_rgba(0,0,0,0.02)]'
-              }`}
+              className="p-4 bg-white rounded-2xl border border-slate-100 flex items-center justify-between transition-all duration-300 transform cursor-pointer hover:border-blue-300 hover:shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 active:scale-[0.99]"
             >
               <div className="flex items-center gap-3.5">
                 <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
@@ -280,6 +416,10 @@ export default function EmployeeDashboard() {
                   <div className="h-9 w-9 rounded-full flex items-center justify-center bg-green-50 text-green-600 border border-green-100">
                     <Check className="h-4.5 w-4.5 stroke-[2.5]" />
                   </div>
+                ) : todayOrders.length > 0 ? (
+                  <span className="text-[10px] text-slate-450 font-bold bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100/50 hover:bg-slate-100 transition-colors">
+                    Add notes/tea
+                  </span>
                 ) : submittingMeal === 'LUNCH' ? (
                   <div className="h-9 w-9 rounded-full flex items-center justify-center bg-slate-100 text-slate-500">
                     <RefreshCw className="h-4.5 w-4.5 animate-spin" />
@@ -291,15 +431,19 @@ export default function EmployeeDashboard() {
             {/* Dinner Request Card */}
             <div 
               onClick={() => {
-                if (dinnerStatus === 'Not Requested' && submittingMeal !== 'DINNER') {
+                const hasOrderedToday = todayOrders.length > 0;
+                if (hasOrderedToday) {
+                  setIsUpdatingNotesOnly(true);
+                  setOrderNotes(todayOrders[0]?.notes || '');
+                  setActiveMealSelection('DINNER');
+                } else if (dinnerStatus === 'Not Requested' && submittingMeal !== 'DINNER') {
+                  setIsUpdatingNotesOnly(false);
+                  setSelectedOption(null);
+                  setOrderNotes('');
                   setActiveMealSelection('DINNER');
                 }
               }}
-              className={`p-4 bg-white rounded-2xl border border-slate-100 flex items-center justify-between transition-all duration-300 transform ${
-                dinnerStatus === 'Not Requested' 
-                  ? 'cursor-pointer hover:border-blue-300 hover:shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 active:scale-[0.99]' 
-                  : 'opacity-85 shadow-[0_2px_8px_rgba(0,0,0,0.02)]'
-              }`}
+              className="p-4 bg-white rounded-2xl border border-slate-100 flex items-center justify-between transition-all duration-300 transform cursor-pointer hover:border-blue-300 hover:shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 active:scale-[0.99]"
             >
               <div className="flex items-center gap-3.5">
                 <div className="h-10 w-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-500">
@@ -307,7 +451,7 @@ export default function EmployeeDashboard() {
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-slate-850">Dinner</h4>
-                  <p className="text-[11px] text-slate-400 font-medium mt-0.5">6:00 PM - 8:30 PM</p>
+                  <p className="text-[11px] text-slate-405 font-medium mt-0.5">6:00 PM - 8:30 PM</p>
                 </div>
               </div>
               <div>
@@ -315,6 +459,10 @@ export default function EmployeeDashboard() {
                   <div className="h-9 w-9 rounded-full flex items-center justify-center bg-green-50 text-green-600 border border-green-100">
                     <Check className="h-4.5 w-4.5 stroke-[2.5]" />
                   </div>
+                ) : todayOrders.length > 0 ? (
+                  <span className="text-[10px] text-slate-450 font-bold bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100/50 hover:bg-slate-100 transition-colors">
+                    Add notes/tea
+                  </span>
                 ) : submittingMeal === 'DINNER' ? (
                   <div className="h-9 w-9 rounded-full flex items-center justify-center bg-slate-100 text-slate-500">
                     <RefreshCw className="h-4.5 w-4.5 animate-spin" />
@@ -366,6 +514,34 @@ export default function EmployeeDashboard() {
                   &ldquo;{todayOrders.find(o => o.mealType === 'BREAKFAST')?.notes}&rdquo;
                 </div>
               )}
+              {(() => {
+                const order = todayOrders.find(o => o.mealType === 'BREAKFAST');
+                if (order && order.status === 'ORDERED') {
+                  const msRemaining = (new Date(order.requestedAt).getTime() + 10 * 60 * 1000) - currentTime.getTime();
+                  if (msRemaining > 0) {
+                    const mins = Math.floor(msRemaining / (1000 * 60));
+                    const secs = Math.floor((msRemaining % (1000 * 60)) / 1000);
+                    const formattedTime = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                    
+                    return (
+                      <div className="mt-2 flex items-center justify-between bg-red-50/40 border border-red-100/50 rounded-xl p-2.5 animate-in fade-in duration-200">
+                        <span className="text-[10px] font-bold text-red-600 flex items-center gap-1">
+                          <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-ping shrink-0" />
+                          Cancel available: {formattedTime}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleCancelOrder}
+                          className="px-2.5 py-1 text-[9px] font-bold text-red-700 bg-red-100 hover:bg-red-200 rounded-lg active:scale-95 transition-all shadow-sm"
+                        >
+                          Cancel Order
+                        </button>
+                      </div>
+                    );
+                  }
+                }
+                return null;
+              })()}
             </div>
 
             {/* Lunch Status */}
@@ -399,6 +575,34 @@ export default function EmployeeDashboard() {
                   &ldquo;{todayOrders.find(o => o.mealType === 'LUNCH')?.notes}&rdquo;
                 </div>
               )}
+              {(() => {
+                const order = todayOrders.find(o => o.mealType === 'LUNCH');
+                if (order && order.status === 'ORDERED') {
+                  const msRemaining = (new Date(order.requestedAt).getTime() + 10 * 60 * 1000) - currentTime.getTime();
+                  if (msRemaining > 0) {
+                    const mins = Math.floor(msRemaining / (1000 * 60));
+                    const secs = Math.floor((msRemaining % (1000 * 60)) / 1000);
+                    const formattedTime = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                    
+                    return (
+                      <div className="mt-2 flex items-center justify-between bg-red-50/40 border border-red-100/50 rounded-xl p-2.5 animate-in fade-in duration-200">
+                        <span className="text-[10px] font-bold text-red-600 flex items-center gap-1">
+                          <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-ping shrink-0" />
+                          Cancel available: {formattedTime}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleCancelOrder}
+                          className="px-2.5 py-1 text-[9px] font-bold text-red-700 bg-red-100 hover:bg-red-200 rounded-lg active:scale-95 transition-all shadow-sm"
+                        >
+                          Cancel Order
+                        </button>
+                      </div>
+                    );
+                  }
+                }
+                return null;
+              })()}
             </div>
 
             {/* Dinner Status */}
@@ -432,6 +636,34 @@ export default function EmployeeDashboard() {
                   &ldquo;{todayOrders.find(o => o.mealType === 'DINNER')?.notes}&rdquo;
                 </div>
               )}
+              {(() => {
+                const order = todayOrders.find(o => o.mealType === 'DINNER');
+                if (order && order.status === 'ORDERED') {
+                  const msRemaining = (new Date(order.requestedAt).getTime() + 10 * 60 * 1000) - currentTime.getTime();
+                  if (msRemaining > 0) {
+                    const mins = Math.floor(msRemaining / (1000 * 60));
+                    const secs = Math.floor((msRemaining % (1000 * 60)) / 1000);
+                    const formattedTime = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                    
+                    return (
+                      <div className="mt-2 flex items-center justify-between bg-red-50/40 border border-red-100/50 rounded-xl p-2.5 animate-in fade-in duration-200">
+                        <span className="text-[10px] font-bold text-red-600 flex items-center gap-1">
+                          <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-ping shrink-0" />
+                          Cancel available: {formattedTime}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleCancelOrder}
+                          className="px-2.5 py-1 text-[9px] font-bold text-red-700 bg-red-100 hover:bg-red-200 rounded-lg active:scale-95 transition-all shadow-sm"
+                        >
+                          Cancel Order
+                        </button>
+                      </div>
+                    );
+                  }
+                }
+                return null;
+              })()}
             </div>
           </div>
         </div>
@@ -477,8 +709,16 @@ export default function EmployeeDashboard() {
                       <h4 className="text-xs font-bold text-slate-800 capitalize">
                         {item.mealType.toLowerCase()}
                       </h4>
-                      <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
-                        {format(new Date(item.requestedAt), 'MMM dd, yyyy • h:mm a')}
+                      <p className="text-[10px] text-slate-405 font-semibold mt-0.5">
+                        {(() => {
+                          const dateObj = new Date(item.requestedAt);
+                          const todayStr = format(new Date(), 'yyyy-MM-dd');
+                          if (item.requestDate === todayStr) {
+                            return `Today ${item.mealType.charAt(0) + item.mealType.slice(1).toLowerCase()} at ${format(dateObj, 'h:mm a')}`;
+                          } else {
+                            return `${format(dateObj, 'MMM dd, yyyy')} at ${format(dateObj, 'h:mm a')}`;
+                          }
+                        })()}
                       </p>
                     </div>
                   </div>
@@ -505,7 +745,8 @@ export default function EmployeeDashboard() {
             )}
           </div>
         </div>
-      </div>      {/* Meal Preference Selection Modal */}
+      </div>
+      {/* Meal Preference Selection Modal */}
       {activeMealSelection && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 ease-out animate-in fade-in">
           {/* Click outside to close */}
@@ -515,48 +756,89 @@ export default function EmployeeDashboard() {
             {/* Grab handle for mobile aesthetics */}
             <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-4 sm:hidden" />
             
-            <h3 className="text-lg font-bold text-slate-800 tracking-tight">Select {activeMealSelection.toLowerCase()} Preference</h3>
-            <p className="text-xs text-slate-500 mt-1 font-semibold">Please choose your meal type below before confirming.</p>
+            <h3 className="text-lg font-bold text-slate-800 tracking-tight">
+              {isUpdatingNotesOnly ? 'Update Request Notes' : `Select ${activeMealSelection.toLowerCase()} Preference`}
+            </h3>
+            <p className="text-xs text-slate-500 mt-1 font-semibold">
+              {isUpdatingNotesOnly ? 'Add or append a tea request / special note to today\'s active order.' : 'Please choose your meal type below before confirming.'}
+            </p>
             
-            <div className="grid grid-cols-2 gap-4 mt-5">
-              {/* Vegetarian Option Card */}
-              <button
-                type="button"
-                onClick={() => setSelectedOption('VEGETARIAN')}
-                className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all duration-300 transform shadow-[0_2px_8px_rgba(0,0,0,0.01)] ${
-                  selectedOption === 'VEGETARIAN'
-                    ? 'border-green-500 bg-green-50/45 text-green-700 shadow-green-100/50 shadow-md -translate-y-0.5 scale-[1.02]'
-                    : 'border-slate-150 hover:border-slate-350 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] bg-white text-slate-600'
-                }`}
-              >
-                <div className={`h-10 w-10 rounded-full flex items-center justify-center mb-2.5 ${selectedOption === 'VEGETARIAN' ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-500'}`}>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 3.5 1 9.8a7 7 0 0 1-9 8.2Z"/><path d="M9 22v-4h-2.5a2.5 2.5 0 0 1 0-5H9m2-5.5v4"/></svg>
+            {!isUpdatingNotesOnly ? (
+              <div className="grid grid-cols-2 gap-4 mt-5">
+                {/* Vegetarian Option Card */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedOption('VEGETARIAN')}
+                  className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all duration-300 transform shadow-[0_2px_8px_rgba(0,0,0,0.01)] ${
+                    selectedOption === 'VEGETARIAN'
+                      ? 'border-green-500 bg-green-50/45 text-green-700 shadow-green-100/50 shadow-md -translate-y-0.5 scale-[1.02]'
+                      : 'border-slate-150 hover:border-slate-350 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] bg-white text-slate-600'
+                  }`}
+                >
+                  <div className={`h-10 w-10 rounded-full flex items-center justify-center mb-2.5 ${selectedOption === 'VEGETARIAN' ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-500'}`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 3.5 1 9.8a7 7 0 0 1-9 8.2Z"/><path d="M9 22v-4h-2.5a2.5 2.5 0 0 1 0-5H9m2-5.5v4"/></svg>
+                  </div>
+                  <span className="text-xs font-extrabold uppercase tracking-wider">Vegetarian</span>
+                </button>
+   
+                {/* Meat Option Card */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedOption('MEAT')}
+                  className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all duration-300 transform shadow-[0_2px_8px_rgba(0,0,0,0.01)] ${
+                    selectedOption === 'MEAT'
+                      ? 'border-blue-500 bg-blue-50/45 text-blue-700 shadow-blue-100/50 shadow-md -translate-y-0.5 scale-[1.02]'
+                      : 'border-slate-150 hover:border-slate-350 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] bg-white text-slate-600'
+                  }`}
+                >
+                  <div className={`h-10 w-10 rounded-full flex items-center justify-center mb-2.5 ${selectedOption === 'MEAT' ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-500'}`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a5 5 0 1 0 10 0V2Z"/><path d="m15.4 7.6-6.1 6.1m-2.1.3a2.5 2.5 0 1 0-3.5 3.5m4.3-1.4a2.5 2.5 0 1 0 3.5-3.5m-3.5 3.5h0Z"/></svg>
+                  </div>
+                  <span className="text-xs font-extrabold uppercase tracking-wider">Meat</span>
+                </button>
+              </div>
+            ) : (
+              todayOrders[0] && (
+                <div className="mt-4 p-3.5 bg-slate-50 border border-slate-100 rounded-xl text-left text-xs font-semibold text-slate-655 flex flex-col gap-1.5 shadow-inner">
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400">Today's Ordered Meal:</span>
+                    <span className="font-bold text-slate-800 bg-white px-2.5 py-0.5 rounded border border-slate-200 uppercase tracking-wider text-[10px]">
+                      {todayOrders[0].mealType}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400">Preference Choice:</span>
+                    <span className={`font-bold px-2.5 py-0.5 rounded text-[10px] ${
+                      todayOrders[0].mealOption === 'VEGETARIAN' 
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
+                        : 'bg-rose-50 text-rose-700 border border-rose-100'
+                    }`}>
+                      {todayOrders[0].mealOption === 'VEGETARIAN' ? 'Veg' : 'Meat'}
+                    </span>
+                  </div>
                 </div>
-                <span className="text-xs font-extrabold uppercase tracking-wider">Vegetarian</span>
-              </button>
+              )
+            )}
  
-              {/* Meat Option Card */}
-              <button
-                type="button"
-                onClick={() => setSelectedOption('MEAT')}
-                className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all duration-300 transform shadow-[0_2px_8px_rgba(0,0,0,0.01)] ${
-                  selectedOption === 'MEAT'
-                    ? 'border-blue-500 bg-blue-50/45 text-blue-700 shadow-blue-100/50 shadow-md -translate-y-0.5 scale-[1.02]'
-                    : 'border-slate-150 hover:border-slate-350 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] bg-white text-slate-600'
-                }`}
-              >
-                <div className={`h-10 w-10 rounded-full flex items-center justify-center mb-2.5 ${selectedOption === 'MEAT' ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-500'}`}>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a5 5 0 1 0 10 0V2Z"/><path d="m15.4 7.6-6.1 6.1m-2.1.3a2.5 2.5 0 1 0-3.5 3.5m4.3-1.4a2.5 2.5 0 1 0 3.5-3.5m-3.5 3.5h0Z"/></svg>
-                </div>
-                <span className="text-xs font-extrabold uppercase tracking-wider">Meat</span>
-              </button>
-            </div>
-
             {/* Snack / Special Request Text Area */}
             <div className="mt-4 space-y-1.5 text-left">
-              <label htmlFor="orderNotes" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                Snack / Special Request (Optional)
-              </label>
+              <div className="flex justify-between items-center">
+                <label htmlFor="orderNotes" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Snack / Special Request (Optional)
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const currentNotes = orderNotes.trim();
+                    if (!currentNotes.toLowerCase().includes('tea')) {
+                      setOrderNotes(currentNotes ? `${currentNotes}, Tea` : 'Tea');
+                    }
+                  }}
+                  className="px-2 py-0.5 text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-100 rounded-md hover:bg-blue-100 active:scale-95 transition-all flex items-center gap-1 shadow-sm"
+                >
+                  🍵 Request Tea
+                </button>
+              </div>
               <textarea
                 id="orderNotes"
                 rows={2}
@@ -577,9 +859,14 @@ export default function EmployeeDashboard() {
               </button>
               <button
                 type="button"
-                disabled={!selectedOption}
+                disabled={!isUpdatingNotesOnly && !selectedOption}
                 onClick={async () => {
-                  if (selectedOption) {
+                  if (isUpdatingNotesOnly) {
+                    const notes = orderNotes;
+                    setActiveMealSelection(null);
+                    setOrderNotes('');
+                    await handleUpdateNotes(notes);
+                  } else if (selectedOption) {
                     const mealType = activeMealSelection;
                     const notes = orderNotes;
                     setActiveMealSelection(null);
@@ -589,12 +876,12 @@ export default function EmployeeDashboard() {
                   }
                 }}
                 className={`flex-1 h-11 font-bold rounded-xl text-xs active:scale-98 transition-all flex items-center justify-center gap-1.5 ${
-                  selectedOption 
+                  isUpdatingNotesOnly || selectedOption 
                     ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm' 
                     : 'bg-slate-100 text-slate-400 cursor-not-allowed'
                 }`}
               >
-                Confirm (OK)
+                {isUpdatingNotesOnly ? 'Update Request' : 'Confirm (OK)'}
               </button>
             </div>
           </div>

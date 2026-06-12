@@ -331,8 +331,17 @@ export default function CanteenDashboard() {
                             {order.mealOption === 'VEGETARIAN' ? 'VEG' : 'MEAT'}
                           </span>
                         )}
-                        <span className="text-[10px] text-slate-450 font-semibold">
-                          {format(new Date(order.requestedAt), 'h:mm a')}
+                        <span className="text-[10px] text-slate-455 font-semibold">
+                          {(() => {
+                            const dateObj = new Date(order.requestedAt);
+                            const todayStr = format(new Date(), 'yyyy-MM-dd');
+                            const isTodayOrder = order.requestDate === todayStr;
+                            if (isTodayOrder) {
+                              return `Today ${order.mealType.charAt(0) + order.mealType.slice(1).toLowerCase()} at ${format(dateObj, 'h:mm a')}`;
+                            } else {
+                              return `${format(dateObj, 'MMM dd, yyyy')} at ${format(dateObj, 'h:mm a')}`;
+                            }
+                          })()}
                         </span>
                       </div>
                       

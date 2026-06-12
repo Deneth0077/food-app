@@ -12,7 +12,7 @@ export async function POST(request: Request) {
 
     if (!employeeNo || !password) {
       return NextResponse.json(
-        { error: 'Employee number and password are required' },
+        { error: 'Employee number and PIN are required' },
         { status: 400 }
       );
     }
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     const user = await User.findOne({ employeeNo: employeeNo.trim().toUpperCase() });
     if (!user) {
       return NextResponse.json(
-        { error: 'Invalid Employee Number or password' },
+        { error: 'Invalid Employee Number or PIN' },
         { status: 401 }
       );
     }
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return NextResponse.json(
-        { error: 'Invalid Employee Number or password' },
+        { error: 'Invalid Employee Number or PIN' },
         { status: 401 }
       );
     }

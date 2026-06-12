@@ -10,7 +10,8 @@ import {
   Moon, 
   RefreshCw, 
   TrendingUp, 
-  CircleAlert 
+  CircleAlert,
+  CheckCircle2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -30,6 +31,7 @@ export default function EmployeeHistoryPage() {
   const { toast } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<'ALL' | 'DAY' | 'WEEK' | 'MONTH'>('ALL');
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -58,6 +60,32 @@ export default function EmployeeHistoryPage() {
     fetchHistory();
   }, [router, toast]);
 
+  const getFilteredOrders = () => {
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const now = new Date();
+    
+    return orders.filter(item => {
+      if (filter === 'DAY') {
+        return item.requestDate === todayStr;
+      }
+      if (filter === 'WEEK') {
+        const reqDate = new Date(item.requestedAt);
+        const diffTime = Math.abs(now.getTime() - reqDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays <= 7;
+      }
+      if (filter === 'MONTH') {
+        const reqDate = new Date(item.requestedAt);
+        const diffTime = Math.abs(now.getTime() - reqDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays <= 30;
+      }
+      return true; // ALL
+    });
+  };
+
+  const filteredOrders = getFilteredOrders();
+
   return (
     <div className="flex flex-col min-h-screen bg-slate-50">
       {/* Sticky Header */}
@@ -74,6 +102,23 @@ export default function EmployeeHistoryPage() {
         </div>
       </header>
 
+      {/* Tabs filter */}
+      <div className="bg-white px-5 py-2.5 border-b border-slate-100 flex gap-2 overflow-x-auto">
+        {(['ALL', 'DAY', 'WEEK', 'MONTH'] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setFilter(t)}
+            className={`px-3.5 py-1.5 rounded-lg text-[11px] font-bold transition-all flex-shrink-0 ${
+              filter === t
+                ? 'bg-blue-600 text-white shadow-sm shadow-blue-100'
+                : 'bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-200/50'
+            }`}
+          >
+            {t === 'ALL' ? 'All History' : t === 'DAY' ? 'Today' : t === 'WEEK' ? 'This Week' : 'This Month'}
+          </button>
+        ))}
+      </div>
+
       {/* Content */}
       <div className="flex-1 p-5 space-y-4 overflow-y-auto pb-24">
         {loading ? (
@@ -89,9 +134,14 @@ export default function EmployeeHistoryPage() {
               When you start submitting breakfast, lunch, or dinner requests, they will show up here.
             </p>
           </div>
+        ) : filteredOrders.length === 0 ? (
+          <div className="bg-white rounded-2xl p-8 text-center border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+            <CircleAlert className="h-9 w-9 text-slate-350 mx-auto mb-2" />
+            <p className="text-xs text-slate-500 font-bold">No records found matching this filter</p>
+          </div>
         ) : (
           <div className="space-y-3">
-            {orders.map((item) => (
+            {filteredOrders.map((item) => (
               <div 
                 key={item._id} 
                 className="bg-white rounded-2xl p-4 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.015)] flex flex-col gap-3"
@@ -118,7 +168,14 @@ export default function EmployeeHistoryPage() {
                         {item.mealType.toLowerCase()}
                       </h4>
                       <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">
-                        {format(new Date(item.requestDate + 'T00:00:00'), 'EEEE, MMM dd, yyyy')}
+                        {(() => {
+                          const todayStr = format(new Date(), 'yyyy-MM-dd');
+                          if (item.requestDate === todayStr) {
+                            return 'Today';
+                          } else {
+                            return format(new Date(item.requestDate + 'T00:00:00'), 'EEEE, MMM dd, yyyy');
+                          }
+                        })()}
                       </p>
                     </div>
                   </div>
@@ -136,7 +193,15 @@ export default function EmployeeHistoryPage() {
                   <div>
                     <span className="block text-slate-400 text-[9px] uppercase tracking-wider font-bold">Ordered At</span>
                     <span className="text-slate-700 block mt-0.5">
-                      {format(new Date(item.requestedAt), 'h:mm a')}
+                      {(() => {
+                        const dateObj = new Date(item.requestedAt);
+                        const todayStr = format(new Date(), 'yyyy-MM-dd');
+                        if (item.requestDate === todayStr) {
+                          return `Today ${item.mealType.charAt(0) + item.mealType.slice(1).toLowerCase()} at ${format(dateObj, 'h:mm a')}`;
+                        } else {
+                          return `${format(dateObj, 'MMM dd, yyyy')} at ${format(dateObj, 'h:mm a')}`;
+                        }
+                      })()}
                     </span>
                   </div>
                   {item.mealOption && (
