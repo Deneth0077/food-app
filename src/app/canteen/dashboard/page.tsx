@@ -550,24 +550,46 @@ export default function CanteenDashboard() {
       });
     };
 
-    // Check if html2pdf is already loaded dynamically, otherwise load it from CDN
-    if ((window as any).html2pdf) {
-      runHtml2Pdf();
-    } else {
-      const script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-      script.onload = () => {
+    const loadHtml2Pdf = () => {
+      // Check if html2pdf is already loaded dynamically, otherwise load it from CDN
+      if ((window as any).html2pdf) {
         runHtml2Pdf();
+      } else {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+        script.onload = () => {
+          runHtml2Pdf();
+        };
+        script.onerror = () => {
+          document.body.removeChild(element);
+          toast({
+            variant: 'destructive',
+            title: 'Download Failed',
+            description: 'Failed to load PDF generation library.',
+          });
+        };
+        document.body.appendChild(script);
+      }
+    };
+
+    // Load html2canvas-pro first to support modern oklch CSS color functions
+    if ((window as any).html2canvas) {
+      loadHtml2Pdf();
+    } else {
+      const proScript = document.createElement('script');
+      proScript.src = 'https://cdn.jsdelivr.net/npm/html2canvas-pro@latest/dist/html2canvas.min.js';
+      proScript.onload = () => {
+        loadHtml2Pdf();
       };
-      script.onerror = () => {
+      proScript.onerror = () => {
         document.body.removeChild(element);
         toast({
           variant: 'destructive',
           title: 'Download Failed',
-          description: 'Failed to load PDF generation library.',
+          description: 'Failed to load modern HTML canvas rendering library.',
         });
       };
-      document.body.appendChild(script);
+      document.body.appendChild(proScript);
     }
   };
 
