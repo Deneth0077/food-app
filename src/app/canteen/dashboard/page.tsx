@@ -526,71 +526,47 @@ export default function CanteenDashboard() {
     element.style.top = '-9999px';
     document.body.appendChild(element);
 
-    const runHtml2Pdf = () => {
-      (window as any).html2pdf().from(element).set({
-        margin: 10,
-        filename: `Meal_Logistics_Report_${selectedDate}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, logging: false, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      }).save().then(() => {
-        document.body.removeChild(element);
-        toast({
-          title: 'Report Downloaded',
-          description: `Daily operations report for ${selectedDate} has been downloaded.`,
-        });
-      }).catch((err: any) => {
-        console.error('PDF generation error:', err);
-        document.body.removeChild(element);
-        toast({
-          variant: 'destructive',
-          title: 'Download Failed',
-          description: 'Failed to generate and download the PDF report.',
-        });
-      });
-    };
+    const runHtml2Pdf = async () => {
+      try {
+        const html2pdf = (await import('html2pdf.js' as any)).default;
+        const html2canvas = (await import('html2canvas-pro' as any)).default;
 
-    const loadHtml2Pdf = () => {
-      // Check if html2pdf is already loaded dynamically, otherwise load it from CDN
-      if ((window as any).html2pdf) {
-        runHtml2Pdf();
-      } else {
-        const script = document.createElement('script');
-        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-        script.onload = () => {
-          runHtml2Pdf();
-        };
-        script.onerror = () => {
+        // Force html2pdf to use our html2canvas-pro to support modern oklch Tailwind colors
+        (window as any).html2canvas = html2canvas;
+
+        html2pdf().from(element).set({
+          margin: 10,
+          filename: `Meal_Logistics_Report_${selectedDate}.pdf`,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, logging: false, useCORS: true },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        }).save().then(() => {
+          document.body.removeChild(element);
+          toast({
+            title: 'Report Downloaded',
+            description: `Daily operations report for ${selectedDate} has been downloaded.`,
+          });
+        }).catch((err: any) => {
+          console.error('PDF generation error:', err);
           document.body.removeChild(element);
           toast({
             variant: 'destructive',
             title: 'Download Failed',
-            description: 'Failed to load PDF generation library.',
+            description: 'Failed to generate and download the PDF report.',
           });
-        };
-        document.body.appendChild(script);
-      }
-    };
-
-    // Load html2canvas-pro first to support modern oklch CSS color functions
-    if ((window as any).html2canvas) {
-      loadHtml2Pdf();
-    } else {
-      const proScript = document.createElement('script');
-      proScript.src = 'https://cdn.jsdelivr.net/npm/html2canvas-pro@latest/dist/html2canvas.min.js';
-      proScript.onload = () => {
-        loadHtml2Pdf();
-      };
-      proScript.onerror = () => {
+        });
+      } catch (err: any) {
+        console.error('Failed to load local PDF libraries:', err);
         document.body.removeChild(element);
         toast({
           variant: 'destructive',
           title: 'Download Failed',
           description: 'Failed to load modern HTML canvas rendering library.',
         });
-      };
-      document.body.appendChild(proScript);
-    }
+      }
+    };
+
+    runHtml2Pdf();
   };
 
   const handleLogout = async () => {
