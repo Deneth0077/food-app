@@ -17,7 +17,6 @@ os.makedirs(public_dir, exist_ok=True)
 # Define sizes to generate
 # (output_filename, width, height, format)
 targets = [
-    ("logo.png", 512, 512, "PNG"),
     ("icon-512x512.png", 512, 512, "PNG"),
     ("icon-192x192.png", 192, 192, "PNG"),
     ("apple-touch-icon.png", 180, 180, "PNG"),
