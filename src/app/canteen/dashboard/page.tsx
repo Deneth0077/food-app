@@ -277,16 +277,6 @@ export default function CanteenDashboard() {
       });
     }
     
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      toast({
-        variant: 'destructive',
-        title: 'Pop-up Blocked',
-        description: 'Please allow pop-ups to download the PDF report.',
-      });
-      return;
-    }
-
     let summaryRows = '';
     if (renderBreakfast) {
       summaryRows += `
@@ -524,19 +514,61 @@ export default function CanteenDashboard() {
               `}
             </div>
           ` : ''}
-
-          <script>
-            window.onload = function() {
-              window.print();
-              setTimeout(function() { window.close(); }, 500);
-            };
-          </script>
         </body>
       </html>
     `;
     
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
+    // Create temporary element to render the HTML content
+    const element = document.createElement('div');
+    element.innerHTML = htmlContent;
+    element.style.position = 'absolute';
+    element.style.left = '-9999px';
+    element.style.top = '-9999px';
+    document.body.appendChild(element);
+
+    const runHtml2Pdf = () => {
+      (window as any).html2pdf().from(element).set({
+        margin: 10,
+        filename: `Meal_Logistics_Report_${selectedDate}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, logging: false, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      }).save().then(() => {
+        document.body.removeChild(element);
+        toast({
+          title: 'Report Downloaded',
+          description: `Daily operations report for ${selectedDate} has been downloaded.`,
+        });
+      }).catch((err: any) => {
+        console.error('PDF generation error:', err);
+        document.body.removeChild(element);
+        toast({
+          variant: 'destructive',
+          title: 'Download Failed',
+          description: 'Failed to generate and download the PDF report.',
+        });
+      });
+    };
+
+    // Check if html2pdf is already loaded dynamically, otherwise load it from CDN
+    if ((window as any).html2pdf) {
+      runHtml2Pdf();
+    } else {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+      script.onload = () => {
+        runHtml2Pdf();
+      };
+      script.onerror = () => {
+        document.body.removeChild(element);
+        toast({
+          variant: 'destructive',
+          title: 'Download Failed',
+          description: 'Failed to load PDF generation library.',
+        });
+      };
+      document.body.appendChild(script);
+    }
   };
 
   const handleLogout = async () => {

@@ -238,7 +238,7 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json();
-    const { mealType, mealOption, notes } = body;
+    const { mealType, mealOption, notes, skipTimer } = body;
 
     if (!mealType || !['BREAKFAST', 'LUNCH', 'DINNER'].includes(mealType)) {
       return NextResponse.json({ error: 'Invalid or missing meal type.' }, { status: 400 });
@@ -287,6 +287,13 @@ export async function PUT(request: Request) {
 
     if (!order) {
       return NextResponse.json({ error: `No active ${mealType.toLowerCase()} order found for ${displayDay} to update.` }, { status: 404 });
+    }
+
+    // If skipping cancellation timer, shift requestedAt to 11 minutes ago
+    if (skipTimer) {
+      order.requestedAt = new Date(Date.now() - 11 * 60 * 1000);
+      await order.save();
+      return NextResponse.json({ message: 'Cancellation window skipped successfully', order });
     }
 
     // Update fields

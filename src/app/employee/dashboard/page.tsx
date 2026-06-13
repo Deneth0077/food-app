@@ -211,6 +211,34 @@ export default function EmployeeDashboard() {
     }
   };
 
+  const handleSkipTimer = async (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER') => {
+    if (!confirm(`Are you sure you want to skip the cancellation grace period and finalize your ${mealType.toLowerCase()} order? It cannot be cancelled after this.`)) return;
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mealType, skipTimer: true }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to skip timer');
+
+      toast({
+        title: 'Order Finalized',
+        description: `Successfully finalized your ${mealType.toLowerCase()} order.`,
+      });
+
+      // Refresh data
+      fetchData();
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Action Failed',
+        description: error.message || 'Something went wrong',
+      });
+    }
+  };
+
   const isMealLocked = (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER') => {
     const currentHour = currentTime.getHours();
     if (mealType === 'BREAKFAST') {
@@ -613,13 +641,22 @@ export default function EmployeeDashboard() {
                           <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-ping shrink-0" />
                           Cancel available: {formattedTime}
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => handleCancelOrder('BREAKFAST')}
-                          className="px-2.5 py-1 text-[9px] font-bold text-red-700 bg-red-100 hover:bg-red-200 rounded-lg active:scale-95 transition-all shadow-sm"
-                        >
-                          Cancel Order
-                        </button>
+                        <div className="flex gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleSkipTimer('BREAKFAST')}
+                            className="px-2.5 py-1 text-[9px] font-bold text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg active:scale-95 transition-all shadow-sm"
+                          >
+                            Skip Time
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleCancelOrder('BREAKFAST')}
+                            className="px-2.5 py-1 text-[9px] font-bold text-red-700 bg-red-100 hover:bg-red-200 rounded-lg active:scale-95 transition-all shadow-sm"
+                          >
+                            Cancel Order
+                          </button>
+                        </div>
                       </div>
                     );
                   }
@@ -674,13 +711,22 @@ export default function EmployeeDashboard() {
                           <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-ping shrink-0" />
                           Cancel available: {formattedTime}
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => handleCancelOrder('LUNCH')}
-                          className="px-2.5 py-1 text-[9px] font-bold text-red-700 bg-red-100 hover:bg-red-200 rounded-lg active:scale-95 transition-all shadow-sm"
-                        >
-                          Cancel Order
-                        </button>
+                        <div className="flex gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleSkipTimer('LUNCH')}
+                            className="px-2.5 py-1 text-[9px] font-bold text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg active:scale-95 transition-all shadow-sm"
+                          >
+                            Skip Time
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleCancelOrder('LUNCH')}
+                            className="px-2.5 py-1 text-[9px] font-bold text-red-700 bg-red-100 hover:bg-red-200 rounded-lg active:scale-95 transition-all shadow-sm"
+                          >
+                            Cancel Order
+                          </button>
+                        </div>
                       </div>
                     );
                   }
@@ -735,13 +781,22 @@ export default function EmployeeDashboard() {
                           <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-ping shrink-0" />
                           Cancel available: {formattedTime}
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => handleCancelOrder('DINNER')}
-                          className="px-2.5 py-1 text-[9px] font-bold text-red-700 bg-red-100 hover:bg-red-200 rounded-lg active:scale-95 transition-all shadow-sm"
-                        >
-                          Cancel Order
-                        </button>
+                        <div className="flex gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleSkipTimer('DINNER')}
+                            className="px-2.5 py-1 text-[9px] font-bold text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg active:scale-95 transition-all shadow-sm"
+                          >
+                            Skip Time
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleCancelOrder('DINNER')}
+                            className="px-2.5 py-1 text-[9px] font-bold text-red-700 bg-red-100 hover:bg-red-200 rounded-lg active:scale-95 transition-all shadow-sm"
+                          >
+                            Cancel Order
+                          </button>
+                        </div>
                       </div>
                     );
                   }
@@ -904,18 +959,32 @@ export default function EmployeeDashboard() {
                         <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-ping shrink-0" />
                         Cancel available: {formattedTime}
                       </span>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          await handleCancelOrder(activeMealSelection);
-                          setActiveMealSelection(null);
-                          setSelectedOption(null);
-                          setOrderNotes('');
-                        }}
-                        className="px-2.5 py-1 text-[9px] font-bold text-red-700 bg-red-100 hover:bg-red-200 rounded-lg active:scale-95 transition-all shadow-sm"
-                      >
-                        Cancel Order
-                      </button>
+                      <div className="flex gap-1.5">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await handleSkipTimer(activeMealSelection);
+                            setActiveMealSelection(null);
+                            setSelectedOption(null);
+                            setOrderNotes('');
+                          }}
+                          className="px-2.5 py-1 text-[9px] font-bold text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg active:scale-95 transition-all shadow-sm"
+                        >
+                          Skip Time
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await handleCancelOrder(activeMealSelection);
+                            setActiveMealSelection(null);
+                            setSelectedOption(null);
+                            setOrderNotes('');
+                          }}
+                          className="px-2.5 py-1 text-[9px] font-bold text-red-700 bg-red-100 hover:bg-red-200 rounded-lg active:scale-95 transition-all shadow-sm"
+                        >
+                          Cancel Order
+                        </button>
+                      </div>
                     </div>
                   );
                 }
