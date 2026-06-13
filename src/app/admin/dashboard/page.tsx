@@ -221,7 +221,7 @@ export default function AdminDashboard() {
             {showNotifications && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)}></div>
-                <div className="absolute right-0 mt-2.5 w-80 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="fixed inset-x-4 top-[68px] sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto mt-2.5 w-auto sm:w-80 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                     <h3 className="text-xs font-bold text-slate-800">Notifications</h3>
                     {unreadCount > 0 && (
