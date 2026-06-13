@@ -528,19 +528,39 @@ export default function CanteenDashboard() {
 
     const runHtml2Pdf = async () => {
       try {
-        const html2pdf = (await import('html2pdf.js' as any)).default;
+        const jsPDF = (await import('jspdf' as any)).default;
         const html2canvas = (await import('html2canvas-pro' as any)).default;
 
-        // Force html2pdf to use our html2canvas-pro to support modern oklch Tailwind colors
-        (window as any).html2canvas = html2canvas;
+        html2canvas(element, {
+          scale: 2,
+          logging: false,
+          useCORS: true,
+          backgroundColor: '#ffffff'
+        }).then((canvas: HTMLCanvasElement) => {
+          const imgData = canvas.toDataURL('image/jpeg', 0.98);
+          
+          const pdf = new jsPDF('p', 'mm', 'a4');
+          const pageWidth = 210;
+          const pageHeight = 297;
+          const margin = 10;
+          const imgWidth = pageWidth - (margin * 2);
+          const imgHeight = (canvas.height * imgWidth) / canvas.width;
+          
+          let heightLeft = imgHeight;
+          let position = margin;
 
-        html2pdf().from(element).set({
-          margin: 10,
-          filename: `Meal_Logistics_Report_${selectedDate}.pdf`,
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2, logging: false, useCORS: true },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        }).save().then(() => {
+          pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight);
+          heightLeft -= (pageHeight - margin * 2);
+
+          while (heightLeft > 0) {
+            position = heightLeft - imgHeight + margin;
+            pdf.addPage();
+            pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight);
+            heightLeft -= (pageHeight - margin * 2);
+          }
+          
+          pdf.save(`Meal_Logistics_Report_${selectedDate}.pdf`);
+
           document.body.removeChild(element);
           toast({
             title: 'Report Downloaded',
