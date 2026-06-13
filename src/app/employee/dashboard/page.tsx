@@ -56,6 +56,9 @@ export default function EmployeeDashboard() {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = format(tomorrow, 'yyyy-MM-dd');
 
   const fetchData = useCallback(async () => {
     try {
@@ -208,13 +211,51 @@ export default function EmployeeDashboard() {
     }
   };
 
+  const isMealLocked = (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER') => {
+    const currentHour = currentTime.getHours();
+    if (mealType === 'BREAKFAST') {
+      return currentHour >= 20; // 8:00 PM
+    } else if (mealType === 'LUNCH') {
+      return currentHour >= 9;  // 9:00 AM
+    } else if (mealType === 'DINNER') {
+      return currentHour >= 17; // 5:00 PM
+    }
+    return false;
+  };
+
   const handleCardClick = (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER') => {
-    const existingOrder = todayOrders.find(o => o.mealType === mealType);
+    let existingOrder;
+    if (mealType === 'BREAKFAST') {
+      existingOrder = orders.find(o => o.requestDate === tomorrowStr && o.mealType === 'BREAKFAST');
+    } else if (mealType === 'LUNCH') {
+      existingOrder = orders.find(o => o.requestDate === todayStr && o.mealType === 'LUNCH');
+    } else {
+      existingOrder = orders.find(o => o.requestDate === todayStr && o.mealType === 'DINNER');
+    }
+
+    if (isMealLocked(mealType)) {
+      if (existingOrder) {
+        toast({
+          title: 'Booking Closed',
+          description: `Booking for this ${mealType.toLowerCase()} is closed. You cannot modify or cancel this request.`,
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Booking Closed',
+          description: `Booking for ${mealType === 'BREAKFAST' ? 'tomorrow\'s' : 'today\'s'} ${mealType.toLowerCase()} closed at ${
+            mealType === 'BREAKFAST' ? '8:00 PM today' : mealType === 'LUNCH' ? '9:00 AM' : '5:00 PM'
+          }.`,
+        });
+      }
+      return;
+    }
+
     if (existingOrder) {
       if (existingOrder.status === 'COLLECTED') {
         toast({
           title: 'Meal Collected',
-          description: `You have already collected today's ${mealType.toLowerCase()}.`,
+          description: `You have already collected this ${mealType.toLowerCase()}.`,
         });
         return;
       }
@@ -241,11 +282,19 @@ export default function EmployeeDashboard() {
     );
   }
 
-  // Filter orders for today
-  const todayOrders = orders.filter(o => o.requestDate === todayStr);
+  const activeBreakfastOrder = orders.find(o => o.requestDate === tomorrowStr && o.mealType === 'BREAKFAST');
+  const activeLunchOrder = orders.find(o => o.requestDate === todayStr && o.mealType === 'LUNCH');
+  const activeDinnerOrder = orders.find(o => o.requestDate === todayStr && o.mealType === 'DINNER');
   
   const getMealStatus = (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER') => {
-    const order = todayOrders.find(o => o.mealType === mealType);
+    let order;
+    if (mealType === 'BREAKFAST') {
+      order = activeBreakfastOrder;
+    } else if (mealType === 'LUNCH') {
+      order = activeLunchOrder;
+    } else {
+      order = activeDinnerOrder;
+    }
     if (!order) return 'Not Requested';
     return order.status === 'COLLECTED' ? 'Collected' : 'Pending';
   };
@@ -371,15 +420,32 @@ export default function EmployeeDashboard() {
             {/* Breakfast Request Card */}
             <div 
               onClick={() => handleCardClick('BREAKFAST')}
-              className="p-4 bg-white rounded-2xl border border-slate-100 flex items-center justify-between transition-all duration-300 transform cursor-pointer hover:border-blue-300 hover:shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 active:scale-[0.99]"
+              className={`p-4 rounded-2xl border flex items-center justify-between transition-all duration-300 transform cursor-pointer hover:shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 active:scale-[0.99] ${
+                isMealLocked('BREAKFAST') && !activeBreakfastOrder
+                  ? 'bg-slate-100/50 border-slate-200 opacity-60' 
+                  : 'bg-white border-slate-100 hover:border-blue-300'
+              }`}
             >
               <div className="flex items-center gap-3.5">
-                <div className="h-10 w-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-500">
+                <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${
+                  isMealLocked('BREAKFAST') && !activeBreakfastOrder ? 'bg-slate-200 text-slate-400' : 'bg-amber-50 text-amber-500'
+                }`}>
                   <Coffee className="h-5.5 w-5.5 stroke-[2.25]" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-slate-850">Breakfast</h4>
-                  <p className="text-[11px] text-slate-400 font-medium mt-0.5">7:00 AM - 9:30 AM</p>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-sm font-bold text-slate-850">Breakfast</h4>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700">
+                      For Tomorrow ({format(tomorrow, 'MMM dd')})
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 font-semibold mt-1">
+                    {isMealLocked('BREAKFAST') && !activeBreakfastOrder ? (
+                      <span className="text-red-500 font-bold">Booking Closed (Locked at 8:00 PM)</span>
+                    ) : (
+                      'Book before 8:00 PM today'
+                    )}
+                  </p>
                 </div>
               </div>
               <div>
@@ -391,6 +457,8 @@ export default function EmployeeDashboard() {
                   <div className="h-9 w-9 rounded-full flex items-center justify-center bg-slate-100 text-slate-500">
                     <RefreshCw className="h-4.5 w-4.5 animate-spin" />
                   </div>
+                ) : isMealLocked('BREAKFAST') ? (
+                  <span className="text-xs font-bold text-slate-400">Locked</span>
                 ) : null}
               </div>
             </div>
@@ -398,15 +466,32 @@ export default function EmployeeDashboard() {
             {/* Lunch Request Card */}
             <div 
               onClick={() => handleCardClick('LUNCH')}
-              className="p-4 bg-white rounded-2xl border border-slate-100 flex items-center justify-between transition-all duration-300 transform cursor-pointer hover:border-blue-300 hover:shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 active:scale-[0.99]"
+              className={`p-4 rounded-2xl border flex items-center justify-between transition-all duration-300 transform cursor-pointer hover:shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 active:scale-[0.99] ${
+                isMealLocked('LUNCH') && !activeLunchOrder
+                  ? 'bg-slate-100/50 border-slate-200 opacity-60' 
+                  : 'bg-white border-slate-100 hover:border-blue-300'
+              }`}
             >
               <div className="flex items-center gap-3.5">
-                <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+                <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${
+                  isMealLocked('LUNCH') && !activeLunchOrder ? 'bg-slate-200 text-slate-400' : 'bg-blue-50 text-blue-600'
+                }`}>
                   <Utensils className="h-5.5 w-5.5 stroke-[2.25]" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-slate-850">Lunch</h4>
-                  <p className="text-[11px] text-slate-400 font-medium mt-0.5">11:30 AM - 2:00 PM</p>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-sm font-bold text-slate-850">Lunch</h4>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700">
+                      For Today ({format(new Date(), 'MMM dd')})
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 font-semibold mt-1">
+                    {isMealLocked('LUNCH') && !activeLunchOrder ? (
+                      <span className="text-red-500 font-bold">Booking Closed (Locked at 9:00 AM)</span>
+                    ) : (
+                      'Book before 9:00 AM today'
+                    )}
+                  </p>
                 </div>
               </div>
               <div>
@@ -418,6 +503,8 @@ export default function EmployeeDashboard() {
                   <div className="h-9 w-9 rounded-full flex items-center justify-center bg-slate-100 text-slate-500">
                     <RefreshCw className="h-4.5 w-4.5 animate-spin" />
                   </div>
+                ) : isMealLocked('LUNCH') ? (
+                  <span className="text-xs font-bold text-slate-400">Locked</span>
                 ) : null}
               </div>
             </div>
@@ -425,15 +512,32 @@ export default function EmployeeDashboard() {
             {/* Dinner Request Card */}
             <div 
               onClick={() => handleCardClick('DINNER')}
-              className="p-4 bg-white rounded-2xl border border-slate-100 flex items-center justify-between transition-all duration-300 transform cursor-pointer hover:border-blue-300 hover:shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 active:scale-[0.99]"
+              className={`p-4 rounded-2xl border flex items-center justify-between transition-all duration-300 transform cursor-pointer hover:shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 active:scale-[0.99] ${
+                isMealLocked('DINNER') && !activeDinnerOrder
+                  ? 'bg-slate-100/50 border-slate-200 opacity-60' 
+                  : 'bg-white border-slate-100 hover:border-blue-300'
+              }`}
             >
               <div className="flex items-center gap-3.5">
-                <div className="h-10 w-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-500">
+                <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${
+                  isMealLocked('DINNER') && !activeDinnerOrder ? 'bg-slate-200 text-slate-400' : 'bg-indigo-50 text-indigo-500'
+                }`}>
                   <Moon className="h-5.5 w-5.5 stroke-[2.25]" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-slate-850">Dinner</h4>
-                  <p className="text-[11px] text-slate-405 font-medium mt-0.5">6:00 PM - 8:30 PM</p>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-sm font-bold text-slate-850">Dinner</h4>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700">
+                      For Today ({format(new Date(), 'MMM dd')})
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 font-semibold mt-1">
+                    {isMealLocked('DINNER') && !activeDinnerOrder ? (
+                      <span className="text-red-500 font-bold">Booking Closed (Locked at 5:00 PM)</span>
+                    ) : (
+                      'Book before 5:00 PM today'
+                    )}
+                  </p>
                 </div>
               </div>
               <div>
@@ -445,6 +549,8 @@ export default function EmployeeDashboard() {
                   <div className="h-9 w-9 rounded-full flex items-center justify-center bg-slate-100 text-slate-500">
                     <RefreshCw className="h-4.5 w-4.5 animate-spin" />
                   </div>
+                ) : isMealLocked('DINNER') ? (
+                  <span className="text-xs font-bold text-slate-400">Locked</span>
                 ) : null}
               </div>
             </div>
@@ -454,7 +560,7 @@ export default function EmployeeDashboard() {
         {/* Today's Status Widget */}
         <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-slate-800">Today's Status</h3>
+            <h3 className="text-sm font-bold text-slate-800">My Active Orders</h3>
             <button onClick={fetchData} className="p-1 rounded hover:bg-slate-50 text-slate-400 hover:text-slate-600">
               <RefreshCw className="h-3.5 w-3.5" />
             </button>
@@ -465,14 +571,14 @@ export default function EmployeeDashboard() {
             <div className="py-3 flex flex-col gap-1 text-xs">
               <div className="flex items-center justify-between">
                 <span className="font-semibold text-slate-600 flex items-center gap-2">
-                  <Coffee className="h-4 w-4 text-amber-500" /> Breakfast
-                  {todayOrders.find(o => o.mealType === 'BREAKFAST')?.mealOption && (
+                  <Coffee className="h-4 w-4 text-amber-500" /> Breakfast (For Tomorrow)
+                  {activeBreakfastOrder?.mealOption && (
                     <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                      todayOrders.find(o => o.mealType === 'BREAKFAST')?.mealOption === 'VEGETARIAN' 
+                      activeBreakfastOrder.mealOption === 'VEGETARIAN' 
                         ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
                         : 'bg-rose-50 text-rose-700 border border-rose-100'
                     }`}>
-                      {todayOrders.find(o => o.mealType === 'BREAKFAST')?.mealOption === 'VEGETARIAN' ? 'Veg' : 'Meat'}
+                      {activeBreakfastOrder.mealOption === 'VEGETARIAN' ? 'Veg' : 'Meat'}
                     </span>
                   )}
                 </span>
@@ -486,15 +592,15 @@ export default function EmployeeDashboard() {
                   {breakfastStatus}
                 </span>
               </div>
-              {todayOrders.find(o => o.mealType === 'BREAKFAST')?.notes && (
+              {activeBreakfastOrder?.notes && (
                 <div className="text-[10px] bg-slate-50 border border-slate-100 text-slate-500 rounded-lg p-2 font-medium">
                   <span className="font-bold text-slate-700 block text-[9px] uppercase tracking-wider mb-0.5">Snack / Special Request</span>
-                  &ldquo;{todayOrders.find(o => o.mealType === 'BREAKFAST')?.notes}&rdquo;
+                  &ldquo;{activeBreakfastOrder.notes}&rdquo;
                 </div>
               )}
               {(() => {
-                const order = todayOrders.find(o => o.mealType === 'BREAKFAST');
-                if (order && order.status === 'ORDERED') {
+                const order = activeBreakfastOrder;
+                if (order && order.status === 'ORDERED' && !isMealLocked('BREAKFAST')) {
                   const msRemaining = (new Date(order.requestedAt).getTime() + 10 * 60 * 1000) - currentTime.getTime();
                   if (msRemaining > 0) {
                     const mins = Math.floor(msRemaining / (1000 * 60));
@@ -526,14 +632,14 @@ export default function EmployeeDashboard() {
             <div className="py-3 flex flex-col gap-1 text-xs">
               <div className="flex items-center justify-between">
                 <span className="font-semibold text-slate-600 flex items-center gap-2">
-                  <Utensils className="h-4 w-4 text-blue-500" /> Lunch
-                  {todayOrders.find(o => o.mealType === 'LUNCH')?.mealOption && (
+                  <Utensils className="h-4 w-4 text-blue-500" /> Lunch (For Today)
+                  {activeLunchOrder?.mealOption && (
                     <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                      todayOrders.find(o => o.mealType === 'LUNCH')?.mealOption === 'VEGETARIAN' 
+                      activeLunchOrder.mealOption === 'VEGETARIAN' 
                         ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
                         : 'bg-rose-50 text-rose-700 border border-rose-100'
                     }`}>
-                      {todayOrders.find(o => o.mealType === 'LUNCH')?.mealOption === 'VEGETARIAN' ? 'Veg' : 'Meat'}
+                      {activeLunchOrder.mealOption === 'VEGETARIAN' ? 'Veg' : 'Meat'}
                     </span>
                   )}
                 </span>
@@ -547,15 +653,15 @@ export default function EmployeeDashboard() {
                   {lunchStatus}
                 </span>
               </div>
-              {todayOrders.find(o => o.mealType === 'LUNCH')?.notes && (
+              {activeLunchOrder?.notes && (
                 <div className="text-[10px] bg-slate-50 border border-slate-100 text-slate-500 rounded-lg p-2 font-medium">
                   <span className="font-bold text-slate-700 block text-[9px] uppercase tracking-wider mb-0.5">Snack / Special Request</span>
-                  &ldquo;{todayOrders.find(o => o.mealType === 'LUNCH')?.notes}&rdquo;
+                  &ldquo;{activeLunchOrder.notes}&rdquo;
                 </div>
               )}
               {(() => {
-                const order = todayOrders.find(o => o.mealType === 'LUNCH');
-                if (order && order.status === 'ORDERED') {
+                const order = activeLunchOrder;
+                if (order && order.status === 'ORDERED' && !isMealLocked('LUNCH')) {
                   const msRemaining = (new Date(order.requestedAt).getTime() + 10 * 60 * 1000) - currentTime.getTime();
                   if (msRemaining > 0) {
                     const mins = Math.floor(msRemaining / (1000 * 60));
@@ -587,14 +693,14 @@ export default function EmployeeDashboard() {
             <div className="py-3 flex flex-col gap-1 text-xs">
               <div className="flex items-center justify-between">
                 <span className="font-semibold text-slate-600 flex items-center gap-2">
-                  <Moon className="h-4 w-4 text-indigo-500" /> Dinner
-                  {todayOrders.find(o => o.mealType === 'DINNER')?.mealOption && (
+                  <Moon className="h-4 w-4 text-indigo-500" /> Dinner (For Today)
+                  {activeDinnerOrder?.mealOption && (
                     <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                      todayOrders.find(o => o.mealType === 'DINNER')?.mealOption === 'VEGETARIAN' 
+                      activeDinnerOrder.mealOption === 'VEGETARIAN' 
                         ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
                         : 'bg-rose-50 text-rose-700 border border-rose-100'
                     }`}>
-                      {todayOrders.find(o => o.mealType === 'DINNER')?.mealOption === 'VEGETARIAN' ? 'Veg' : 'Meat'}
+                      {activeDinnerOrder.mealOption === 'VEGETARIAN' ? 'Veg' : 'Meat'}
                     </span>
                   )}
                 </span>
@@ -608,15 +714,15 @@ export default function EmployeeDashboard() {
                   {dinnerStatus}
                 </span>
               </div>
-              {todayOrders.find(o => o.mealType === 'DINNER')?.notes && (
+              {activeDinnerOrder?.notes && (
                 <div className="text-[10px] bg-slate-50 border border-slate-100 text-slate-500 rounded-lg p-2 font-medium">
                   <span className="font-bold text-slate-700 block text-[9px] uppercase tracking-wider mb-0.5">Snack / Special Request</span>
-                  &ldquo;{todayOrders.find(o => o.mealType === 'DINNER')?.notes}&rdquo;
+                  &ldquo;{activeDinnerOrder.notes}&rdquo;
                 </div>
               )}
               {(() => {
-                const order = todayOrders.find(o => o.mealType === 'DINNER');
-                if (order && order.status === 'ORDERED') {
+                const order = activeDinnerOrder;
+                if (order && order.status === 'ORDERED' && !isMealLocked('DINNER')) {
                   const msRemaining = (new Date(order.requestedAt).getTime() + 10 * 60 * 1000) - currentTime.getTime();
                   if (msRemaining > 0) {
                     const mins = Math.floor(msRemaining / (1000 * 60));
@@ -777,8 +883,15 @@ export default function EmployeeDashboard() {
 
             {/* Cancel countdown timer inside the modal */}
             {isUpdatingNotesOnly && (() => {
-              const order = todayOrders.find(o => o.mealType === activeMealSelection);
-              if (order && order.status === 'ORDERED') {
+              let order;
+              if (activeMealSelection === 'BREAKFAST') {
+                order = activeBreakfastOrder;
+              } else if (activeMealSelection === 'LUNCH') {
+                order = activeLunchOrder;
+              } else {
+                order = activeDinnerOrder;
+              }
+              if (order && order.status === 'ORDERED' && !isMealLocked(activeMealSelection)) {
                 const msRemaining = (new Date(order.requestedAt).getTime() + 10 * 60 * 1000) - currentTime.getTime();
                 if (msRemaining > 0) {
                   const mins = Math.floor(msRemaining / (1000 * 60));

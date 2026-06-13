@@ -102,18 +102,50 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'User is inactive or not found' }, { status: 403 });
     }
 
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const now = new Date();
+    const currentHour = now.getHours();
+
+    let targetDateStr = format(now, 'yyyy-MM-dd');
+    let displayDay = 'today';
+
+    if (mealType === 'BREAKFAST') {
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      targetDateStr = format(tomorrow, 'yyyy-MM-dd');
+      displayDay = 'tomorrow';
+
+      if (currentHour >= 20) {
+        return NextResponse.json(
+          { error: 'Breakfast orders for tomorrow must be placed before 8:00 PM today.' },
+          { status: 400 }
+        );
+      }
+    } else if (mealType === 'LUNCH') {
+      if (currentHour >= 9) {
+        return NextResponse.json(
+          { error: 'Lunch orders for today must be placed before 9:00 AM.' },
+          { status: 400 }
+        );
+      }
+    } else if (mealType === 'DINNER') {
+      if (currentHour >= 17) {
+        return NextResponse.json(
+          { error: 'Dinner orders for today must be placed before 5:00 PM.' },
+          { status: 400 }
+        );
+      }
+    }
 
     // Prevent duplicates: Check if an order already exists for this user, date, and meal type
     const existingOrder = await Order.findOne({
       userId: dbUser._id,
-      requestDate: todayStr,
+      requestDate: targetDateStr,
       mealType
     });
 
     if (existingOrder) {
       return NextResponse.json(
-        { error: `You have already requested ${mealType.toLowerCase()} for today. You cannot place duplicate requests for the same mealtime.` },
+        { error: `You have already requested ${mealType.toLowerCase()} for ${displayDay}. You cannot place duplicate requests for the same mealtime.` },
         { status: 400 }
       );
     }
@@ -128,7 +160,7 @@ export async function POST(request: Request) {
       mealOption,
       notes: notes ? notes.trim() : undefined,
       status: 'ORDERED',
-      requestDate: todayStr,
+      requestDate: targetDateStr,
       requestedAt: new Date(),
     });
 
@@ -212,17 +244,49 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Invalid or missing meal type.' }, { status: 400 });
     }
 
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const now = new Date();
+    const currentHour = now.getHours();
 
-    // Find today's order for this user and specific mealType
+    let targetDateStr = format(now, 'yyyy-MM-dd');
+    let displayDay = 'today';
+
+    if (mealType === 'BREAKFAST') {
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      targetDateStr = format(tomorrow, 'yyyy-MM-dd');
+      displayDay = 'tomorrow';
+
+      if (currentHour >= 20) {
+        return NextResponse.json(
+          { error: 'Breakfast orders can only be updated before 8:00 PM.' },
+          { status: 400 }
+        );
+      }
+    } else if (mealType === 'LUNCH') {
+      if (currentHour >= 9) {
+        return NextResponse.json(
+          { error: 'Lunch orders can only be updated before 9:00 AM.' },
+          { status: 400 }
+        );
+      }
+    } else if (mealType === 'DINNER') {
+      if (currentHour >= 17) {
+        return NextResponse.json(
+          { error: 'Dinner orders can only be updated before 5:00 PM.' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Find the order for this user and specific mealType and targetDateStr
     const order = await Order.findOne({
       userId: authUser.userId,
-      requestDate: todayStr,
+      requestDate: targetDateStr,
       mealType
     });
 
     if (!order) {
-      return NextResponse.json({ error: `No active ${mealType.toLowerCase()} order found for today to update.` }, { status: 404 });
+      return NextResponse.json({ error: `No active ${mealType.toLowerCase()} order found for ${displayDay} to update.` }, { status: 404 });
     }
 
     // Update fields
@@ -287,17 +351,49 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Invalid or missing meal type to cancel.' }, { status: 400 });
     }
 
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const now = new Date();
+    const currentHour = now.getHours();
 
-    // Find today's order for this user and specific mealType
+    let targetDateStr = format(now, 'yyyy-MM-dd');
+    let displayDay = 'today';
+
+    if (mealType === 'BREAKFAST') {
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      targetDateStr = format(tomorrow, 'yyyy-MM-dd');
+      displayDay = 'tomorrow';
+
+      if (currentHour >= 20) {
+        return NextResponse.json(
+          { error: 'Breakfast orders can only be cancelled before 8:00 PM.' },
+          { status: 400 }
+        );
+      }
+    } else if (mealType === 'LUNCH') {
+      if (currentHour >= 9) {
+        return NextResponse.json(
+          { error: 'Lunch orders can only be cancelled before 9:00 AM.' },
+          { status: 400 }
+        );
+      }
+    } else if (mealType === 'DINNER') {
+      if (currentHour >= 17) {
+        return NextResponse.json(
+          { error: 'Dinner orders can only be cancelled before 5:00 PM.' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Find the order for this user and specific mealType and targetDateStr
     const order = await Order.findOne({
       userId: authUser.userId,
-      requestDate: todayStr,
+      requestDate: targetDateStr,
       mealType
     });
 
     if (!order) {
-      return NextResponse.json({ error: 'No active order found for today to cancel.' }, { status: 404 });
+      return NextResponse.json({ error: `No active order found for ${displayDay} to cancel.` }, { status: 404 });
     }
 
     if (order.status === 'COLLECTED') {

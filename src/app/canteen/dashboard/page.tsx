@@ -48,11 +48,12 @@ export default function CanteenDashboard() {
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'TABLE' | 'CARDS'>('TABLE');
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
+  const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
 
   const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/orders');
+      const res = await fetch(`/api/orders?requestDate=${selectedDate}`);
       if (!res.ok) {
         if (res.status === 401 || res.status === 403) {
           router.push('/auth/login');
@@ -71,7 +72,7 @@ export default function CanteenDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [router, toast]);
+  }, [router, toast, selectedDate]);
 
   useEffect(() => {
     fetchOrders();
@@ -184,13 +185,97 @@ export default function CanteenDashboard() {
     }
   };
 
+  const isMealDeadlinePassed = (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER', targetDate: string) => {
+    const now = new Date();
+    const todayStr = format(now, 'yyyy-MM-dd');
+    
+    if (targetDate < todayStr) {
+      return true;
+    }
+    
+    if (targetDate > todayStr) {
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowStr = format(tomorrow, 'yyyy-MM-dd');
+      
+      if (targetDate === tomorrowStr && mealType === 'BREAKFAST') {
+        return now.getHours() >= 20; // 8:00 PM today
+      }
+      return false;
+    }
+    
+    // Today
+    const currentHour = now.getHours();
+    if (mealType === 'BREAKFAST') {
+      return true; // Today's breakfast locks yesterday at 8 PM, so it's passed
+    } else if (mealType === 'LUNCH') {
+      return currentHour >= 9; // 9:00 AM
+    } else if (mealType === 'DINNER') {
+      return currentHour >= 17; // 5:00 PM
+    }
+    return false;
+  };
+
   const handleDownloadPDF = () => {
-    const todayDate = format(new Date(), 'EEEE, MMMM dd, yyyy');
+    const targetFormattedDate = format(new Date(selectedDate + 'T00:00:00'), 'EEEE, MMMM dd, yyyy');
     
     // Group orders
     const breakfasts = orders.filter(o => o.mealType === 'BREAKFAST');
     const lunches = orders.filter(o => o.mealType === 'LUNCH');
     const dinners = orders.filter(o => o.mealType === 'DINNER');
+
+    const isBreakfastPassed = isMealDeadlinePassed('BREAKFAST', selectedDate);
+    const isLunchPassed = isMealDeadlinePassed('LUNCH', selectedDate);
+    const isDinnerPassed = isMealDeadlinePassed('DINNER', selectedDate);
+
+    if (selectedMealFilter === 'BREAKFAST' && !isBreakfastPassed) {
+      toast({
+        variant: 'destructive',
+        title: 'Report Unavailable',
+        description: 'Breakfast booking is still open. You can download the report after 8:00 PM today.',
+      });
+      return;
+    }
+    if (selectedMealFilter === 'LUNCH' && !isLunchPassed) {
+      toast({
+        variant: 'destructive',
+        title: 'Report Unavailable',
+        description: 'Lunch booking is still open. You can download the report after 9:00 AM today.',
+      });
+      return;
+    }
+    if (selectedMealFilter === 'DINNER' && !isDinnerPassed) {
+      toast({
+        variant: 'destructive',
+        title: 'Report Unavailable',
+        description: 'Dinner booking is still open. You can download the report after 5:00 PM today.',
+      });
+      return;
+    }
+
+    if (selectedMealFilter === 'ALL' && !isBreakfastPassed && !isLunchPassed && !isDinnerPassed) {
+      toast({
+        variant: 'destructive',
+        title: 'No Completed Reports',
+        description: 'All bookings for this date are still open. Report is not ready.',
+      });
+      return;
+    }
+
+    const renderBreakfast = selectedMealFilter === 'ALL' ? isBreakfastPassed : selectedMealFilter === 'BREAKFAST';
+    const renderLunch = selectedMealFilter === 'ALL' ? isLunchPassed : selectedMealFilter === 'LUNCH';
+    const renderDinner = selectedMealFilter === 'ALL' ? isDinnerPassed : selectedMealFilter === 'DINNER';
+
+    if (selectedMealFilter === 'ALL' && (!isBreakfastPassed || !isLunchPassed || !isDinnerPassed)) {
+      const skipped = [];
+      if (!isBreakfastPassed) skipped.push('Breakfast');
+      if (!isLunchPassed) skipped.push('Lunch');
+      if (!isDinnerPassed) skipped.push('Dinner');
+      toast({
+        title: 'Report Generated',
+        description: `PDF generated for completed meals. Open meals excluded: ${skipped.join(', ')}.`,
+      });
+    }
     
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -201,11 +286,43 @@ export default function CanteenDashboard() {
       });
       return;
     }
+
+    let summaryRows = '';
+    if (renderBreakfast) {
+      summaryRows += `
+        <tr>
+          <td><strong>Breakfast</strong></td>
+          <td>${breakfasts.filter(o => o.mealOption === 'VEGETARIAN').length}</td>
+          <td>${breakfasts.filter(o => o.mealOption === 'MEAT').length}</td>
+          <td><strong>${breakfasts.length}</strong></td>
+        </tr>
+      `;
+    }
+    if (renderLunch) {
+      summaryRows += `
+        <tr>
+          <td><strong>Lunch</strong></td>
+          <td>${lunches.filter(o => o.mealOption === 'VEGETARIAN').length}</td>
+          <td>${lunches.filter(o => o.mealOption === 'MEAT').length}</td>
+          <td><strong>${lunches.length}</strong></td>
+        </tr>
+      `;
+    }
+    if (renderDinner) {
+      summaryRows += `
+        <tr>
+          <td><strong>Dinner</strong></td>
+          <td>${dinners.filter(o => o.mealOption === 'VEGETARIAN').length}</td>
+          <td>${dinners.filter(o => o.mealOption === 'MEAT').length}</td>
+          <td><strong>${dinners.length}</strong></td>
+        </tr>
+      `;
+    }
     
     const htmlContent = `
       <html>
         <head>
-          <title>Meal Logistics Daily Report - ${format(new Date(), 'yyyy-MM-dd')}</title>
+          <title>Meal Logistics Daily Report - ${selectedDate}</title>
           <style>
             body {
               font-family: 'Inter', sans-serif;
@@ -297,7 +414,7 @@ export default function CanteenDashboard() {
         <body>
           <div class="header">
             <h1>ZPMC Lanka Meal Logistics</h1>
-            <p>Daily Operations Report - ${todayDate}</p>
+            <p>Daily Operations Report - ${targetFormattedDate}</p>
           </div>
           
           <h2>Summary</h2>
@@ -311,113 +428,102 @@ export default function CanteenDashboard() {
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td><strong>Breakfast</strong></td>
-                <td>${breakfasts.filter(o => o.mealOption === 'VEGETARIAN').length}</td>
-                <td>${breakfasts.filter(o => o.mealOption === 'MEAT').length}</td>
-                <td><strong>${breakfasts.length}</strong></td>
-              </tr>
-              <tr>
-                <td><strong>Lunch</strong></td>
-                <td>${lunches.filter(o => o.mealOption === 'VEGETARIAN').length}</td>
-                <td>${lunches.filter(o => o.mealOption === 'MEAT').length}</td>
-                <td><strong>${lunches.length}</strong></td>
-              </tr>
-              <tr>
-                <td><strong>Dinner</strong></td>
-                <td>${dinners.filter(o => o.mealOption === 'VEGETARIAN').length}</td>
-                <td>${dinners.filter(o => o.mealOption === 'MEAT').length}</td>
-                <td><strong>${dinners.length}</strong></td>
-              </tr>
+              ${summaryRows}
             </tbody>
           </table>
           
-          <!-- Breakfast Section -->
-          <div class="meal-section">
-            <div class="meal-title">Breakfast Orders (${breakfasts.length})</div>
-            ${breakfasts.length === 0 ? '<p style="font-size: 10px; color: #777;">No breakfast orders placed today.</p>' : `
-              <table class="order-table">
-                <thead>
-                  <tr>
-                    <th>Emp ID</th>
-                    <th>Name</th>
-                    <th>Phone</th>
-                    <th>Option</th>
-                    <th>Notes / Requests</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${breakfasts.map(o => `
+          ${renderBreakfast ? `
+            <!-- Breakfast Section -->
+            <div class="meal-section">
+              <div class="meal-title">Breakfast Orders (${breakfasts.length})</div>
+              ${breakfasts.length === 0 ? '<p style="font-size: 10px; color: #777;">No breakfast orders placed for this date.</p>' : `
+                <table class="order-table">
+                  <thead>
                     <tr>
-                      <td>${o.employeeNo}</td>
-                      <td><strong>${o.employeeName}</strong></td>
-                      <td>${o.phoneNumber}</td>
-                      <td><span class="${o.mealOption === 'VEGETARIAN' ? 'veg-pill' : 'meat-pill'}">${o.mealOption === 'VEGETARIAN' ? 'VEG' : 'MEAT'}</span></td>
-                      <td class="notes-text">${o.notes || '-'}</td>
+                      <th>Emp ID</th>
+                      <th>Name</th>
+                      <th>Phone</th>
+                      <th>Option</th>
+                      <th>Notes / Requests</th>
                     </tr>
-                  `).join('')}
-                </tbody>
-              </table>
-            `}
-          </div>
+                  </thead>
+                  <tbody>
+                    ${breakfasts.map(o => `
+                      <tr>
+                        <td>${o.employeeNo}</td>
+                        <td><strong>${o.employeeName}</strong></td>
+                        <td>${o.phoneNumber}</td>
+                        <td><span class="${o.mealOption === 'VEGETARIAN' ? 'veg-pill' : 'meat-pill'}">${o.mealOption === 'VEGETARIAN' ? 'VEG' : 'MEAT'}</span></td>
+                        <td class="notes-text">${o.notes || '-'}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              `}
+            </div>
+          ` : ''}
 
-          <!-- Lunch Section -->
-          <div class="meal-section">
-            <div class="meal-title">Lunch Orders (${lunches.length})</div>
-            ${lunches.length === 0 ? '<p style="font-size: 10px; color: #777;">No lunch orders placed today.</p>' : `
-              <table class="order-table">
-                <thead>
-                  <tr>
-                    <th>Emp ID</th>
-                    <th>Name</th>
-                    <th>Phone</th>
-                    <th>Option</th>
-                    <th>Notes / Requests</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${lunches.map(o => `
+          ${renderLunch ? `
+            <!-- Lunch Section -->
+            <div class="meal-section">
+              <div class="meal-title">Lunch Orders (${lunches.length})</div>
+              ${lunches.length === 0 ? '<p style="font-size: 10px; color: #777;">No lunch orders placed for this date.</p>' : `
+                <table class="order-table">
+                  <thead>
                     <tr>
-                      <td>${o.employeeNo}</td>
-                      <td><strong>${o.employeeName}</strong></td>
-                      <td>${o.phoneNumber}</td>
-                      <td><span class="${o.mealOption === 'VEGETARIAN' ? 'veg-pill' : 'meat-pill'}">${o.mealOption === 'VEGETARIAN' ? 'VEG' : 'MEAT'}</span></td>
-                      <td class="notes-text">${o.notes || '-'}</td>
+                      <th>Emp ID</th>
+                      <th>Name</th>
+                      <th>Phone</th>
+                      <th>Option</th>
+                      <th>Notes / Requests</th>
                     </tr>
-                  `).join('')}
-                </tbody>
-              </table>
-            `}
-          </div>
+                  </thead>
+                  <tbody>
+                    ${lunches.map(o => `
+                      <tr>
+                        <td>${o.employeeNo}</td>
+                        <td><strong>${o.employeeName}</strong></td>
+                        <td>${o.phoneNumber}</td>
+                        <td><span class="${o.mealOption === 'VEGETARIAN' ? 'veg-pill' : 'meat-pill'}">${o.mealOption === 'VEGETARIAN' ? 'VEG' : 'MEAT'}</span></td>
+                        <td class="notes-text">${o.notes || '-'}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              `}
+            </div>
+          ` : ''}
 
-          <!-- Dinner Section -->
-          <div class="meal-section">
-            <div class="meal-title">Dinner Orders (${dinners.length})</div>
-            ${dinners.length === 0 ? '<p style="font-size: 10px; color: #777;">No dinner orders placed today.</p>' : `
-              <table class="order-table">
-                <thead>
-                  <tr>
-                    <th>Emp ID</th>
-                    <th>Name</th>
-                    <th>Phone</th>
-                    <th>Option</th>
-                    <th>Notes / Requests</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${dinners.map(o => `
+          ${renderDinner ? `
+            <!-- Dinner Section -->
+            <div class="meal-section">
+              <div class="meal-title">Dinner Orders (${dinners.length})</div>
+              ${dinners.length === 0 ? '<p style="font-size: 10px; color: #777;">No dinner orders placed for this date.</p>' : `
+                <table class="order-table">
+                  <thead>
                     <tr>
-                      <td>${o.employeeNo}</td>
-                      <td><strong>${o.employeeName}</strong></td>
-                      <td>${o.phoneNumber}</td>
-                      <td><span class="${o.mealOption === 'VEGETARIAN' ? 'veg-pill' : 'meat-pill'}">${o.mealOption === 'VEGETARIAN' ? 'VEG' : 'MEAT'}</span></td>
-                      <td class="notes-text">${o.notes || '-'}</td>
+                      <th>Emp ID</th>
+                      <th>Name</th>
+                      <th>Phone</th>
+                      <th>Option</th>
+                      <th>Notes / Requests</th>
                     </tr>
-                  `).join('')}
-                </tbody>
-              </table>
-            `}
-          </div>
+                  </thead>
+                  <tbody>
+                    ${dinners.map(o => `
+                      <tr>
+                        <td>${o.employeeNo}</td>
+                        <td><strong>${o.employeeName}</strong></td>
+                        <td>${o.phoneNumber}</td>
+                        <td><span class="${o.mealOption === 'VEGETARIAN' ? 'veg-pill' : 'meat-pill'}">${o.mealOption === 'VEGETARIAN' ? 'VEG' : 'MEAT'}</span></td>
+                        <td class="notes-text">${o.notes || '-'}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              `}
+            </div>
+          ` : ''}
 
           <script>
             window.onload = function() {
@@ -517,17 +623,34 @@ export default function CanteenDashboard() {
 
       {/* Content */}
       <div className="flex-1 p-5 space-y-5 overflow-y-auto pb-32">
-        {/* Today's Overview scroll cards */}
-        <div className="space-y-2.5">
-          <div className="flex items-center justify-between">
-            <h2 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Today's Overview</h2>
+        {/* Date Selector & Overview */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] gap-4">
+            <div className="flex-1">
+              <label htmlFor="operationDate" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                Operation Date
+              </label>
+              <input 
+                id="operationDate"
+                type="date"
+                value={selectedDate}
+                onChange={(e) => { setSelectedDate(e.target.value); setSelectedOrderIds([]); }}
+                className="mt-1 w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-extrabold focus:border-blue-500 focus:bg-white focus-visible:outline-none transition-all cursor-pointer"
+              />
+            </div>
             <button 
               onClick={fetchOrders}
-              className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
-              title="Refresh Stats"
+              className="p-3 bg-slate-50 border border-slate-100 hover:bg-slate-100 text-slate-500 rounded-xl transition-colors shrink-0 flex items-center justify-center h-11 w-11 mt-5"
+              title="Refresh Orders"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-4.5 w-4.5 ${loading ? 'animate-spin' : ''}`} />
             </button>
+          </div>
+
+          <div className="flex items-center justify-between pt-1">
+            <h2 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+              Overview for {format(new Date(selectedDate + 'T00:00:00'), 'MMM dd, yyyy')}
+            </h2>
           </div>
           <div className="grid grid-cols-3 gap-3">
             {/* Breakfast Stats Card */}
