@@ -1144,7 +1144,7 @@ export default function CanteenDashboard() {
                         )}
                         {order.notes && (
                           <span className="px-2 py-0.5 bg-amber-50 border border-amber-100 text-amber-800 rounded font-bold text-[8px] flex items-center gap-0.5 truncate max-w-[155px]" title={order.notes}>
-                            🍵 {order.notes}
+                            📝 {order.notes}
                           </span>
                         )}
                       </div>
@@ -1218,9 +1218,9 @@ export default function CanteenDashboard() {
                         </p>
                         
                         {order.notes && (
-                          <div className="mt-2.5 text-xs bg-amber-50 border border-amber-100 text-amber-850 rounded-xl p-2.5 font-medium leading-relaxed">
-                            <span className="font-extrabold text-amber-700 block text-[9px] uppercase tracking-wider mb-1">Note / Snack Request</span>
-                            &ldquo;{order.notes}&rdquo;
+                          <div className="mt-2.5 text-xs bg-amber-50 border border-amber-100 text-amber-855 rounded-xl p-2.5 font-medium leading-relaxed">
+                            <span className="font-extrabold text-amber-700 block text-[9px] uppercase tracking-wider mb-1">Special Request</span>
+                            📝 &ldquo;{order.notes}&rdquo;
                           </div>
                         )}
                       </div>

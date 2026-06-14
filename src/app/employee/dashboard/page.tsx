@@ -767,7 +767,7 @@ export default function EmployeeDashboard() {
               </div>
               {activeBreakfastOrder?.notes && (
                 <div className="text-[10px] bg-slate-50 border border-slate-100 text-slate-500 rounded-lg p-2 font-medium">
-                  <span className="font-bold text-slate-700 block text-[9px] uppercase tracking-wider mb-0.5">Snack / Special Request</span>
+                  <span className="font-bold text-slate-700 block text-[9px] uppercase tracking-wider mb-0.5">Special Request</span>
                   &ldquo;{activeBreakfastOrder.notes}&rdquo;
                 </div>
               )}
@@ -837,7 +837,7 @@ export default function EmployeeDashboard() {
               </div>
               {activeLunchOrder?.notes && (
                 <div className="text-[10px] bg-slate-50 border border-slate-100 text-slate-500 rounded-lg p-2 font-medium">
-                  <span className="font-bold text-slate-700 block text-[9px] uppercase tracking-wider mb-0.5">Snack / Special Request</span>
+                  <span className="font-bold text-slate-700 block text-[9px] uppercase tracking-wider mb-0.5">Special Request</span>
                   &ldquo;{activeLunchOrder.notes}&rdquo;
                 </div>
               )}
@@ -907,7 +907,7 @@ export default function EmployeeDashboard() {
               </div>
               {activeDinnerOrder?.notes && (
                 <div className="text-[10px] bg-slate-50 border border-slate-100 text-slate-500 rounded-lg p-2 font-medium">
-                  <span className="font-bold text-slate-700 block text-[9px] uppercase tracking-wider mb-0.5">Snack / Special Request</span>
+                  <span className="font-bold text-slate-700 block text-[9px] uppercase tracking-wider mb-0.5">Special Request</span>
                   &ldquo;{activeDinnerOrder.notes}&rdquo;
                 </div>
               )}
@@ -1284,12 +1284,14 @@ export default function EmployeeDashboard() {
               return null;
             })()}
  
-            {/* Snack / Special Request Text Area */}
+            {/* Special Request Text Area */}
             <div className="mt-4 space-y-1.5 text-left">
               <div className="flex justify-between items-center">
                 <label htmlFor="orderNotes" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                  Snack / Special Request (Optional)
+                  Special Request (Optional)
                 </label>
+                {/* Tea Request button commented out as requested */}
+                {/* 
                 <button
                   type="button"
                   onClick={() => {
@@ -1302,11 +1304,12 @@ export default function EmployeeDashboard() {
                 >
                   🍵 Request Tea
                 </button>
+                */}
               </div>
               <textarea
                 id="orderNotes"
                 rows={2}
-                placeholder="e.g. Snack needed (banana, fruit pack), no spicy food..."
+                placeholder="e.g. No spicy food, vegetarian option details..."
                 value={orderNotes}
                 onChange={(e) => setOrderNotes(e.target.value)}
                 className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white focus-visible:outline-none transition-all placeholder:text-slate-400 font-medium resize-none"
