@@ -274,10 +274,11 @@ export default function EmployeeDashboard() {
   const handleSkipTimer = async (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER') => {
     if (!confirm(`Are you sure you want to skip the cancellation grace period and finalize your ${mealType.toLowerCase()} order? It cannot be cancelled after this.`)) return;
     try {
+      const targetDateStr = mealType === 'BREAKFAST' ? tomorrowOfSelectedStr : selectedBookingDate;
       const res = await fetch('/api/orders', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mealType, skipTimer: true }),
+        body: JSON.stringify({ mealType, skipTimer: true, requestDate: targetDateStr }),
       });
 
       const data = await res.json();
