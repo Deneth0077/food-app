@@ -23,6 +23,12 @@ export async function GET(request: Request) {
     const todayStr = format(new Date(), 'yyyy-MM-dd');
     const currentMonthStr = monthParam || format(new Date(), 'yyyy-MM');
 
+    // Auto-collect all pending (ORDERED) orders for today or the past
+    await Order.updateMany(
+      { requestDate: { $lte: todayStr }, status: 'ORDERED' },
+      { $set: { status: 'COLLECTED', collectedAt: new Date() } }
+    );
+
     // 1. Employee stats
     const totalEmployees = await User.countDocuments({ role: 'EMPLOYEE' });
     const activeEmployees = await User.countDocuments({ role: 'EMPLOYEE', isActive: true });

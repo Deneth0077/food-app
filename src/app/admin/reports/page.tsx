@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import * as XLSX from 'xlsx';
 
 interface Stats {
   total: number;
@@ -76,10 +77,21 @@ function ReportsPageContent() {
     dinnerCollected?: number;
     totalCost: number;
   }
+  interface DetailedOrder {
+    employeeNo: string;
+    employeeName: string;
+    mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER';
+    mealOption?: 'VEGETARIAN' | 'MEAT';
+    status: 'ORDERED' | 'COLLECTED';
+    requestDate: string;
+    notes?: string;
+    collectedAt?: string;
+  }
   interface SpendingResponse {
     month: string;
     prices: { breakfast: number; lunch: number; dinner: number };
     spendingList: SpendingItem[];
+    detailedOrders?: DetailedOrder[];
   }
   const [spendingData, setSpendingData] = useState<SpendingResponse | null>(null);
   const [spendingLoading, setSpendingLoading] = useState(false);
@@ -156,47 +168,116 @@ function ReportsPageContent() {
 
   const handleExportCSV = () => {
     if (!spendingData || spendingData.spendingList.length === 0) return;
-    
-    // Construct CSV content
-    const headers = [
-      'Employee No', 
-      'Employee Name', 
-      'Breakfast Ordered', 
-      'Breakfast Collected', 
-      'Lunch Ordered', 
-      'Lunch Collected', 
-      'Dinner Ordered', 
-      'Dinner Collected', 
-      'Total Monthly Food Price (Rs.)'
-    ];
-    const rows = filteredSpendingList.map(item => [
-      item.employeeNo,
-      `"${item.employeeName.replace(/"/g, '""')}"`,
-      item.breakfastCount,
-      item.breakfastCollected || 0,
-      item.lunchCount,
-      item.lunchCollected || 0,
-      item.dinnerCount,
-      item.dinnerCollected || 0,
-      item.totalCost
-    ]);
-    
-    // Use \uFEFF to specify UTF-8 BOM so Excel opens Sinhala/UTF-8 correctly
-    const csvContent = "\uFEFF" + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `Monthly_Food_Report_${selectedMonth}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    toast({
-      title: 'Report Exported',
-      description: `Excel-compatible report for ${selectedMonth} downloaded successfully.`,
-    });
+
+    try {
+      // Create a new workbook
+      const wb = XLSX.utils.book_new();
+
+      // 1. Prepare Summary Sheet Data
+      const summaryHeaders = [
+        'Employee No', 
+        'Employee Name', 
+        'Breakfast Ordered', 
+        'Breakfast Collected', 
+        'Lunch Ordered', 
+        'Lunch Collected', 
+        'Dinner Ordered', 
+        'Dinner Collected', 
+        'Total Monthly Food Price (Rs.)'
+      ];
+      
+      const summaryRows = [
+        summaryHeaders,
+        ...filteredSpendingList.map(item => [
+          item.employeeNo,
+          item.employeeName,
+          item.breakfastCount,
+          item.breakfastCollected || 0,
+          item.lunchCount,
+          item.lunchCollected || 0,
+          item.dinnerCount,
+          item.dinnerCollected || 0,
+          item.totalCost
+        ])
+      ];
+
+      const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
+      XLSX.utils.book_append_sheet(wb, summarySheet, 'Monthly Summary');
+
+      // 2. Prepare Individual Employee Sheets
+      filteredSpendingList.forEach(emp => {
+        // Find detailed orders for this specific employee
+        const empOrders = (spendingData.detailedOrders || []).filter(
+          (o: any) => o.employeeNo === emp.employeeNo
+        );
+
+        // Sort orders chronologically by requestDate and meal type order (BREAKFAST -> LUNCH -> DINNER)
+        const mealOrder = { BREAKFAST: 1, LUNCH: 2, DINNER: 3 };
+        empOrders.sort((a, b) => {
+          const dateComp = a.requestDate.localeCompare(b.requestDate);
+          if (dateComp !== 0) return dateComp;
+          return (mealOrder[a.mealType] || 0) - (mealOrder[b.mealType] || 0);
+        });
+
+        // Individual sheet headers
+        const empHeaders = [
+          'Date',
+          'Meal Time',
+          'Choice (Veg / Non-Veg)',
+          'Special Requests / Notes',
+          'Collection Status',
+          'Price (Rs.)'
+        ];
+
+        let calculatedTotalBill = 0;
+        const empRows = [
+          ['Employee No:', emp.employeeNo],
+          ['Employee Name:', emp.employeeName],
+          [], // empty row for spacing
+          empHeaders,
+          ...empOrders.map(o => {
+            let price = 0;
+            if (o.mealType === 'BREAKFAST') price = spendingData.prices.breakfast;
+            else if (o.mealType === 'LUNCH') price = spendingData.prices.lunch;
+            else if (o.mealType === 'DINNER') price = spendingData.prices.dinner;
+
+            calculatedTotalBill += price;
+
+            return [
+              o.requestDate,
+              o.mealType,
+              o.mealOption === 'VEGETARIAN' ? 'VEG' : o.mealOption === 'MEAT' ? 'NON-VEG' : 'Standard',
+              o.notes || '-',
+              o.status === 'COLLECTED' ? 'Collected' : 'Ordered (Pending)',
+              price
+            ];
+          }),
+          [], // empty spacing row
+          ['Total Monthly Bill', '', '', '', '', calculatedTotalBill]
+        ];
+
+        const empSheet = XLSX.utils.aoa_to_sheet(empRows);
+        
+        // Excel sheet names must be <= 31 chars and exclude specific special characters
+        const safeSheetName = emp.employeeNo.substring(0, 30).replace(/[\\/?*:\[\]]/g, '');
+        XLSX.utils.book_append_sheet(wb, empSheet, safeSheetName || `EMP_${emp.employeeNo}`);
+      });
+
+      // 3. Write workbook and download
+      XLSX.writeFile(wb, `Monthly_Meal_Logistics_Report_${selectedMonth}.xlsx`);
+
+      toast({
+        title: 'Excel Workbook Exported',
+        description: `Multi-sheet Excel report for ${selectedMonth} downloaded.`,
+      });
+    } catch (err: any) {
+      console.error('Failed to export Excel:', err);
+      toast({
+        variant: 'destructive',
+        title: 'Export Failed',
+        description: 'Could not generate multi-sheet Excel file.',
+      });
+    }
   };
 
   const todayStats = reportData?.todayStats;

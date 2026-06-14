@@ -300,6 +300,34 @@ export default function EmployeeDashboard() {
     }
   };
 
+  const handleMarkAsCollectedSelf = async (orderId: string) => {
+    if (!confirm('Are you sure you want to mark this meal as collected?')) return;
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to confirm collection');
+
+      toast({
+        title: 'Meal Collected',
+        description: 'You have marked your meal as successfully collected.',
+      });
+
+      // Refresh data
+      fetchData();
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message || 'Something went wrong',
+      });
+    }
+  };
+
   // isMealLocked is now defined dynamically above
 
   const handleCardClick = (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER') => {
@@ -756,15 +784,27 @@ export default function EmployeeDashboard() {
                     </span>
                   )}
                 </span>
-                <span className={`px-2 py-0.5 font-bold rounded-full text-[10px] ${
-                  breakfastStatus === 'Collected'
-                    ? 'bg-green-100 text-green-700'
-                    : breakfastStatus === 'Pending'
-                    ? 'bg-orange-100 text-orange-700'
-                    : 'bg-slate-100 text-slate-500'
-                }`}>
-                  {breakfastStatus}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className={`px-2 py-0.5 font-bold rounded-full text-[10px] ${
+                    breakfastStatus === 'Collected'
+                      ? 'bg-green-100 text-green-700'
+                      : breakfastStatus === 'Pending'
+                      ? 'bg-orange-100 text-orange-700'
+                      : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {breakfastStatus}
+                  </span>
+                  {breakfastStatus === 'Pending' && activeBreakfastOrder && (
+                    <button
+                      type="button"
+                      onClick={() => handleMarkAsCollectedSelf(activeBreakfastOrder._id)}
+                      className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded font-bold text-[9px] transition-all active:scale-95 flex items-center gap-0.5"
+                    >
+                      <Check className="h-2.5 w-2.5 stroke-[2.5]" />
+                      Self Collect
+                    </button>
+                  )}
+                </div>
               </div>
               {activeBreakfastOrder?.notes && (
                 <div className="text-[10px] bg-slate-50 border border-slate-100 text-slate-500 rounded-lg p-2 font-medium">
@@ -826,15 +866,27 @@ export default function EmployeeDashboard() {
                     </span>
                   )}
                 </span>
-                <span className={`px-2 py-0.5 font-bold rounded-full text-[10px] ${
-                  lunchStatus === 'Collected'
-                    ? 'bg-green-100 text-green-700'
-                    : lunchStatus === 'Pending'
-                    ? 'bg-orange-100 text-orange-700'
-                    : 'bg-slate-100 text-slate-500'
-                }`}>
-                  {lunchStatus}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className={`px-2 py-0.5 font-bold rounded-full text-[10px] ${
+                    lunchStatus === 'Collected'
+                      ? 'bg-green-100 text-green-700'
+                      : lunchStatus === 'Pending'
+                      ? 'bg-orange-100 text-orange-700'
+                      : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {lunchStatus}
+                  </span>
+                  {lunchStatus === 'Pending' && activeLunchOrder && (
+                    <button
+                      type="button"
+                      onClick={() => handleMarkAsCollectedSelf(activeLunchOrder._id)}
+                      className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded font-bold text-[9px] transition-all active:scale-95 flex items-center gap-0.5"
+                    >
+                      <Check className="h-2.5 w-2.5 stroke-[2.5]" />
+                      Self Collect
+                    </button>
+                  )}
+                </div>
               </div>
               {activeLunchOrder?.notes && (
                 <div className="text-[10px] bg-slate-50 border border-slate-100 text-slate-500 rounded-lg p-2 font-medium">
@@ -896,15 +948,27 @@ export default function EmployeeDashboard() {
                     </span>
                   )}
                 </span>
-                <span className={`px-2 py-0.5 font-bold rounded-full text-[10px] ${
-                  dinnerStatus === 'Collected'
-                    ? 'bg-green-100 text-green-700'
-                    : dinnerStatus === 'Pending'
-                    ? 'bg-orange-100 text-orange-700'
-                    : 'bg-slate-100 text-slate-500'
-                }`}>
-                  {dinnerStatus}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className={`px-2 py-0.5 font-bold rounded-full text-[10px] ${
+                    dinnerStatus === 'Collected'
+                      ? 'bg-green-100 text-green-700'
+                      : dinnerStatus === 'Pending'
+                      ? 'bg-orange-100 text-orange-700'
+                      : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {dinnerStatus}
+                  </span>
+                  {dinnerStatus === 'Pending' && activeDinnerOrder && (
+                    <button
+                      type="button"
+                      onClick={() => handleMarkAsCollectedSelf(activeDinnerOrder._id)}
+                      className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded font-bold text-[9px] transition-all active:scale-95 flex items-center gap-0.5"
+                    >
+                      <Check className="h-2.5 w-2.5 stroke-[2.5]" />
+                      Self Collect
+                    </button>
+                  )}
+                </div>
               </div>
               {activeDinnerOrder?.notes && (
                 <div className="text-[10px] bg-slate-50 border border-slate-100 text-slate-500 rounded-lg p-2 font-medium">

@@ -21,6 +21,13 @@ export async function GET(request: Request) {
     const monthParam = searchParams.get('month'); // e.g. "2026-06"
     const currentMonthStr = monthParam || format(new Date(), 'yyyy-MM');
 
+    // Auto-collect all pending (ORDERED) orders for today or the past
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    await Order.updateMany(
+      { requestDate: { $lte: todayStr }, status: 'ORDERED' },
+      { $set: { status: 'COLLECTED', collectedAt: new Date() } }
+    );
+
     // 1. Fetch current price configs
     let priceConfig = await PriceConfig.findOne();
     if (!priceConfig) {
@@ -34,7 +41,7 @@ export async function GET(request: Request) {
     // 2. Fetch all orders matching month prefix in requestDate (YYYY-MM-DD)
     const monthlyOrders = await Order.find({
       requestDate: { $regex: new RegExp(`^${currentMonthStr}`) }
-    }).select('employeeNo employeeName mealType status collectedAt');
+    }).select('employeeNo employeeName mealType status collectedAt requestDate mealOption notes');
 
     // 3. Fetch all active/existing employees to initialize map
     const employees = await User.find({ role: 'EMPLOYEE' }).select('employeeNo fullName');
@@ -118,7 +125,8 @@ export async function GET(request: Request) {
         lunch: priceConfig.lunch,
         dinner: priceConfig.dinner
       },
-      spendingList
+      spendingList,
+      detailedOrders: monthlyOrders
     });
   } catch (error: any) {
     console.error('Spending Report API Error:', error);

@@ -53,6 +53,7 @@ export default function CanteenDashboard() {
   const [prices, setPrices] = useState({ breakfast: 300, lunch: 350, dinner: 400 });
   const [savingPrices, setSavingPrices] = useState(false);
   const [fetchingPrices, setFetchingPrices] = useState(false);
+  const [scanEmployeeNo, setScanEmployeeNo] = useState('');
 
   const fetchPrices = useCallback(async () => {
     try {
@@ -172,6 +173,34 @@ export default function CanteenDashboard() {
     }
   };
 
+  const handleQuickScanCollect = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const empNo = scanEmployeeNo.trim().toUpperCase();
+    if (!empNo) return;
+
+    // Find a pending (ORDERED) order for this employee on the selected date
+    const targetOrder = orders.find(o => 
+      o.employeeNo.toUpperCase() === empNo && 
+      o.status === 'ORDERED'
+    );
+
+    if (!targetOrder) {
+      toast({
+        variant: 'destructive',
+        title: 'Not Found / Already Collected',
+        description: `No pending meal request found for employee "${empNo}" today.`,
+      });
+      setScanEmployeeNo('');
+      return;
+    }
+
+    // Clear input immediately to prepare for next scan
+    setScanEmployeeNo('');
+    
+    // Call the collection handler
+    await handleMarkAsCollected(targetOrder._id);
+  };
+
   const handleBulkMarkAsCollected = async () => {
     if (selectedOrderIds.length === 0) return;
     setUpdatingOrderId('BULK');
@@ -285,58 +314,9 @@ export default function CanteenDashboard() {
     const lunches = orders.filter(o => o.mealType === 'LUNCH');
     const dinners = orders.filter(o => o.mealType === 'DINNER');
 
-    const isBreakfastPassed = isMealDeadlinePassed('BREAKFAST', selectedDate);
-    const isLunchPassed = isMealDeadlinePassed('LUNCH', selectedDate);
-    const isDinnerPassed = isMealDeadlinePassed('DINNER', selectedDate);
-
-    if (selectedMealFilter === 'BREAKFAST' && !isBreakfastPassed) {
-      toast({
-        variant: 'destructive',
-        title: 'Report Unavailable',
-        description: 'Breakfast booking is still open. You can download the report after 8:00 PM today.',
-      });
-      return;
-    }
-    if (selectedMealFilter === 'LUNCH' && !isLunchPassed) {
-      toast({
-        variant: 'destructive',
-        title: 'Report Unavailable',
-        description: 'Lunch booking is still open. You can download the report after 9:00 AM today.',
-      });
-      return;
-    }
-    if (selectedMealFilter === 'DINNER' && !isDinnerPassed) {
-      toast({
-        variant: 'destructive',
-        title: 'Report Unavailable',
-        description: 'Dinner booking is still open. You can download the report after 5:00 PM today.',
-      });
-      return;
-    }
-
-    if (selectedMealFilter === 'ALL' && !isBreakfastPassed && !isLunchPassed && !isDinnerPassed) {
-      toast({
-        variant: 'destructive',
-        title: 'No Completed Reports',
-        description: 'All bookings for this date are still open. Report is not ready.',
-      });
-      return;
-    }
-
-    const renderBreakfast = selectedMealFilter === 'ALL' ? isBreakfastPassed : selectedMealFilter === 'BREAKFAST';
-    const renderLunch = selectedMealFilter === 'ALL' ? isLunchPassed : selectedMealFilter === 'LUNCH';
-    const renderDinner = selectedMealFilter === 'ALL' ? isDinnerPassed : selectedMealFilter === 'DINNER';
-
-    if (selectedMealFilter === 'ALL' && (!isBreakfastPassed || !isLunchPassed || !isDinnerPassed)) {
-      const skipped = [];
-      if (!isBreakfastPassed) skipped.push('Breakfast');
-      if (!isLunchPassed) skipped.push('Lunch');
-      if (!isDinnerPassed) skipped.push('Dinner');
-      toast({
-        title: 'Report Generated',
-        description: `PDF generated for completed meals. Open meals excluded: ${skipped.join(', ')}.`,
-      });
-    }
+    const renderBreakfast = selectedMealFilter === 'ALL' || selectedMealFilter === 'BREAKFAST';
+    const renderLunch = selectedMealFilter === 'ALL' || selectedMealFilter === 'LUNCH';
+    const renderDinner = selectedMealFilter === 'ALL' || selectedMealFilter === 'DINNER';
     
     let summaryRows = '';
     if (renderBreakfast) {
@@ -486,7 +466,7 @@ export default function CanteenDashboard() {
           ${renderBreakfast ? `
             <!-- Breakfast Section -->
             <div class="meal-section">
-              <div class="meal-title">Breakfast Orders (${breakfasts.length})</div>
+              <div class="meal-title">Breakfast Orders for ${selectedDate} (${breakfasts.length})</div>
               ${breakfasts.length === 0 ? '<p style="font-size: 10px; color: #777;">No breakfast orders placed for this date.</p>' : `
                 <table class="order-table">
                   <thead>
@@ -494,6 +474,7 @@ export default function CanteenDashboard() {
                       <th>Emp ID</th>
                       <th>Name</th>
                       <th>Phone</th>
+                      <th>Meal Date</th>
                       <th>Option</th>
                       <th>Notes / Requests</th>
                     </tr>
@@ -504,6 +485,7 @@ export default function CanteenDashboard() {
                         <td>${o.employeeNo}</td>
                         <td><strong>${o.employeeName}</strong></td>
                         <td>${o.phoneNumber}</td>
+                        <td><strong>${o.requestDate}</strong></td>
                         <td><span class="${o.mealOption === 'VEGETARIAN' ? 'veg-pill' : 'meat-pill'}">${o.mealOption === 'VEGETARIAN' ? 'VEG' : 'NON-VEG'}</span></td>
                         <td class="notes-text">${o.notes || '-'}</td>
                       </tr>
@@ -517,7 +499,7 @@ export default function CanteenDashboard() {
           ${renderLunch ? `
             <!-- Lunch Section -->
             <div class="meal-section">
-              <div class="meal-title">Lunch Orders (${lunches.length})</div>
+              <div class="meal-title">Lunch Orders for ${selectedDate} (${lunches.length})</div>
               ${lunches.length === 0 ? '<p style="font-size: 10px; color: #777;">No lunch orders placed for this date.</p>' : `
                 <table class="order-table">
                   <thead>
@@ -525,6 +507,7 @@ export default function CanteenDashboard() {
                       <th>Emp ID</th>
                       <th>Name</th>
                       <th>Phone</th>
+                      <th>Meal Date</th>
                       <th>Option</th>
                       <th>Notes / Requests</th>
                     </tr>
@@ -535,6 +518,7 @@ export default function CanteenDashboard() {
                         <td>${o.employeeNo}</td>
                         <td><strong>${o.employeeName}</strong></td>
                         <td>${o.phoneNumber}</td>
+                        <td><strong>${o.requestDate}</strong></td>
                         <td><span class="${o.mealOption === 'VEGETARIAN' ? 'veg-pill' : 'meat-pill'}">${o.mealOption === 'VEGETARIAN' ? 'VEG' : 'NON-VEG'}</span></td>
                         <td class="notes-text">${o.notes || '-'}</td>
                       </tr>
@@ -548,7 +532,7 @@ export default function CanteenDashboard() {
           ${renderDinner ? `
             <!-- Dinner Section -->
             <div class="meal-section">
-              <div class="meal-title">Dinner Orders (${dinners.length})</div>
+              <div class="meal-title">Dinner Orders for ${selectedDate} (${dinners.length})</div>
               ${dinners.length === 0 ? '<p style="font-size: 10px; color: #777;">No dinner orders placed for this date.</p>' : `
                 <table class="order-table">
                   <thead>
@@ -556,6 +540,7 @@ export default function CanteenDashboard() {
                       <th>Emp ID</th>
                       <th>Name</th>
                       <th>Phone</th>
+                      <th>Meal Date</th>
                       <th>Option</th>
                       <th>Notes / Requests</th>
                     </tr>
@@ -566,6 +551,7 @@ export default function CanteenDashboard() {
                         <td>${o.employeeNo}</td>
                         <td><strong>${o.employeeName}</strong></td>
                         <td>${o.phoneNumber}</td>
+                        <td><strong>${o.requestDate}</strong></td>
                         <td><span class="${o.mealOption === 'VEGETARIAN' ? 'veg-pill' : 'meat-pill'}">${o.mealOption === 'VEGETARIAN' ? 'VEG' : 'NON-VEG'}</span></td>
                         <td class="notes-text">${o.notes || '-'}</td>
                       </tr>
@@ -802,6 +788,30 @@ export default function CanteenDashboard() {
             >
               <RefreshCw className={`h-4.5 w-4.5 ${loading ? 'animate-spin' : ''}`} />
             </button>
+          </div>
+
+          {/* Quick Scan / Key-In Bar */}
+          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] space-y-2">
+            <label htmlFor="scanEmployeeInput" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+              Barcode Scan / Key-In Employee ID (Auto-Collect)
+            </label>
+            <form onSubmit={handleQuickScanCollect} className="flex gap-2">
+              <input
+                id="scanEmployeeInput"
+                type="text"
+                placeholder="Scan badge barcode or type employee ID (e.g. EMP004) & press Enter..."
+                value={scanEmployeeNo}
+                onChange={(e) => setScanEmployeeNo(e.target.value)}
+                className="flex-1 h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus-visible:outline-none focus:border-blue-500 focus:bg-white transition-all placeholder:text-slate-400"
+              />
+              <button
+                type="submit"
+                disabled={!scanEmployeeNo.trim()}
+                className="h-11 px-5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-100 disabled:text-slate-400 text-white font-bold rounded-xl text-xs shadow-sm transition-all active:scale-95 flex items-center justify-center gap-1.5"
+              >
+                Collect
+              </button>
+            </form>
           </div>
 
           <div className="flex items-center justify-between pt-1">

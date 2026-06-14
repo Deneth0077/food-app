@@ -19,6 +19,13 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Auto-collect all pending (ORDERED) orders for today or the past
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    await Order.updateMany(
+      { requestDate: { $lte: todayStr }, status: 'ORDERED' },
+      { $set: { status: 'COLLECTED', collectedAt: new Date() } }
+    );
+
     const { searchParams } = new URL(request.url);
     const role = user.role;
 
@@ -29,7 +36,6 @@ export async function GET(request: Request) {
     }
 
     // ADMIN or CANTEEN can filter and search all orders
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
     const targetUserId = searchParams.get('userId');
     const requestDate = searchParams.get('requestDate') || (targetUserId ? 'all' : todayStr);
     const mealType = searchParams.get('mealType');
@@ -202,7 +208,7 @@ export async function POST(request: Request) {
   }
 }
 
-// PATCH: Mark meal request(s) as collected (Canteen or Admin)
+// PATCH: Mark meal request(s) as collected (Canteen, Admin or Employee self-collect)
 export async function PATCH(request: Request) {
   try {
     await dbConnect();
@@ -210,10 +216,6 @@ export async function PATCH(request: Request) {
 
     if (!authUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    if (authUser.role !== 'CANTEEN' && authUser.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     const body = await request.json();
@@ -224,6 +226,23 @@ export async function PATCH(request: Request) {
     }
 
     const targetIds = orderId ? [orderId] : orderIds;
+
+    // If role is employee, enforce self-collection constraint (own orders only)
+    if (authUser.role === 'EMPLOYEE') {
+      const result = await Order.updateMany(
+        { _id: { $in: targetIds }, userId: authUser.userId, status: 'ORDERED' },
+        { $set: { status: 'COLLECTED', collectedAt: new Date() } }
+      );
+
+      return NextResponse.json({ 
+        message: `${result.modifiedCount} order(s) successfully marked as collected.`,
+        modifiedCount: result.modifiedCount
+      });
+    }
+
+    if (authUser.role !== 'CANTEEN' && authUser.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
 
     const result = await Order.updateMany(
       { _id: { $in: targetIds }, status: 'ORDERED' },

@@ -18,10 +18,12 @@ import {
   Clock,
   Check,
   Coffee,
-  Moon
+  Moon,
+  Download
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format, formatDistanceToNow } from 'date-fns';
+import * as XLSX from 'xlsx';
 
 interface ReportData {
   employeeStats: { total: number; active: number };
@@ -68,6 +70,133 @@ export default function AdminDashboard() {
   
   const [data, setData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
+
+  const handleDownloadExcel = async () => {
+    try {
+      setExporting(true);
+      const currentMonthStr = format(new Date(), 'yyyy-MM');
+      const res = await fetch(`/api/admin/reports/spending?month=${currentMonthStr}`);
+      if (!res.ok) {
+        throw new Error('Failed to fetch spending report data');
+      }
+      const spendingData = await res.json();
+      
+      if (!spendingData || !spendingData.spendingList || spendingData.spendingList.length === 0) {
+        toast({
+          variant: 'destructive',
+          title: 'Export Failed',
+          description: 'No employee spending records found for this month.',
+        });
+        return;
+      }
+
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+
+      // 1. Prepare Summary Sheet
+      const summaryHeaders = [
+        'Employee No', 
+        'Employee Name', 
+        'Breakfast Ordered', 
+        'Breakfast Collected', 
+        'Lunch Ordered', 
+        'Lunch Collected', 
+        'Dinner Ordered', 
+        'Dinner Collected', 
+        'Total Monthly Food Price (Rs.)'
+      ];
+      
+      const summaryRows = [
+        summaryHeaders,
+        ...spendingData.spendingList.map((item: any) => [
+          item.employeeNo,
+          item.employeeName,
+          item.breakfastCount,
+          item.breakfastCollected || 0,
+          item.lunchCount,
+          item.lunchCollected || 0,
+          item.dinnerCount,
+          item.dinnerCollected || 0,
+          item.totalCost
+        ])
+      ];
+
+      const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
+      XLSX.utils.book_append_sheet(wb, summarySheet, 'Monthly Summary');
+
+      // 2. Prepare Individual Employee Sheets
+      spendingData.spendingList.forEach((emp: any) => {
+        const empOrders = (spendingData.detailedOrders || []).filter(
+          (o: any) => o.employeeNo === emp.employeeNo
+        );
+
+        const mealOrder = { BREAKFAST: 1, LUNCH: 2, DINNER: 3 };
+        empOrders.sort((a: any, b: any) => {
+          const dateComp = a.requestDate.localeCompare(b.requestDate);
+          if (dateComp !== 0) return dateComp;
+          return (mealOrder[a.mealType as keyof typeof mealOrder] || 0) - (mealOrder[b.mealType as keyof typeof mealOrder] || 0);
+        });
+
+        const empHeaders = [
+          'Date',
+          'Meal Time',
+          'Choice (Veg / Non-Veg)',
+          'Special Requests / Notes',
+          'Collection Status',
+          'Price (Rs.)'
+        ];
+
+        let calculatedTotalBill = 0;
+        const empRows = [
+          ['Employee No:', emp.employeeNo],
+          ['Employee Name:', emp.employeeName],
+          [],
+          empHeaders,
+          ...empOrders.map((o: any) => {
+            let price = 0;
+            if (o.mealType === 'BREAKFAST') price = spendingData.prices.breakfast;
+            else if (o.mealType === 'LUNCH') price = spendingData.prices.lunch;
+            else if (o.mealType === 'DINNER') price = spendingData.prices.dinner;
+
+            calculatedTotalBill += price;
+
+            return [
+              o.requestDate,
+              o.mealType,
+              o.mealOption === 'VEGETARIAN' ? 'VEG' : o.mealOption === 'MEAT' ? 'NON-VEG' : 'Standard',
+              o.notes || '-',
+              o.status === 'COLLECTED' ? 'Collected' : 'Ordered (Pending)',
+              price
+            ];
+          }),
+          [],
+          ['Total Monthly Bill', '', '', '', '', calculatedTotalBill]
+        ];
+
+        const empSheet = XLSX.utils.aoa_to_sheet(empRows);
+        const safeSheetName = emp.employeeNo.substring(0, 30).replace(/[\\/?*:\[\]]/g, '');
+        XLSX.utils.book_append_sheet(wb, empSheet, safeSheetName || `EMP_${emp.employeeNo}`);
+      });
+
+      // Write and download
+      XLSX.writeFile(wb, `Monthly_Meal_Logistics_Report_${currentMonthStr}.xlsx`);
+
+      toast({
+        title: 'Excel Workbook Exported',
+        description: `Multi-sheet Excel report for ${currentMonthStr} downloaded successfully.`,
+      });
+    } catch (err: any) {
+      console.error('Failed to export Excel from dashboard:', err);
+      toast({
+        variant: 'destructive',
+        title: 'Export Failed',
+        description: err.message || 'Could not generate multi-sheet Excel file.',
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   // Notification states
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -507,20 +636,35 @@ export default function AdminDashboard() {
         <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] space-y-3">
           <h3 className="text-sm font-bold text-slate-800">Reports Portal</h3>
           
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-2.5">
+            <div className="flex gap-3">
+              <button
+                onClick={() => router.push('/admin/reports?tab=daily')}
+                className="flex-1 h-11 bg-blue-50 border border-blue-100 hover:bg-blue-100/50 text-blue-700 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors"
+              >
+                <FileText className="h-4 w-4" />
+                Daily Summary
+              </button>
+              <button
+                onClick={() => router.push('/admin/reports?tab=monthly')}
+                className="flex-1 h-11 bg-blue-50 border border-blue-100 hover:bg-blue-100/50 text-blue-700 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors"
+              >
+                <FileText className="h-4 w-4" />
+                Monthly Summary
+              </button>
+            </div>
+
             <button
-              onClick={() => router.push('/admin/reports?tab=daily')}
-              className="flex-1 h-11 bg-blue-50 border border-blue-100 hover:bg-blue-100/50 text-blue-700 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors"
+              onClick={handleDownloadExcel}
+              disabled={exporting}
+              className="w-full h-11 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-100 disabled:text-slate-400 text-white font-extrabold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all active:scale-[0.99] shadow-sm"
             >
-              <FileText className="h-4 w-4" />
-              Daily Summary
-            </button>
-            <button
-              onClick={() => router.push('/admin/reports?tab=monthly')}
-              className="flex-1 h-11 bg-blue-50 border border-blue-100 hover:bg-blue-100/50 text-blue-700 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors"
-            >
-              <FileText className="h-4 w-4" />
-              Monthly Summary
+              {exporting ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              Download Monthly Excel Report
             </button>
           </div>
         </div>
