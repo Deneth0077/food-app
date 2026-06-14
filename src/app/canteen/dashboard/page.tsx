@@ -650,6 +650,50 @@ export default function CanteenDashboard() {
     runHtml2Pdf();
   };
 
+  const handleCollectAllAndDownloadPDF = async () => {
+    const pendingFiltered = filteredOrders.filter(o => o.status === 'ORDERED');
+    
+    if (pendingFiltered.length > 0) {
+      const pendingIds = pendingFiltered.map(o => o._id);
+      setUpdatingOrderId('BULK');
+      try {
+        const res = await fetch('/api/orders', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderIds: pendingIds }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to update orders');
+
+        const now = new Date().toISOString();
+        setOrders(prev => prev.map(o => 
+          pendingIds.includes(o._id) 
+            ? { ...o, status: 'COLLECTED', collectedAt: now } 
+            : o
+        ));
+        setSelectedOrderIds([]);
+        
+        toast({
+          title: 'Auto-Collection Completed',
+          description: `Successfully collected all ${pendingFiltered.length} active orders before download.`,
+        });
+      } catch (err: any) {
+        toast({
+          variant: 'destructive',
+          title: 'Auto-Collection Failed',
+          description: err.message || 'Something went wrong',
+        });
+        setUpdatingOrderId(null);
+        return;
+      } finally {
+        setUpdatingOrderId(null);
+      }
+    }
+    
+    handleDownloadPDF();
+  };
+
   const handleLogout = async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
@@ -842,23 +886,23 @@ export default function CanteenDashboard() {
             
             <div className="flex gap-2.5">
               <button
-                onClick={handleDownloadPDF}
-                className="flex-1 h-10 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-[10px] font-extrabold tracking-wide flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95"
-              >
-                <Download className="h-3.5 w-3.5" />
-                Download PDF
-              </button>
-              <button
-                onClick={handleCollectAllListed}
-                disabled={filteredOrders.filter(o => o.status === 'ORDERED').length === 0 || updatingOrderId === 'BULK'}
-                className="flex-1 h-10 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-100 disabled:text-slate-400 disabled:border-slate-200 text-white rounded-xl text-[10px] font-extrabold tracking-wide flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95 border border-blue-500/10"
+                onClick={handleCollectAllAndDownloadPDF}
+                disabled={updatingOrderId === 'BULK'}
+                className="flex-1 h-10 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-100 disabled:text-slate-400 disabled:border-slate-200 text-white rounded-xl text-[10px] font-extrabold tracking-wide flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95"
               >
                 {updatingOrderId === 'BULK' ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
                   <CheckCircle className="h-3.5 w-3.5 stroke-[2.25]" />
                 )}
-                Collect All Listed
+                Auto Collect &amp; Download PDF
+              </button>
+              <button
+                onClick={handleDownloadPDF}
+                className="flex-1 h-10 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-[10px] font-extrabold tracking-wide flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Download PDF Only
               </button>
               <button 
                 onClick={() => setShowPricesModal(true)}

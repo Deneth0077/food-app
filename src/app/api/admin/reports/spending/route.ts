@@ -34,18 +34,21 @@ export async function GET(request: Request) {
     // 2. Fetch all orders matching month prefix in requestDate (YYYY-MM-DD)
     const monthlyOrders = await Order.find({
       requestDate: { $regex: new RegExp(`^${currentMonthStr}`) }
-    });
+    }).select('employeeNo employeeName mealType status collectedAt');
 
     // 3. Fetch all active/existing employees to initialize map
-    const employees = await User.find({ role: 'EMPLOYEE' });
+    const employees = await User.find({ role: 'EMPLOYEE' }).select('employeeNo fullName');
     
     const employeeMap: {
       [key: string]: {
         employeeNo: string;
         employeeName: string;
         breakfastCount: number;
+        breakfastCollected: number;
         lunchCount: number;
+        lunchCollected: number;
         dinnerCount: number;
+        dinnerCollected: number;
       };
     } = {};
 
@@ -54,8 +57,11 @@ export async function GET(request: Request) {
         employeeNo: emp.employeeNo,
         employeeName: emp.fullName,
         breakfastCount: 0,
+        breakfastCollected: 0,
         lunchCount: 0,
-        dinnerCount: 0
+        lunchCollected: 0,
+        dinnerCount: 0,
+        dinnerCollected: 0
       };
     });
 
@@ -67,17 +73,25 @@ export async function GET(request: Request) {
           employeeNo: o.employeeNo,
           employeeName: o.employeeName,
           breakfastCount: 0,
+          breakfastCollected: 0,
           lunchCount: 0,
-          dinnerCount: 0
+          lunchCollected: 0,
+          dinnerCount: 0,
+          dinnerCollected: 0
         };
       }
 
+      const isCollected = o.status === 'COLLECTED';
+
       if (o.mealType === 'BREAKFAST') {
         employeeMap[empNo].breakfastCount++;
+        if (isCollected) employeeMap[empNo].breakfastCollected++;
       } else if (o.mealType === 'LUNCH') {
         employeeMap[empNo].lunchCount++;
+        if (isCollected) employeeMap[empNo].lunchCollected++;
       } else if (o.mealType === 'DINNER') {
         employeeMap[empNo].dinnerCount++;
+        if (isCollected) employeeMap[empNo].dinnerCollected++;
       }
     });
 

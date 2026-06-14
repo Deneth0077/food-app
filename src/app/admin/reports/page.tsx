@@ -69,8 +69,11 @@ function ReportsPageContent() {
     employeeNo: string;
     employeeName: string;
     breakfastCount: number;
+    breakfastCollected?: number;
     lunchCount: number;
+    lunchCollected?: number;
     dinnerCount: number;
+    dinnerCollected?: number;
     totalCost: number;
   }
   interface SpendingResponse {
@@ -155,30 +158,44 @@ function ReportsPageContent() {
     if (!spendingData || spendingData.spendingList.length === 0) return;
     
     // Construct CSV content
-    const headers = ['Employee No', 'Name', 'Breakfast Count', 'Lunch Count', 'Dinner Count', 'Total Spending (Rs.)'];
+    const headers = [
+      'Employee No', 
+      'Employee Name', 
+      'Breakfast Ordered', 
+      'Breakfast Collected', 
+      'Lunch Ordered', 
+      'Lunch Collected', 
+      'Dinner Ordered', 
+      'Dinner Collected', 
+      'Total Monthly Food Price (Rs.)'
+    ];
     const rows = filteredSpendingList.map(item => [
       item.employeeNo,
       `"${item.employeeName.replace(/"/g, '""')}"`,
       item.breakfastCount,
+      item.breakfastCollected || 0,
       item.lunchCount,
+      item.lunchCollected || 0,
       item.dinnerCount,
+      item.dinnerCollected || 0,
       item.totalCost
     ]);
     
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    // Use \uFEFF to specify UTF-8 BOM so Excel opens Sinhala/UTF-8 correctly
+    const csvContent = "\uFEFF" + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
     
-    const encodedUri = encodeURI(csvContent);
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Meal_Spending_Report_${selectedMonth}.csv`);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Monthly_Food_Report_${selectedMonth}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     
     toast({
       title: 'Report Exported',
-      description: `CSV report for ${selectedMonth} downloaded successfully.`,
+      description: `Excel-compatible report for ${selectedMonth} downloaded successfully.`,
     });
   };
 
@@ -487,7 +504,7 @@ function ReportsPageContent() {
                 className="h-10 px-4 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-100 disabled:text-slate-400 disabled:border-slate-200 text-white rounded-xl text-[10px] font-extrabold tracking-wide flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95 shrink-0"
               >
                 <Download className="h-3.5 w-3.5" />
-                Export CSV
+                Download Excel Report
               </button>
             </div>
 
@@ -527,9 +544,18 @@ function ReportsPageContent() {
                           <td className="py-3 px-3 font-semibold text-slate-800 max-w-[150px] truncate" title={item.employeeName}>
                             {item.employeeName}
                           </td>
-                          <td className="py-3 px-2 text-center font-bold text-slate-600">{item.breakfastCount}</td>
-                          <td className="py-3 px-2 text-center font-bold text-slate-600">{item.lunchCount}</td>
-                          <td className="py-3 px-2 text-center font-bold text-slate-600">{item.dinnerCount}</td>
+                          <td className="py-3 px-2 text-center">
+                            <span className="font-bold text-slate-700 block">{item.breakfastCount}</span>
+                            <span className="text-[9px] text-green-600 font-bold block leading-none mt-0.5">Coll: {item.breakfastCollected || 0}</span>
+                          </td>
+                          <td className="py-3 px-2 text-center">
+                            <span className="font-bold text-slate-700 block">{item.lunchCount}</span>
+                            <span className="text-[9px] text-green-600 font-bold block leading-none mt-0.5">Coll: {item.lunchCollected || 0}</span>
+                          </td>
+                          <td className="py-3 px-2 text-center">
+                            <span className="font-bold text-slate-700 block">{item.dinnerCount}</span>
+                            <span className="text-[9px] text-green-600 font-bold block leading-none mt-0.5">Coll: {item.dinnerCollected || 0}</span>
+                          </td>
                           <td className="py-3 px-4 text-right font-extrabold text-blue-600 text-[13px]">
                             Rs. {item.totalCost.toLocaleString()}
                           </td>
