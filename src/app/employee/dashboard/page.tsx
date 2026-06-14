@@ -38,6 +38,7 @@ interface Order {
   status: 'ORDERED' | 'COLLECTED';
   requestDate: string;
   requestedAt: string;
+  collectedAt?: string;
   notes?: string;
 }
 
@@ -62,6 +63,8 @@ export default function EmployeeDashboard() {
   const tomorrowStr = format(tomorrow, 'yyyy-MM-dd');
 
   const [selectedBookingDate, setSelectedBookingDate] = useState<string>(todayStr);
+  const [activeTab, setActiveTab] = useState<'ORDER' | 'HISTORY'>('ORDER');
+  const [prices, setPrices] = useState({ breakfast: 300, lunch: 350, dinner: 400 });
 
   const selectedDateObj = new Date(selectedBookingDate + 'T00:00:00');
   const tomorrowOfSelectedObj = new Date(selectedDateObj.getTime());
@@ -118,6 +121,19 @@ export default function EmployeeDashboard() {
       if (ordersRes.ok) {
         const ordersData = await ordersRes.json();
         setOrders(ordersData.orders || []);
+      }
+
+      // Fetch active prices
+      const pricesRes = await fetch('/api/canteen/prices');
+      if (pricesRes.ok) {
+        const pricesData = await pricesRes.json();
+        if (pricesData.prices) {
+          setPrices({
+            breakfast: pricesData.prices.breakfast,
+            lunch: pricesData.prices.lunch,
+            dinner: pricesData.prices.dinner
+          });
+        }
       }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -476,7 +492,35 @@ export default function EmployeeDashboard() {
           </div>
         </div>
 
-        {/* Date Selector Toolbar */}
+        {/* Portal Tabs */}
+        <div className="bg-white p-1 rounded-xl border border-slate-200/60 shadow-sm flex gap-1">
+          <button
+            type="button"
+            onClick={() => setActiveTab('ORDER')}
+            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
+              activeTab === 'ORDER' 
+                ? 'bg-blue-600 text-white shadow-sm' 
+                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            Order Meals
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('HISTORY')}
+            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
+              activeTab === 'HISTORY' 
+                ? 'bg-blue-600 text-white shadow-sm' 
+                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            Collection History
+          </button>
+        </div>
+
+        {activeTab === 'ORDER' ? (
+          <>
+            {/* Date Selector Toolbar */}
         <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
@@ -554,7 +598,7 @@ export default function EmployeeDashboard() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h4 className="text-sm font-bold text-slate-855">Breakfast</h4>
+                    <h4 className="text-sm font-bold text-slate-855">Breakfast <span className="text-xs font-normal text-slate-500">(Rs. {prices.breakfast})</span></h4>
                     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700">
                       {tomorrowOfSelectedStr === tomorrowStr 
                         ? `For Tomorrow (${format(tomorrowOfSelectedObj, 'MMM dd')})` 
@@ -603,7 +647,7 @@ export default function EmployeeDashboard() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h4 className="text-sm font-bold text-slate-855">Lunch</h4>
+                    <h4 className="text-sm font-bold text-slate-855">Lunch <span className="text-xs font-normal text-slate-500">(Rs. {prices.lunch})</span></h4>
                     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700">
                       {selectedBookingDate === todayStr 
                         ? `For Today (${format(selectedDateObj, 'MMM dd')})` 
@@ -652,7 +696,7 @@ export default function EmployeeDashboard() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h4 className="text-sm font-bold text-slate-855">Dinner</h4>
+                    <h4 className="text-sm font-bold text-slate-855">Dinner <span className="text-xs font-normal text-slate-500">(Rs. {prices.dinner})</span></h4>
                     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700">
                       {selectedBookingDate === todayStr 
                         ? `For Today (${format(selectedDateObj, 'MMM dd')})` 
@@ -985,7 +1029,154 @@ export default function EmployeeDashboard() {
             )}
           </div>
         </div>
+      </>
+    ) : (
+      <div className="space-y-4 animate-in fade-in duration-300">
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-2 gap-3.5">
+          {/* Total Collected Card */}
+          <div className="bg-gradient-to-br from-emerald-600 to-emerald-500 rounded-2xl p-4 text-white shadow-md relative overflow-hidden">
+            <div className="absolute right-[-10px] bottom-[-10px] opacity-15">
+              <Check className="h-24 w-24 stroke-[3]" />
+            </div>
+            <p className="text-[10px] font-bold text-emerald-100 uppercase tracking-widest">
+              Total Collected
+            </p>
+            <h3 className="text-3xl font-extrabold mt-1 tracking-tight">
+              {orders.filter(o => o.status === 'COLLECTED').length}
+            </h3>
+            <p className="text-[9px] text-emerald-50/80 mt-1.5 font-semibold leading-none">
+              Meals successfully taken
+            </p>
+          </div>
+
+          {/* Collection Days Card */}
+          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] relative overflow-hidden">
+            <div className="absolute right-[-10px] bottom-[-10px] opacity-5 text-slate-900">
+              <Calendar className="h-24 w-24 stroke-[2]" />
+            </div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              Collection Days
+            </p>
+            <h3 className="text-3xl font-extrabold mt-1 tracking-tight text-slate-800">
+              {new Set(orders.filter(o => o.status === 'COLLECTED').map(o => o.requestDate)).size}
+            </h3>
+            <p className="text-[9px] text-slate-400 mt-1.5 font-semibold leading-none">
+              Unique days with meals
+            </p>
+          </div>
+        </div>
+
+        {/* Meal Breakdown Grid */}
+        <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] space-y-3">
+          <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+            Meal Breakdown
+          </h3>
+          <div className="grid grid-cols-3 gap-2">
+            {/* Breakfast Breakdown */}
+            <div className="bg-amber-50/60 rounded-xl p-3 border border-amber-100/40 text-center">
+              <Coffee className="h-4.5 w-4.5 text-amber-500 mx-auto mb-1 stroke-[2.25]" />
+              <p className="text-[10px] font-bold text-slate-500">Breakfast</p>
+              <h4 className="text-lg font-black text-slate-800 mt-0.5">
+                {orders.filter(o => o.status === 'COLLECTED' && o.mealType === 'BREAKFAST').length}
+              </h4>
+            </div>
+
+            {/* Lunch Breakdown */}
+            <div className="bg-blue-50/60 rounded-xl p-3 border border-blue-100/40 text-center">
+              <Utensils className="h-4.5 w-4.5 text-blue-500 mx-auto mb-1 stroke-[2.25]" />
+              <p className="text-[10px] font-bold text-slate-500">Lunch</p>
+              <h4 className="text-lg font-black text-slate-800 mt-0.5">
+                {orders.filter(o => o.status === 'COLLECTED' && o.mealType === 'LUNCH').length}
+              </h4>
+            </div>
+
+            {/* Dinner Breakdown */}
+            <div className="bg-indigo-50/60 rounded-xl p-3 border border-indigo-100/40 text-center">
+              <Moon className="h-4.5 w-4.5 text-indigo-500 mx-auto mb-1 stroke-[2.25]" />
+              <p className="text-[10px] font-bold text-slate-500">Dinner</p>
+              <h4 className="text-lg font-black text-slate-800 mt-0.5">
+                {orders.filter(o => o.status === 'COLLECTED' && o.mealType === 'DINNER').length}
+              </h4>
+            </div>
+          </div>
+        </div>
+
+        {/* Detailed Collection Log */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-bold text-slate-800">Collection Logs</h3>
+          <div className="space-y-2.5">
+            {orders.filter(o => o.status === 'COLLECTED').length === 0 ? (
+              <div className="bg-white rounded-2xl p-6 text-center border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+                <CircleAlert className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+                <p className="text-xs text-slate-400 font-semibold">No collected meals history found.</p>
+              </div>
+            ) : (
+              orders
+                .filter(o => o.status === 'COLLECTED')
+                .sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime())
+                .map((item) => (
+                  <div 
+                    key={item._id} 
+                    className="bg-white rounded-xl p-3.5 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col gap-2"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${
+                          item.mealType === 'BREAKFAST' 
+                            ? 'bg-amber-50 text-amber-500'
+                            : item.mealType === 'LUNCH'
+                            ? 'bg-blue-50 text-blue-600'
+                            : 'bg-indigo-50 text-indigo-500'
+                        }`}>
+                          {item.mealType === 'BREAKFAST' ? (
+                            <Coffee className="h-4 w-4" />
+                          ) : item.mealType === 'LUNCH' ? (
+                            <Utensils className="h-4 w-4" />
+                          ) : (
+                            <Moon className="h-4 w-4" />
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-800 capitalize">
+                            {item.mealType.toLowerCase()}
+                          </h4>
+                          <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
+                            For Date: {format(new Date(item.requestDate + 'T00:00:00'), 'EEE, MMM dd, yyyy')}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-green-50 text-green-700 border border-green-100 flex items-center gap-0.5">
+                          <Check className="h-2.5 w-2.5 stroke-[3]" /> Collected
+                        </span>
+                        {item.mealOption && (
+                          <span className={`text-[8px] font-extrabold px-1.5 py-0.5 rounded ${
+                            item.mealOption === 'VEGETARIAN' 
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
+                              : 'bg-rose-50 text-rose-700 border border-rose-100'
+                          }`}>
+                            {item.mealOption === 'VEGETARIAN' ? 'Veg' : 'Non-Veg'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {item.collectedAt && (
+                      <div className="text-[9px] text-slate-400 font-bold bg-slate-50 border border-slate-100/50 rounded-lg p-1.5 flex items-center justify-between">
+                        <span>COLLECTION TIME</span>
+                        <span className="text-slate-650">{format(new Date(item.collectedAt), 'MMM dd, yyyy @ h:mm a')}</span>
+                      </div>
+                    )}
+                  </div>
+                ))
+            )}
+          </div>
+        </div>
       </div>
+    )}
+  </div>
+
       {/* Meal Preference Selection Modal */}
       {activeMealSelection && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 ease-out animate-in fade-in">

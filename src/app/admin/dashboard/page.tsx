@@ -245,17 +245,27 @@ export default function AdminDashboard() {
                           key={notif._id}
                           onClick={() => handleMarkAsRead(notif._id)}
                           className={`p-3.5 text-left transition-colors cursor-pointer flex gap-3 ${
-                            notif.isRead ? 'hover:bg-slate-50' : 'bg-blue-50/40 hover:bg-blue-50/70 border-l-[3px] border-l-blue-600 pl-[11px]'
+                            notif.employeeNo === 'PRICES'
+                              ? notif.isRead 
+                                ? 'bg-slate-50/50 hover:bg-slate-100/50 border-l-[3px] border-l-red-400 pl-[11px]'
+                                : 'bg-red-50/30 hover:bg-red-50/60 border-l-[3px] border-l-red-650 pl-[11px]'
+                              : notif.isRead 
+                                ? 'hover:bg-slate-50' 
+                                : 'bg-blue-50/40 hover:bg-blue-50/70 border-l-[3px] border-l-blue-600 pl-[11px]'
                           }`}
                         >
                           <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${
-                            notif.mealType === 'BREAKFAST'
+                            notif.employeeNo === 'PRICES'
+                              ? 'bg-red-50 text-red-500'
+                              : notif.mealType === 'BREAKFAST'
                               ? 'bg-amber-50 text-amber-500'
                               : notif.mealType === 'LUNCH'
                               ? 'bg-blue-50 text-blue-600'
                               : 'bg-indigo-50 text-indigo-500'
                           }`}>
-                            {notif.mealType === 'BREAKFAST' ? (
+                            {notif.employeeNo === 'PRICES' ? (
+                              <SlidersHorizontal className="h-4 w-4" />
+                            ) : notif.mealType === 'BREAKFAST' ? (
                               <Coffee className="h-4 w-4" />
                             ) : notif.mealType === 'LUNCH' ? (
                               <Utensils className="h-4 w-4" />
@@ -264,22 +274,35 @@ export default function AdminDashboard() {
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs font-semibold text-slate-800 leading-snug">
-                              <span className="font-bold">{notif.employeeName}</span> ({notif.employeeNo}) requested <span className="font-bold capitalize">{notif.mealType.toLowerCase()}</span>
-                              {notif.mealOption && (
-                                <span className={`ml-1.5 px-1 rounded text-[8px] font-bold ${
-                                  notif.mealOption === 'VEGETARIAN' 
-                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
-                                    : 'bg-rose-50 text-rose-700 border border-rose-100'
-                                }`}>
-                                  {notif.mealOption === 'VEGETARIAN' ? 'VEG' : 'NON-VEG'}
-                                </span>
-                              )}
-                            </p>
-                            {notif.notes && (
-                              <p className="text-[10px] mt-1 bg-slate-50 border border-slate-100 rounded p-1.5 font-medium text-slate-500 italic leading-snug">
-                                &ldquo;{notif.notes}&rdquo;
-                              </p>
+                            {notif.employeeNo === 'PRICES' ? (
+                              <div>
+                                <p className="text-xs font-bold text-red-600 leading-snug">
+                                  🚨 Meal Prices Changed by Canteen
+                                </p>
+                                <p className="text-[10px] mt-1 bg-red-50/50 border border-red-100 rounded p-1.5 font-bold text-red-700 leading-snug">
+                                  {notif.notes}
+                                </p>
+                              </div>
+                            ) : (
+                              <div>
+                                <p className="text-xs font-semibold text-slate-800 leading-snug">
+                                  <span className="font-bold">{notif.employeeName}</span> ({notif.employeeNo}) requested <span className="font-bold capitalize">{notif.mealType.toLowerCase()}</span>
+                                  {notif.mealOption && (
+                                    <span className={`ml-1.5 px-1 rounded text-[8px] font-bold ${
+                                      notif.mealOption === 'VEGETARIAN' 
+                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
+                                        : 'bg-rose-50 text-rose-700 border border-rose-100'
+                                    }`}>
+                                      {notif.mealOption === 'VEGETARIAN' ? 'VEG' : 'NON-VEG'}
+                                    </span>
+                                  )}
+                                </p>
+                                {notif.notes && (
+                                  <p className="text-[10px] mt-1 bg-slate-50 border border-slate-100 rounded p-1.5 font-medium text-slate-500 italic leading-snug">
+                                    &ldquo;{notif.notes}&rdquo;
+                                  </p>
+                                )}
+                              </div>
                             )}
                             <span className="text-[9px] font-semibold text-slate-400 flex items-center gap-1 mt-1">
                               <Clock className="h-2.5 w-2.5" />

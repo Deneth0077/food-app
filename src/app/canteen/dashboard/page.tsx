@@ -723,14 +723,7 @@ export default function CanteenDashboard() {
           </div>
         </div>
         
-        <div className="flex items-center gap-1.5">
-          <button 
-            onClick={() => setShowPricesModal(true)}
-            className="p-2.5 text-slate-400 hover:text-blue-600 rounded-full hover:bg-slate-50 transition-colors"
-            title="Manage Prices"
-          >
-            <SlidersHorizontal className="h-5 w-5" />
-          </button>
+        <div className="flex items-center gap-2">
           <button 
             onClick={handleLogout}
             className="p-2.5 text-slate-400 hover:text-red-500 rounded-full hover:bg-slate-50 transition-colors"
@@ -867,6 +860,14 @@ export default function CanteenDashboard() {
                 )}
                 Collect All Listed
               </button>
+              <button 
+                onClick={() => setShowPricesModal(true)}
+                className="flex-1 h-10 bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 rounded-xl text-[10px] font-extrabold tracking-wide flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-95"
+                title="Manage Prices"
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                Change Price
+              </button>
             </div>
           </div>
 
@@ -886,7 +887,7 @@ export default function CanteenDashboard() {
                 {searchQuery && (
                   <button 
                     onClick={() => setSearchQuery('')}
-                    className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                    className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-650 text-xs font-bold"
                   >
                     Clear
                   </button>
@@ -894,6 +895,7 @@ export default function CanteenDashboard() {
               </div>
               <div className="flex gap-2">
                 <button
+                  type="button"
                   onClick={() => setViewMode('TABLE')}
                   className={`flex-1 h-11 rounded-xl border font-bold text-xs flex items-center justify-center gap-1.5 transition-all ${
                     viewMode === 'TABLE' ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
@@ -902,6 +904,7 @@ export default function CanteenDashboard() {
                   List Layout
                 </button>
                 <button
+                  type="button"
                   onClick={() => setViewMode('CARDS')}
                   className={`flex-1 h-11 rounded-xl border font-bold text-xs flex items-center justify-center gap-1.5 transition-all ${
                     viewMode === 'CARDS' ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
@@ -910,70 +913,94 @@ export default function CanteenDashboard() {
                   Cards Layout
                 </button>
               </div>
+
+              {/* Collapsible Filter Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setShowFilters(!showFilters)}
+                className={`w-full h-11 rounded-xl border font-bold text-xs flex items-center justify-between px-4 transition-all duration-200 ${
+                  showFilters 
+                    ? 'bg-blue-50 border-blue-200 text-blue-600 shadow-[0_2px_8px_rgba(59,130,246,0.05)]' 
+                    : 'bg-slate-50/50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-800'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <SlidersHorizontal className="h-3.5 w-3.5" />
+                  Filter Options
+                </span>
+                <span className="text-[10px] font-bold text-slate-400">
+                  {showFilters ? 'Hide' : 'Show'}
+                </span>
+              </button>
             </div>
 
             {/* Quick Segment Controls (ALWAYS Stacked Vertically on Desktop in 480px frame) */}
-            <div className="flex flex-col gap-3 pt-3 border-t border-slate-100">
-              {/* Meal Filter Tabs */}
-              <div className="space-y-1">
-                <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Meal Time</span>
-                <div className="flex bg-slate-50 p-1 rounded-xl gap-1">
-                  {['ALL', 'BREAKFAST', 'LUNCH', 'DINNER'].map(meal => (
-                    <button
-                      key={meal}
-                      onClick={() => { setSelectedMealFilter(meal as any); setSelectedOrderIds([]); }}
-                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all uppercase ${
-                        selectedMealFilter === meal 
-                          ? 'bg-white text-blue-600 shadow-sm border border-slate-200' 
-                          : 'text-slate-500 hover:text-slate-800'
-                      }`}
-                    >
-                      {meal === 'ALL' ? 'All' : meal.charAt(0) + meal.slice(1).toLowerCase()}
-                    </button>
-                  ))}
+            {showFilters && (
+              <div className="flex flex-col gap-3 pt-3 border-t border-slate-100 animate-in fade-in slide-in-from-top-2 duration-200">
+                {/* Meal Filter Tabs */}
+                <div className="space-y-1">
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Meal Time</span>
+                  <div className="flex bg-slate-50 p-1 rounded-xl gap-1">
+                    {['ALL', 'BREAKFAST', 'LUNCH', 'DINNER'].map(meal => (
+                      <button
+                        key={meal}
+                        type="button"
+                        onClick={() => { setSelectedMealFilter(meal as any); setSelectedOrderIds([]); }}
+                        className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all uppercase ${
+                          selectedMealFilter === meal 
+                            ? 'bg-white text-blue-600 shadow-sm border border-slate-200' 
+                            : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        {meal === 'ALL' ? 'All' : meal.charAt(0) + meal.slice(1).toLowerCase()}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              {/* Preference Filter Tabs */}
-              <div className="space-y-1">
-                <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Preference</span>
-                <div className="flex bg-slate-50 p-1 rounded-xl gap-1">
-                  {['ALL', 'VEGETARIAN', 'MEAT'].map(pref => (
-                    <button
-                      key={pref}
-                      onClick={() => { setSelectedPreferenceFilter(pref as any); setSelectedOrderIds([]); }}
-                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all uppercase ${
-                        selectedPreferenceFilter === pref 
-                          ? 'bg-white text-blue-600 shadow-sm border border-slate-200' 
-                          : 'text-slate-500 hover:text-slate-800'
-                      }`}
-                    >
-                      {pref === 'ALL' ? 'All' : pref === 'VEGETARIAN' ? 'Veg' : 'Non Veg'}
-                    </button>
-                  ))}
+                {/* Preference Filter Tabs */}
+                <div className="space-y-1">
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Preference</span>
+                  <div className="flex bg-slate-50 p-1 rounded-xl gap-1">
+                    {['ALL', 'VEGETARIAN', 'MEAT'].map(pref => (
+                      <button
+                        key={pref}
+                        type="button"
+                        onClick={() => { setSelectedPreferenceFilter(pref as any); setSelectedOrderIds([]); }}
+                        className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all uppercase ${
+                          selectedPreferenceFilter === pref 
+                            ? 'bg-white text-blue-600 shadow-sm border border-slate-200' 
+                            : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        {pref === 'ALL' ? 'All' : pref === 'VEGETARIAN' ? 'Veg' : 'Non Veg'}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              {/* Status Filter Tabs */}
-              <div className="space-y-1">
-                <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Collection Status</span>
-                <div className="flex bg-slate-50 p-1 rounded-xl gap-1">
-                  {['ORDERED', 'COLLECTED', 'ALL'].map(status => (
-                    <button
-                      key={status}
-                      onClick={() => { setSelectedStatusFilter(status as any); setSelectedOrderIds([]); }}
-                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all uppercase ${
-                        selectedStatusFilter === status 
-                          ? 'bg-white text-blue-600 shadow-sm border border-slate-200' 
-                          : 'text-slate-500 hover:text-slate-800'
-                      }`}
-                    >
-                      {status === 'ORDERED' ? 'Pending' : status === 'COLLECTED' ? 'Collected' : 'All'}
-                    </button>
-                  ))}
+                {/* Status Filter Tabs */}
+                <div className="space-y-1">
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Collection Status</span>
+                  <div className="flex bg-slate-50 p-1 rounded-xl gap-1">
+                    {['ORDERED', 'COLLECTED', 'ALL'].map(status => (
+                      <button
+                        key={status}
+                        type="button"
+                        onClick={() => { setSelectedStatusFilter(status as any); setSelectedOrderIds([]); }}
+                        className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all uppercase ${
+                          selectedStatusFilter === status 
+                            ? 'bg-white text-blue-600 shadow-sm border border-slate-200' 
+                            : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        {status === 'ORDERED' ? 'Pending' : status === 'COLLECTED' ? 'Collected' : 'All'}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* List/Cards Container */}

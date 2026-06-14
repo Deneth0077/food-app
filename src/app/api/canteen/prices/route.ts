@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import PriceConfig from '@/models/PriceConfig';
+import Notification from '@/models/Notification';
 import { getAuthUser } from '@/lib/jwt';
 
 export const dynamic = 'force-dynamic';
@@ -14,7 +15,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (user.role !== 'CANTEEN' && user.role !== 'ADMIN') {
+    if (user.role !== 'CANTEEN' && user.role !== 'ADMIN' && user.role !== 'EMPLOYEE') {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
@@ -67,6 +68,14 @@ export async function PUT(request: Request) {
     config.lunch = lunch;
     config.dinner = dinner;
     await config.save();
+
+    // Create admin notification for price change
+    await Notification.create({
+      employeeName: 'Canteen Staff',
+      employeeNo: 'PRICES',
+      mealType: 'BREAKFAST', // satisfy required schema validation
+      notes: `Breakfast: Rs. ${breakfast} | Lunch: Rs. ${lunch} | Dinner: Rs. ${dinner}`
+    });
 
     return NextResponse.json({ message: 'Prices updated successfully', prices: config });
   } catch (error: any) {
