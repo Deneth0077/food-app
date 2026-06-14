@@ -49,6 +49,67 @@ export default function CanteenDashboard() {
   const [viewMode, setViewMode] = useState<'TABLE' | 'CARDS'>('TABLE');
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+  const [showPricesModal, setShowPricesModal] = useState(false);
+  const [prices, setPrices] = useState({ breakfast: 300, lunch: 350, dinner: 400 });
+  const [savingPrices, setSavingPrices] = useState(false);
+  const [fetchingPrices, setFetchingPrices] = useState(false);
+
+  const fetchPrices = useCallback(async () => {
+    try {
+      setFetchingPrices(true);
+      const res = await fetch('/api/canteen/prices');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.prices) {
+          setPrices({
+            breakfast: data.prices.breakfast,
+            lunch: data.prices.lunch,
+            dinner: data.prices.dinner
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch prices', err);
+    } finally {
+      setFetchingPrices(false);
+    }
+  }, []);
+
+  const handleSavePrices = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingPrices(true);
+    try {
+      const res = await fetch('/api/canteen/prices', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(prices),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to update prices');
+      }
+
+      toast({
+        title: 'Prices Updated',
+        description: 'Meal prices have been updated successfully.',
+      });
+      setShowPricesModal(false);
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Update Failed',
+        description: err.message || 'Something went wrong',
+      });
+    } finally {
+      setSavingPrices(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPrices();
+  }, [fetchPrices]);
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -413,7 +474,7 @@ export default function CanteenDashboard() {
               <tr>
                 <th>Meal Time</th>
                 <th>Vegetarian</th>
-                <th>Meat</th>
+                <th>Non Veg</th>
                 <th>Total Orders</th>
               </tr>
             </thead>
@@ -443,7 +504,7 @@ export default function CanteenDashboard() {
                         <td>${o.employeeNo}</td>
                         <td><strong>${o.employeeName}</strong></td>
                         <td>${o.phoneNumber}</td>
-                        <td><span class="${o.mealOption === 'VEGETARIAN' ? 'veg-pill' : 'meat-pill'}">${o.mealOption === 'VEGETARIAN' ? 'VEG' : 'MEAT'}</span></td>
+                        <td><span class="${o.mealOption === 'VEGETARIAN' ? 'veg-pill' : 'meat-pill'}">${o.mealOption === 'VEGETARIAN' ? 'VEG' : 'NON-VEG'}</span></td>
                         <td class="notes-text">${o.notes || '-'}</td>
                       </tr>
                     `).join('')}
@@ -474,7 +535,7 @@ export default function CanteenDashboard() {
                         <td>${o.employeeNo}</td>
                         <td><strong>${o.employeeName}</strong></td>
                         <td>${o.phoneNumber}</td>
-                        <td><span class="${o.mealOption === 'VEGETARIAN' ? 'veg-pill' : 'meat-pill'}">${o.mealOption === 'VEGETARIAN' ? 'VEG' : 'MEAT'}</span></td>
+                        <td><span class="${o.mealOption === 'VEGETARIAN' ? 'veg-pill' : 'meat-pill'}">${o.mealOption === 'VEGETARIAN' ? 'VEG' : 'NON-VEG'}</span></td>
                         <td class="notes-text">${o.notes || '-'}</td>
                       </tr>
                     `).join('')}
@@ -505,7 +566,7 @@ export default function CanteenDashboard() {
                         <td>${o.employeeNo}</td>
                         <td><strong>${o.employeeName}</strong></td>
                         <td>${o.phoneNumber}</td>
-                        <td><span class="${o.mealOption === 'VEGETARIAN' ? 'veg-pill' : 'meat-pill'}">${o.mealOption === 'VEGETARIAN' ? 'VEG' : 'MEAT'}</span></td>
+                        <td><span class="${o.mealOption === 'VEGETARIAN' ? 'veg-pill' : 'meat-pill'}">${o.mealOption === 'VEGETARIAN' ? 'VEG' : 'NON-VEG'}</span></td>
                         <td class="notes-text">${o.notes || '-'}</td>
                       </tr>
                     `).join('')}
@@ -662,13 +723,22 @@ export default function CanteenDashboard() {
           </div>
         </div>
         
-        <button 
-          onClick={handleLogout}
-          className="p-2.5 text-slate-400 hover:text-red-500 rounded-full hover:bg-slate-50 transition-colors"
-          title="Logout"
-        >
-          <LogOut className="h-5 w-5" />
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button 
+            onClick={() => setShowPricesModal(true)}
+            className="p-2.5 text-slate-400 hover:text-blue-600 rounded-full hover:bg-slate-50 transition-colors"
+            title="Manage Prices"
+          >
+            <SlidersHorizontal className="h-5 w-5" />
+          </button>
+          <button 
+            onClick={handleLogout}
+            className="p-2.5 text-slate-400 hover:text-red-500 rounded-full hover:bg-slate-50 transition-colors"
+            title="Logout"
+          >
+            <LogOut className="h-5 w-5" />
+          </button>
+        </div>
       </header>
 
       {/* Content */}
@@ -718,7 +788,7 @@ export default function CanteenDashboard() {
                   <div className="bg-amber-500 h-full rounded-full transition-all duration-300" style={{ width: `${breakfastProgress.pct}%` }} />
                 </div>
                 <p className="text-[8px] font-extrabold text-slate-400 mt-1.5 leading-none">
-                  {breakfastProgress.collected}/{breakfastProgress.total} Coll. • V:{breakfastProgress.vegCount} M:{breakfastProgress.meatCount}
+                  {breakfastProgress.collected}/{breakfastProgress.total} Coll. • V:{breakfastProgress.vegCount} NV:{breakfastProgress.meatCount}
                 </p>
               </div>
             </div>
@@ -738,7 +808,7 @@ export default function CanteenDashboard() {
                   <div className="bg-blue-600 h-full rounded-full transition-all duration-300" style={{ width: `${lunchProgress.pct}%` }} />
                 </div>
                 <p className="text-[8px] font-extrabold text-slate-400 mt-1.5 leading-none">
-                  {lunchProgress.collected}/{lunchProgress.total} Coll. • V:{lunchProgress.vegCount} M:{lunchProgress.meatCount}
+                  {lunchProgress.collected}/{lunchProgress.total} Coll. • V:{lunchProgress.vegCount} NV:{lunchProgress.meatCount}
                 </p>
               </div>
             </div>
@@ -758,7 +828,7 @@ export default function CanteenDashboard() {
                   <div className="bg-indigo-500 h-full rounded-full transition-all duration-300" style={{ width: `${dinnerProgress.pct}%` }} />
                 </div>
                 <p className="text-[8px] font-extrabold text-slate-400 mt-1.5 leading-none">
-                  {dinnerProgress.collected}/{dinnerProgress.total} Coll. • V:{dinnerProgress.vegCount} M:{dinnerProgress.meatCount}
+                  {dinnerProgress.collected}/{dinnerProgress.total} Coll. • V:{dinnerProgress.vegCount} NV:{dinnerProgress.meatCount}
                 </p>
               </div>
             </div>
@@ -878,7 +948,7 @@ export default function CanteenDashboard() {
                           : 'text-slate-500 hover:text-slate-800'
                       }`}
                     >
-                      {pref === 'ALL' ? 'All' : pref === 'VEGETARIAN' ? 'Veg' : 'Meat'}
+                      {pref === 'ALL' ? 'All' : pref === 'VEGETARIAN' ? 'Veg' : 'Non Veg'}
                     </button>
                   ))}
                 </div>
@@ -998,7 +1068,7 @@ export default function CanteenDashboard() {
                               ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
                               : 'bg-rose-50 text-rose-700 border border-rose-100'
                           }`}>
-                            {order.mealOption === 'VEGETARIAN' ? 'VEG' : 'MEAT'}
+                            {order.mealOption === 'VEGETARIAN' ? 'VEG' : 'NON-VEG'}
                           </span>
                         )}
                         {order.notes && (
@@ -1056,7 +1126,7 @@ export default function CanteenDashboard() {
                               ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
                               : 'bg-rose-50 text-rose-700 border border-rose-100'
                           }`}>
-                            {order.mealOption === 'VEGETARIAN' ? 'VEG' : 'MEAT'}
+                            {order.mealOption === 'VEGETARIAN' ? 'VEG' : 'NON-VEG'}
                           </span>
                         )}
                       </div>
@@ -1152,6 +1222,94 @@ export default function CanteenDashboard() {
                 Mark Collected
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Canteen Prices Management Modal */}
+      {showPricesModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 ease-out animate-in fade-in">
+          <div className="absolute inset-0" onClick={() => { setShowPricesModal(false); fetchPrices(); }}></div>
+          
+          <div className="relative bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl border border-slate-100 transition-all duration-300 ease-out transform animate-in zoom-in-95">
+            <h3 className="text-base font-bold text-slate-850 tracking-tight flex items-center gap-2">
+              <SlidersHorizontal className="h-4.5 w-4.5 text-blue-600" />
+              Manage Meal Prices
+            </h3>
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mt-1">
+              Configure current prices for reports
+            </p>
+
+            <form onSubmit={handleSavePrices} className="space-y-4 mt-5">
+              {/* Breakfast Price Input */}
+              <div className="space-y-1 text-left">
+                <label htmlFor="breakfastPrice" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Breakfast (Rs.)
+                </label>
+                <input
+                  id="breakfastPrice"
+                  type="number"
+                  required
+                  min="0"
+                  value={prices.breakfast}
+                  onChange={(e) => setPrices(prev => ({ ...prev, breakfast: Number(e.target.value) }))}
+                  className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white focus-visible:outline-none transition-all font-bold text-slate-700"
+                />
+              </div>
+
+              {/* Lunch Price Input */}
+              <div className="space-y-1 text-left">
+                <label htmlFor="lunchPrice" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Lunch (Rs.)
+                </label>
+                <input
+                  id="lunchPrice"
+                  type="number"
+                  required
+                  min="0"
+                  value={prices.lunch}
+                  onChange={(e) => setPrices(prev => ({ ...prev, lunch: Number(e.target.value) }))}
+                  className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white focus-visible:outline-none transition-all font-bold text-slate-700"
+                />
+              </div>
+
+              {/* Dinner Price Input */}
+              <div className="space-y-1 text-left">
+                <label htmlFor="dinnerPrice" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Dinner (Rs.)
+                </label>
+                <input
+                  id="dinnerPrice"
+                  type="number"
+                  required
+                  min="0"
+                  value={prices.dinner}
+                  onChange={(e) => setPrices(prev => ({ ...prev, dinner: Number(e.target.value) }))}
+                  className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white focus-visible:outline-none transition-all font-bold text-slate-700"
+                />
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => { setShowPricesModal(false); fetchPrices(); }}
+                  className="flex-1 h-10 border border-slate-200 text-slate-500 font-bold rounded-xl text-[11px] hover:bg-slate-50 active:scale-98 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingPrices || fetchingPrices}
+                  className="flex-1 h-10 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-[11px] active:scale-98 transition-all flex items-center justify-center gap-1 shadow-sm"
+                >
+                  {savingPrices ? (
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    'Save Prices'
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

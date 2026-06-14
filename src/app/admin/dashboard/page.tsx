@@ -272,7 +272,7 @@ export default function AdminDashboard() {
                                     ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
                                     : 'bg-rose-50 text-rose-700 border border-rose-100'
                                 }`}>
-                                  {notif.mealOption === 'VEGETARIAN' ? 'VEG' : 'MEAT'}
+                                  {notif.mealOption === 'VEGETARIAN' ? 'VEG' : 'NON-VEG'}
                                 </span>
                               )}
                             </p>
@@ -341,9 +341,9 @@ export default function AdminDashboard() {
               <p className="text-2xl font-bold text-slate-800 mt-0.5">{requestsToday}</p>
               {data?.todayStats.lunchVeg !== undefined && (
                 <div className="text-[9px] font-bold text-slate-500 mt-1 space-y-0.5 leading-none">
-                  <p>BF • V: {data.todayStats.breakfastVeg} M: {data.todayStats.breakfastMeat}</p>
-                  <p>LH • V: {data.todayStats.lunchVeg} M: {data.todayStats.lunchMeat}</p>
-                  <p>DN • V: {data.todayStats.dinnerVeg} M: {data.todayStats.dinnerMeat}</p>
+                  <p>BF • V: {data.todayStats.breakfastVeg} NV: {data.todayStats.breakfastMeat}</p>
+                  <p>LH • V: {data.todayStats.lunchVeg} NV: {data.todayStats.lunchMeat}</p>
+                  <p>DN • V: {data.todayStats.dinnerVeg} NV: {data.todayStats.dinnerMeat}</p>
                 </div>
               )}
             </div>

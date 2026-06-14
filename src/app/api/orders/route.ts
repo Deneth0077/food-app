@@ -86,14 +86,14 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { mealType, mealOption, notes } = body;
+    const { mealType, mealOption, notes, requestDate } = body;
 
     if (!mealType || !['BREAKFAST', 'LUNCH', 'DINNER'].includes(mealType)) {
       return NextResponse.json({ error: 'Invalid meal type requested' }, { status: 400 });
     }
 
     if (!mealOption || !['VEGETARIAN', 'MEAT'].includes(mealOption)) {
-      return NextResponse.json({ error: `Please select Vegetarian or Meat for ${mealType.toLowerCase()}.` }, { status: 400 });
+      return NextResponse.json({ error: `Please select Vegetarian or Non vegetarian for ${mealType.toLowerCase()}.` }, { status: 400 });
     }
 
     // Fetch full user details to ensure they are active and get phone number
@@ -104,37 +104,54 @@ export async function POST(request: Request) {
 
     const now = new Date();
     const currentHour = now.getHours();
+    const todayStr = format(now, 'yyyy-MM-dd');
 
-    let targetDateStr = format(now, 'yyyy-MM-dd');
-    let displayDay = 'today';
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = format(tomorrow, 'yyyy-MM-dd');
 
+    const targetDateStr = requestDate || (mealType === 'BREAKFAST' ? tomorrowStr : todayStr);
+
+    if (targetDateStr < todayStr) {
+      return NextResponse.json({ error: 'Cannot place orders for past dates.' }, { status: 400 });
+    }
+
+    // Unified lock validation
+    const targetDate = new Date(targetDateStr + 'T00:00:00');
     if (mealType === 'BREAKFAST') {
-      const tomorrow = new Date(now);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      targetDateStr = format(tomorrow, 'yyyy-MM-dd');
-      displayDay = 'tomorrow';
-
-      if (currentHour >= 20) {
+      const dayBefore = new Date(targetDate.getTime());
+      dayBefore.setDate(dayBefore.getDate() - 1);
+      dayBefore.setHours(20, 0, 0, 0); // 8:00 PM
+      if (now.getTime() >= dayBefore.getTime()) {
+        const displayTime = targetDateStr === tomorrowStr ? '8:00 PM today' : `8:00 PM on ${format(dayBefore, 'yyyy-MM-dd')}`;
         return NextResponse.json(
-          { error: 'Breakfast orders for tomorrow must be placed before 8:00 PM today.' },
+          { error: `Breakfast orders for ${targetDateStr} closed at ${displayTime}.` },
           { status: 400 }
         );
       }
     } else if (mealType === 'LUNCH') {
-      if (currentHour >= 9) {
+      const dayOf = new Date(targetDate.getTime());
+      dayOf.setHours(9, 0, 0, 0); // 9:00 AM
+      if (now.getTime() >= dayOf.getTime()) {
+        const displayTime = targetDateStr === todayStr ? '9:00 AM today' : `9:00 AM on ${targetDateStr}`;
         return NextResponse.json(
-          { error: 'Lunch orders for today must be placed before 9:00 AM.' },
+          { error: `Lunch orders for ${targetDateStr} closed at ${displayTime}.` },
           { status: 400 }
         );
       }
     } else if (mealType === 'DINNER') {
-      if (currentHour >= 17) {
+      const dayOf = new Date(targetDate.getTime());
+      dayOf.setHours(17, 0, 0, 0); // 5:00 PM
+      if (now.getTime() >= dayOf.getTime()) {
+        const displayTime = targetDateStr === todayStr ? '5:00 PM today' : `5:00 PM on ${targetDateStr}`;
         return NextResponse.json(
-          { error: 'Dinner orders for today must be placed before 5:00 PM.' },
+          { error: `Dinner orders for ${targetDateStr} closed at ${displayTime}.` },
           { status: 400 }
         );
       }
     }
+
+    const displayDay = targetDateStr === todayStr ? 'today' : targetDateStr === tomorrowStr ? 'tomorrow' : targetDateStr;
 
     // Prevent duplicates: Check if an order already exists for this user, date, and meal type
     const existingOrder = await Order.findOne({
@@ -238,7 +255,7 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json();
-    const { mealType, mealOption, notes, skipTimer } = body;
+    const { mealType, mealOption, notes, skipTimer, requestDate } = body;
 
     if (!mealType || !['BREAKFAST', 'LUNCH', 'DINNER'].includes(mealType)) {
       return NextResponse.json({ error: 'Invalid or missing meal type.' }, { status: 400 });
@@ -246,37 +263,51 @@ export async function PUT(request: Request) {
 
     const now = new Date();
     const currentHour = now.getHours();
+    const todayStr = format(now, 'yyyy-MM-dd');
 
-    let targetDateStr = format(now, 'yyyy-MM-dd');
-    let displayDay = 'today';
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = format(tomorrow, 'yyyy-MM-dd');
 
+    const targetDateStr = requestDate || (mealType === 'BREAKFAST' ? tomorrowStr : todayStr);
+
+    if (targetDateStr < todayStr) {
+      return NextResponse.json({ error: 'Cannot update orders for past dates.' }, { status: 400 });
+    }
+
+    // Unified lock validation
+    const targetDate = new Date(targetDateStr + 'T00:00:00');
     if (mealType === 'BREAKFAST') {
-      const tomorrow = new Date(now);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      targetDateStr = format(tomorrow, 'yyyy-MM-dd');
-      displayDay = 'tomorrow';
-
-      if (currentHour >= 20) {
+      const dayBefore = new Date(targetDate.getTime());
+      dayBefore.setDate(dayBefore.getDate() - 1);
+      dayBefore.setHours(20, 0, 0, 0); // 8:00 PM
+      if (now.getTime() >= dayBefore.getTime()) {
         return NextResponse.json(
-          { error: 'Breakfast orders can only be updated before 8:00 PM.' },
+          { error: `Breakfast orders for ${targetDateStr} closed at 8:00 PM on ${format(dayBefore, 'yyyy-MM-dd')}.` },
           { status: 400 }
         );
       }
     } else if (mealType === 'LUNCH') {
-      if (currentHour >= 9) {
+      const dayOf = new Date(targetDate.getTime());
+      dayOf.setHours(9, 0, 0, 0); // 9:00 AM
+      if (now.getTime() >= dayOf.getTime()) {
         return NextResponse.json(
-          { error: 'Lunch orders can only be updated before 9:00 AM.' },
+          { error: `Lunch orders for ${targetDateStr} closed at 9:00 AM on ${targetDateStr}.` },
           { status: 400 }
         );
       }
     } else if (mealType === 'DINNER') {
-      if (currentHour >= 17) {
+      const dayOf = new Date(targetDate.getTime());
+      dayOf.setHours(17, 0, 0, 0); // 5:00 PM
+      if (now.getTime() >= dayOf.getTime()) {
         return NextResponse.json(
-          { error: 'Dinner orders can only be updated before 5:00 PM.' },
+          { error: `Dinner orders for ${targetDateStr} closed at 5:00 PM on ${targetDateStr}.` },
           { status: 400 }
         );
       }
     }
+
+    const displayDay = targetDateStr === todayStr ? 'today' : targetDateStr === tomorrowStr ? 'tomorrow' : targetDateStr;
 
     // Find the order for this user and specific mealType and targetDateStr
     const order = await Order.findOne({
@@ -353,6 +384,7 @@ export async function DELETE(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const mealType = searchParams.get('mealType');
+    const requestDate = searchParams.get('requestDate');
 
     if (!mealType || !['BREAKFAST', 'LUNCH', 'DINNER'].includes(mealType)) {
       return NextResponse.json({ error: 'Invalid or missing meal type to cancel.' }, { status: 400 });
@@ -360,37 +392,51 @@ export async function DELETE(request: Request) {
 
     const now = new Date();
     const currentHour = now.getHours();
+    const todayStr = format(now, 'yyyy-MM-dd');
 
-    let targetDateStr = format(now, 'yyyy-MM-dd');
-    let displayDay = 'today';
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = format(tomorrow, 'yyyy-MM-dd');
 
+    const targetDateStr = requestDate || (mealType === 'BREAKFAST' ? tomorrowStr : todayStr);
+
+    if (targetDateStr < todayStr) {
+      return NextResponse.json({ error: 'Cannot cancel orders for past dates.' }, { status: 400 });
+    }
+
+    // Unified lock validation
+    const targetDate = new Date(targetDateStr + 'T00:00:00');
     if (mealType === 'BREAKFAST') {
-      const tomorrow = new Date(now);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      targetDateStr = format(tomorrow, 'yyyy-MM-dd');
-      displayDay = 'tomorrow';
-
-      if (currentHour >= 20) {
+      const dayBefore = new Date(targetDate.getTime());
+      dayBefore.setDate(dayBefore.getDate() - 1);
+      dayBefore.setHours(20, 0, 0, 0); // 8:00 PM
+      if (now.getTime() >= dayBefore.getTime()) {
         return NextResponse.json(
-          { error: 'Breakfast orders can only be cancelled before 8:00 PM.' },
+          { error: `Breakfast orders for ${targetDateStr} closed at 8:00 PM on ${format(dayBefore, 'yyyy-MM-dd')}.` },
           { status: 400 }
         );
       }
     } else if (mealType === 'LUNCH') {
-      if (currentHour >= 9) {
+      const dayOf = new Date(targetDate.getTime());
+      dayOf.setHours(9, 0, 0, 0); // 9:00 AM
+      if (now.getTime() >= dayOf.getTime()) {
         return NextResponse.json(
-          { error: 'Lunch orders can only be cancelled before 9:00 AM.' },
+          { error: `Lunch orders for ${targetDateStr} closed at 9:00 AM on ${targetDateStr}.` },
           { status: 400 }
         );
       }
     } else if (mealType === 'DINNER') {
-      if (currentHour >= 17) {
+      const dayOf = new Date(targetDate.getTime());
+      dayOf.setHours(17, 0, 0, 0); // 5:00 PM
+      if (now.getTime() >= dayOf.getTime()) {
         return NextResponse.json(
-          { error: 'Dinner orders can only be cancelled before 5:00 PM.' },
+          { error: `Dinner orders for ${targetDateStr} closed at 5:00 PM on ${targetDateStr}.` },
           { status: 400 }
         );
       }
     }
+
+    const displayDay = targetDateStr === todayStr ? 'today' : targetDateStr === tomorrowStr ? 'tomorrow' : targetDateStr;
 
     // Find the order for this user and specific mealType and targetDateStr
     const order = await Order.findOne({

@@ -207,7 +207,7 @@ export default function CanteenHistoryPage() {
                     <div>
                       <span className="block text-slate-400 text-[8px] uppercase tracking-wider font-bold">Meal Choice</span>
                       <span className={`block mt-0.5 font-bold ${order.mealOption === 'VEGETARIAN' ? 'text-green-600' : 'text-rose-600'}`}>
-                        {order.mealOption === 'VEGETARIAN' ? 'Vegetarian' : 'Meat'}
+                        {order.mealOption === 'VEGETARIAN' ? 'Vegetarian' : 'Non vegetarian'}
                       </span>
                     </div>
                   )}

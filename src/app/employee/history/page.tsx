@@ -208,7 +208,7 @@ export default function EmployeeHistoryPage() {
                     <div>
                       <span className="block text-slate-400 text-[9px] uppercase tracking-wider font-bold">Meal Choice</span>
                       <span className={`block mt-0.5 font-bold ${item.mealOption === 'VEGETARIAN' ? 'text-green-600' : 'text-rose-600'}`}>
-                        {item.mealOption === 'VEGETARIAN' ? 'Vegetarian' : 'Meat'}
+                        {item.mealOption === 'VEGETARIAN' ? 'Vegetarian' : 'Non vegetarian'}
                       </span>
                     </div>
                   )}
