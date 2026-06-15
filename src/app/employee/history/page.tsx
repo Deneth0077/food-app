@@ -78,7 +78,7 @@ export default function EmployeeHistoryPage() {
         const reqDate = new Date(item.requestedAt);
         const diffTime = Math.abs(now.getTime() - reqDate.getTime());
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        return diffDays <= 30;
+        return diffDays <= 35;
       }
       return true; // ALL
     });
