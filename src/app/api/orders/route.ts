@@ -116,10 +116,30 @@ export async function POST(request: Request) {
     tomorrow.setDate(tomorrow.getDate() + 1);
     const tomorrowStr = format(tomorrow, 'yyyy-MM-dd');
 
+    const dayAfterTomorrow = new Date(now);
+    dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
+    const dayAfterTomorrowStr = format(dayAfterTomorrow, 'yyyy-MM-dd');
+
     const targetDateStr = requestDate || (mealType === 'BREAKFAST' ? tomorrowStr : todayStr);
 
     if (targetDateStr < todayStr) {
       return NextResponse.json({ error: 'Cannot place orders for past dates.' }, { status: 400 });
+    }
+
+    if (mealType === 'BREAKFAST') {
+      if (targetDateStr !== tomorrowStr && targetDateStr !== dayAfterTomorrowStr) {
+        return NextResponse.json(
+          { error: 'Breakfast can only be ordered for tomorrow or the day after tomorrow.' },
+          { status: 400 }
+        );
+      }
+    } else {
+      if (targetDateStr !== todayStr && targetDateStr !== tomorrowStr) {
+        return NextResponse.json(
+          { error: `${mealType.charAt(0) + mealType.slice(1).toLowerCase()} can only be ordered for today or tomorrow.` },
+          { status: 400 }
+        );
+      }
     }
 
     // Unified lock validation
@@ -288,10 +308,30 @@ export async function PUT(request: Request) {
     tomorrow.setDate(tomorrow.getDate() + 1);
     const tomorrowStr = format(tomorrow, 'yyyy-MM-dd');
 
+    const dayAfterTomorrow = new Date(now);
+    dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
+    const dayAfterTomorrowStr = format(dayAfterTomorrow, 'yyyy-MM-dd');
+
     const targetDateStr = requestDate || (mealType === 'BREAKFAST' ? tomorrowStr : todayStr);
 
     if (targetDateStr < todayStr) {
       return NextResponse.json({ error: 'Cannot update orders for past dates.' }, { status: 400 });
+    }
+
+    if (mealType === 'BREAKFAST') {
+      if (targetDateStr !== tomorrowStr && targetDateStr !== dayAfterTomorrowStr) {
+        return NextResponse.json(
+          { error: 'Breakfast can only be ordered for tomorrow or the day after tomorrow.' },
+          { status: 400 }
+        );
+      }
+    } else {
+      if (targetDateStr !== todayStr && targetDateStr !== tomorrowStr) {
+        return NextResponse.json(
+          { error: `${mealType.charAt(0) + mealType.slice(1).toLowerCase()} can only be ordered for today or tomorrow.` },
+          { status: 400 }
+        );
+      }
     }
 
     // Unified lock validation
@@ -417,10 +457,30 @@ export async function DELETE(request: Request) {
     tomorrow.setDate(tomorrow.getDate() + 1);
     const tomorrowStr = format(tomorrow, 'yyyy-MM-dd');
 
+    const dayAfterTomorrow = new Date(now);
+    dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
+    const dayAfterTomorrowStr = format(dayAfterTomorrow, 'yyyy-MM-dd');
+
     const targetDateStr = requestDate || (mealType === 'BREAKFAST' ? tomorrowStr : todayStr);
 
     if (targetDateStr < todayStr) {
       return NextResponse.json({ error: 'Cannot cancel orders for past dates.' }, { status: 400 });
+    }
+
+    if (mealType === 'BREAKFAST') {
+      if (targetDateStr !== tomorrowStr && targetDateStr !== dayAfterTomorrowStr) {
+        return NextResponse.json(
+          { error: 'Breakfast can only be ordered for tomorrow or the day after tomorrow.' },
+          { status: 400 }
+        );
+      }
+    } else {
+      if (targetDateStr !== todayStr && targetDateStr !== tomorrowStr) {
+        return NextResponse.json(
+          { error: `${mealType.charAt(0) + mealType.slice(1).toLowerCase()} can only be ordered for today or tomorrow.` },
+          { status: 400 }
+        );
+      }
     }
 
     // Unified lock validation

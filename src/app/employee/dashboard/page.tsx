@@ -587,16 +587,26 @@ export default function EmployeeDashboard() {
               <input
                 type="date"
                 min={todayStr}
+                max={tomorrowStr}
                 value={selectedBookingDate}
                 onChange={(e) => {
                   if (e.target.value) {
-                    setSelectedBookingDate(e.target.value);
+                    const val = e.target.value;
+                    if (val === todayStr || val === tomorrowStr) {
+                      setSelectedBookingDate(val);
+                    } else {
+                      toast({
+                        variant: 'destructive',
+                        title: 'Invalid Date',
+                        description: 'You can only select Today or Tomorrow.',
+                      });
+                    }
                   }
                 }}
                 className={`w-full py-1.5 px-2 text-xs font-bold rounded-xl bg-slate-50 hover:bg-slate-100 border transition-all cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-center ${
                   selectedBookingDate !== todayStr && selectedBookingDate !== tomorrowStr
                     ? 'border-blue-500 text-blue-700 font-extrabold bg-blue-50/20'
-                    : 'border-slate-100 text-slate-600'
+                    : 'border-slate-100 text-slate-650'
                 }`}
               />
             </div>
@@ -1256,7 +1266,7 @@ export default function EmployeeDashboard() {
               {isUpdatingNotesOnly ? `Update ${activeMealSelection.toLowerCase()} Request` : `Select ${activeMealSelection.toLowerCase()} Preference`}
             </h3>
             <p className="text-xs text-slate-500 mt-1 font-semibold">
-              {isUpdatingNotesOnly ? 'Modify your meal option or special requests for today\'s order.' : 'Please choose your meal type below before confirming.'}
+              {isUpdatingNotesOnly ? "Modify your meal option for today's order." : 'Please choose your meal type below before confirming.'}
             </p>
             
             <div className="grid grid-cols-2 gap-4 mt-5">
@@ -1348,38 +1358,7 @@ export default function EmployeeDashboard() {
               }
               return null;
             })()}
- 
-            {/* Special Request Text Area */}
-            <div className="mt-4 space-y-1.5 text-left">
-              <div className="flex justify-between items-center">
-                <label htmlFor="orderNotes" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                  Special Request (Optional)
-                </label>
-                {/* Tea Request button commented out as requested */}
-                {/* 
-                <button
-                  type="button"
-                  onClick={() => {
-                    const currentNotes = orderNotes.trim();
-                    if (!currentNotes.toLowerCase().includes('tea')) {
-                      setOrderNotes(currentNotes ? `${currentNotes}, Tea` : 'Tea');
-                    }
-                  }}
-                  className="px-2 py-0.5 text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-100 rounded-md hover:bg-blue-100 active:scale-95 transition-all flex items-center gap-1 shadow-sm"
-                >
-                  🍵 Request Tea
-                </button>
-                */}
-              </div>
-              <textarea
-                id="orderNotes"
-                rows={2}
-                placeholder="e.g. No spicy food, vegetarian option details..."
-                value={orderNotes}
-                onChange={(e) => setOrderNotes(e.target.value)}
-                className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white focus-visible:outline-none transition-all placeholder:text-slate-400 font-medium resize-none"
-              />
-            </div>
+            {/* Special Request field removed */}
  
             <div className="flex gap-3 mt-5">
               <button
