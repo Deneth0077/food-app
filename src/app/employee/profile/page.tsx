@@ -22,6 +22,8 @@ interface UserProfile {
   employeeNo: string;
   phoneNumber: string;
   role: string;
+  department?: 'CWIT' | 'ECT' | 'SAGT';
+  deptChangeCount: number;
 }
 
 export default function EmployeeProfilePage() {
@@ -35,6 +37,7 @@ export default function EmployeeProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const [editPin, setEditPin] = useState('');
+  const [editDept, setEditDept] = useState<'CWIT' | 'ECT' | 'SAGT' | ''>('');
   const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
@@ -48,6 +51,7 @@ export default function EmployeeProfilePage() {
         const data = await res.json();
         setUser(data.user);
         setEditName(data.user.fullName);
+        setEditDept(data.user.department || '');
       } catch (err) {
         console.error('Profile Load Error:', err);
       } finally {
@@ -105,7 +109,8 @@ export default function EmployeeProfilePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fullName: editName,
-          pin: editPin ? editPin : undefined
+          pin: editPin ? editPin : undefined,
+          department: editDept || undefined
         })
       });
 
@@ -117,6 +122,7 @@ export default function EmployeeProfilePage() {
         description: 'Your changes have been saved successfully.',
       });
       setUser(data.user);
+      setEditDept(data.user.department || '');
       setEditPin('');
       setIsEditing(false);
     } catch (err: any) {
@@ -223,7 +229,46 @@ export default function EmployeeProfilePage() {
               </div>
               <div>
                 <span className="block text-[9px] uppercase tracking-wider text-slate-400 font-bold">Phone Number</span>
-                <span className="text-sm font-bold text-slate-850">{user?.phoneNumber}</span>
+                <span className="text-sm font-bold text-slate-855">{user?.phoneNumber}</span>
+              </div>
+            </div>
+
+            {/* Department / Work Site */}
+            <div className="p-4 flex items-center gap-4">
+              <div className="h-9 w-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0 font-bold text-[10px]">
+                SITE
+              </div>
+              <div className="flex-1">
+                <span className="block text-[9px] uppercase tracking-wider text-slate-400 font-bold">Work Site</span>
+                {isEditing ? (
+                  (user?.deptChangeCount || 0) < 2 ? (
+                    <div className="flex gap-2 mt-1.5">
+                      {['CWIT', 'ECT', 'SAGT'].map((d) => (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => setEditDept(d as any)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
+                            editDept === d
+                              ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
+                              : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
+                          }`}
+                        >
+                          {d}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5 mt-1">
+                      <span className="text-sm font-bold text-slate-800">{user?.department || 'Not Selected'}</span>
+                      <p className="text-[10px] text-red-500 font-bold leading-normal">
+                        Site changes limit reached (2 changes allowed). Please contact an Admin to change your site.
+                      </p>
+                    </div>
+                  )
+                ) : (
+                  <span className="text-sm font-bold text-slate-800">{user?.department || 'Not Selected'}</span>
+                )}
               </div>
             </div>
           </div>

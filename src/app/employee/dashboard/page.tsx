@@ -29,6 +29,8 @@ interface UserProfile {
   employeeNo: string;
   phoneNumber: string;
   role: string;
+  department?: 'CWIT' | 'ECT' | 'SAGT';
+  deptChangeCount: number;
 }
 
 interface Order {
@@ -505,6 +507,27 @@ export default function EmployeeDashboard() {
             Manage your daily meal requests and view upcoming collections.
           </p>
         </div>
+
+        {/* Active Site Indicator */}
+        {user?.department && (
+          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs">
+                SITE
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Active Work Site</p>
+                <p className="text-sm font-bold text-slate-800">{user.department}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => router.push('/employee/profile')}
+              className="text-xs font-bold text-blue-600 hover:underline bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-100"
+            >
+              Wrong site? Change
+            </button>
+          </div>
+        )}
 
         {/* Employee Info Card */}
         <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex items-center gap-4">
@@ -1396,6 +1419,51 @@ export default function EmployeeDashboard() {
               >
                 {isUpdatingNotesOnly ? 'Update Request' : 'Confirm (OK)'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Site selection startup modal */}
+      {user && !user.department && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 ease-out animate-in fade-in">
+          <div className="relative bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl border border-slate-100 text-center animate-in zoom-in-95">
+            <h3 className="text-lg font-bold text-slate-800 tracking-tight">Select Your Work Site</h3>
+            <p className="text-xs text-slate-500 mt-2 font-semibold">
+              Please choose your current work site (CWIT, ECT, or SAGT) to proceed.
+            </p>
+            <div className="flex flex-col gap-3 mt-6">
+              {['CWIT', 'ECT', 'SAGT'].map((dept) => (
+                <button
+                  key={dept}
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const res = await fetch('/api/auth/me', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ department: dept }),
+                      });
+                      const data = await res.json();
+                      if (!res.ok) throw new Error(data.error || 'Failed to set site');
+                      toast({
+                        title: 'Work Site Configured',
+                        description: `Successfully set current site to ${dept}.`,
+                      });
+                      setUser(data.user);
+                    } catch (err: any) {
+                      toast({
+                        variant: 'destructive',
+                        title: 'Error',
+                        description: err.message || 'Something went wrong',
+                      });
+                    }
+                  }}
+                  className="h-12 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold rounded-xl text-sm transition-all flex items-center justify-center shadow-sm"
+                >
+                  {dept}
+                </button>
+              ))}
             </div>
           </div>
         </div>

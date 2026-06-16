@@ -41,15 +41,16 @@ export async function GET(request: Request) {
     // 2. Fetch all orders matching month prefix in requestDate (YYYY-MM-DD)
     const monthlyOrders = await Order.find({
       requestDate: { $regex: new RegExp(`^${currentMonthStr}`) }
-    }).select('employeeNo employeeName mealType status collectedAt requestDate mealOption notes');
+    }).select('employeeNo employeeName mealType status collectedAt requestDate mealOption notes department');
 
     // 3. Fetch all active/existing employees to initialize map
-    const employees = await User.find({ role: 'EMPLOYEE' }).select('employeeNo fullName');
+    const employees = await User.find({ role: 'EMPLOYEE' }).select('employeeNo fullName department');
     
     const employeeMap: {
       [key: string]: {
         employeeNo: string;
         employeeName: string;
+        department: string;
         breakfastCount: number;
         breakfastCollected: number;
         lunchCount: number;
@@ -63,6 +64,7 @@ export async function GET(request: Request) {
       employeeMap[emp.employeeNo] = {
         employeeNo: emp.employeeNo,
         employeeName: emp.fullName,
+        department: emp.department || 'N/A',
         breakfastCount: 0,
         breakfastCollected: 0,
         lunchCount: 0,
@@ -79,6 +81,7 @@ export async function GET(request: Request) {
         employeeMap[empNo] = {
           employeeNo: o.employeeNo,
           employeeName: o.employeeName,
+          department: o.department || 'N/A',
           breakfastCount: 0,
           breakfastCollected: 0,
           lunchCount: 0,

@@ -18,6 +18,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
     const role = searchParams.get('role');
+    const department = searchParams.get('department');
 
     const query: any = {};
 
@@ -32,6 +33,10 @@ export async function GET(request: Request) {
 
     if (role && role !== 'ALL') {
       query.role = role;
+    }
+
+    if (department && department !== 'ALL') {
+      query.department = department;
     }
 
     const employees = await User.find(query).select('-password').sort({ fullName: 1 });
@@ -52,7 +57,7 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json();
-    const { employeeId, isActive, role } = body;
+    const { employeeId, isActive, role, department } = body;
 
     if (!employeeId) {
       return NextResponse.json({ error: 'Employee ID is required' }, { status: 400 });
@@ -76,6 +81,10 @@ export async function PUT(request: Request) {
       employee.role = role;
     }
 
+    if (department && ['CWIT', 'ECT', 'SAGT'].includes(department)) {
+      employee.department = department;
+    }
+
     await employee.save();
 
     // Fetch updated list of employees or return updated details
@@ -86,7 +95,8 @@ export async function PUT(request: Request) {
         fullName: employee.fullName,
         employeeNo: employee.employeeNo,
         role: employee.role,
-        isActive: employee.isActive
+        isActive: employee.isActive,
+        department: employee.department
       }
     });
   } catch (error: any) {

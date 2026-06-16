@@ -84,7 +84,7 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json();
-    const { fullName, pin } = body;
+    const { fullName, pin, department } = body;
 
     if (fullName) {
       const trimmedName = fullName.trim();
@@ -101,6 +101,22 @@ export async function PUT(request: Request) {
       }
       const hashedPassword = await bcrypt.hash(trimmedPin, 10);
       user.password = hashedPassword;
+    }
+
+    if (department) {
+      if (!['CWIT', 'ECT', 'SAGT'].includes(department)) {
+        return NextResponse.json({ error: 'Invalid department/site selected' }, { status: 400 });
+      }
+      if (user.department && user.department !== department) {
+        if ((user.deptChangeCount || 0) >= 2) {
+          return NextResponse.json(
+            { error: 'You have reached the limit of 2 site changes. Please contact an Admin to change your site.' },
+            { status: 400 }
+          );
+        }
+        user.deptChangeCount = (user.deptChangeCount || 0) + 1;
+      }
+      user.department = department;
     }
 
     await user.save();

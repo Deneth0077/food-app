@@ -23,6 +23,7 @@ interface Employee {
   phoneNumber: string;
   role: 'ADMIN' | 'EMPLOYEE' | 'CANTEEN';
   isActive: boolean;
+  department?: 'CWIT' | 'ECT' | 'SAGT';
 }
 
 export default function AdminEmployeesPage() {
@@ -33,6 +34,7 @@ export default function AdminEmployeesPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<'ALL' | 'ADMIN' | 'EMPLOYEE' | 'CANTEEN'>('ALL');
+  const [selectedDeptFilter, setSelectedDeptFilter] = useState<'ALL' | 'CWIT' | 'ECT' | 'SAGT'>('ALL');
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const fetchEmployees = useCallback(async () => {
@@ -113,8 +115,9 @@ export default function AdminEmployeesPage() {
       phoneNumber.includes(searchQuery);
 
     const matchesRole = selectedRoleFilter === 'ALL' || emp.role === selectedRoleFilter;
+    const matchesDept = selectedDeptFilter === 'ALL' || emp.department === selectedDeptFilter;
 
-    return matchesSearch && matchesRole;
+    return matchesSearch && matchesRole && matchesDept;
   });
 
   return (
@@ -164,6 +167,23 @@ export default function AdminEmployeesPage() {
               </button>
             ))}
           </div>
+
+          {/* Department filter bar */}
+          <div className="flex gap-1.5 overflow-x-auto pb-1">
+            {['ALL', 'CWIT', 'ECT', 'SAGT'].map(dept => (
+              <button
+                key={dept}
+                onClick={() => setSelectedDeptFilter(dept as any)}
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-colors ${
+                  selectedDeptFilter === dept 
+                    ? 'bg-blue-50 border-blue-200 text-blue-600' 
+                    : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
+                }`}
+              >
+                {dept}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Directory List */}
@@ -205,9 +225,14 @@ export default function AdminEmployeesPage() {
                     <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">
                       {emp.employeeNo || 'N/A'} • {emp.phoneNumber || 'N/A'}
                     </p>
-                    <span className="inline-block mt-1 bg-slate-50 border border-slate-200/50 rounded px-1.5 py-0.5 text-[8px] font-bold text-slate-500">
+                    <span className="inline-block mt-1 bg-slate-50 border border-slate-200/50 rounded px-1.5 py-0.5 text-[8px] font-bold text-slate-500 mr-1.5">
                       {emp.role}
                     </span>
+                    {emp.department && (
+                      <span className="inline-block mt-1 bg-blue-50 border border-blue-200/50 rounded px-1.5 py-0.5 text-[8px] font-bold text-blue-700">
+                        {emp.department}
+                      </span>
+                    )}
                   </div>
                 </div>
 

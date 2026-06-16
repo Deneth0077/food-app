@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Order from '@/models/Order';
 import User from '@/models/User';
+import PriceConfig from '@/models/PriceConfig';
 import { getAuthUser } from '@/lib/jwt';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 
@@ -32,6 +33,41 @@ export async function GET(request: Request) {
     // 1. Employee stats
     const totalEmployees = await User.countDocuments({ role: 'EMPLOYEE' });
     const activeEmployees = await User.countDocuments({ role: 'EMPLOYEE', isActive: true });
+
+    // 1.5 Fetch current price configs
+    let priceConfig = await PriceConfig.findOne();
+    if (!priceConfig) {
+      priceConfig = {
+        breakfast: 300,
+        lunch: 350,
+        dinner: 400
+      };
+    }
+
+    const getDeptStats = (ordersList: any[], prices: any) => {
+      const depts = ['CWIT', 'ECT', 'SAGT'];
+      const stats: any = {};
+      depts.forEach(d => {
+        const deptOrders = ordersList.filter(o => o.department === d);
+        const breakfast = deptOrders.filter(o => o.mealType === 'BREAKFAST').length;
+        const lunch = deptOrders.filter(o => o.mealType === 'LUNCH').length;
+        const dinner = deptOrders.filter(o => o.mealType === 'DINNER').length;
+        const total = deptOrders.length;
+        const collected = deptOrders.filter(o => o.status === 'COLLECTED').length;
+        const pending = deptOrders.filter(o => o.status === 'ORDERED').length;
+        const cost = breakfast * prices.breakfast + lunch * prices.lunch + dinner * prices.dinner;
+        stats[d] = {
+          total,
+          breakfast,
+          lunch,
+          dinner,
+          collected,
+          pending,
+          cost
+        };
+      });
+      return stats;
+    };
 
     // 2. Daily Summary (Today)
     const todayOrders = await Order.find({ requestDate: todayStr });
@@ -102,6 +138,9 @@ export async function GET(request: Request) {
       ...dailyDistribution[date]
     }));
 
+    const todayDepartmentStats = getDeptStats(todayOrders, priceConfig);
+    const monthlyDepartmentStats = getDeptStats(monthlyOrders, priceConfig);
+
     return NextResponse.json({
       employeeStats: {
         total: totalEmployees,
@@ -109,7 +148,9 @@ export async function GET(request: Request) {
       },
       todayStats,
       monthlyStats,
-      chartData
+      chartData,
+      todayDepartmentStats,
+      monthlyDepartmentStats
     });
   } catch (error: any) {
     console.error('Reports Aggregation Error:', error);

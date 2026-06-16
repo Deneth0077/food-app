@@ -38,6 +38,16 @@ interface Stats {
   pending: number;
 }
 
+interface DepartmentStat {
+  total: number;
+  breakfast: number;
+  lunch: number;
+  dinner: number;
+  collected: number;
+  pending: number;
+  cost: number;
+}
+
 interface ReportResponse {
   employeeStats: { total: number; active: number };
   todayStats: Stats;
@@ -49,6 +59,16 @@ interface ReportResponse {
     lunch: number;
     dinner: number;
   }>;
+  todayDepartmentStats?: {
+    CWIT: DepartmentStat;
+    ECT: DepartmentStat;
+    SAGT: DepartmentStat;
+  };
+  monthlyDepartmentStats?: {
+    CWIT: DepartmentStat;
+    ECT: DepartmentStat;
+    SAGT: DepartmentStat;
+  };
 }
 
 function ReportsPageContent() {
@@ -69,6 +89,7 @@ function ReportsPageContent() {
   interface SpendingItem {
     employeeNo: string;
     employeeName: string;
+    department?: string;
     breakfastCount: number;
     breakfastCollected?: number;
     lunchCount: number;
@@ -177,6 +198,7 @@ function ReportsPageContent() {
       const summaryHeaders = [
         'Employee No', 
         'Employee Name', 
+        'Department / Site',
         'Breakfast Ordered', 
         'Breakfast Collected', 
         'Lunch Ordered', 
@@ -191,6 +213,7 @@ function ReportsPageContent() {
         ...filteredSpendingList.map(item => [
           item.employeeNo,
           item.employeeName,
+          item.department || 'N/A',
           item.breakfastCount,
           item.breakfastCollected || 0,
           item.lunchCount,
@@ -403,12 +426,63 @@ function ReportsPageContent() {
           </div>
 
           <div className="p-4 flex justify-between items-center text-xs">
-            <span className="font-semibold text-slate-600 flex items-center gap-2">
+            <span className="font-semibold text-slate-650 flex items-center gap-2">
               <Clock className="h-4 w-4 text-orange-500" /> Pending (Ordered)
             </span>
             <span className="font-bold text-slate-800">{pendingCount}</span>
           </div>
         </div>
+
+        {/* Department/Site Breakdown */}
+        {reportData && (
+          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm space-y-3">
+            <div>
+              <h3 className="text-xs font-bold text-slate-800">Site / Department Breakdown</h3>
+              <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider mt-0.5">
+                {activeTab === 'daily' ? "Today's Statistics" : `Monthly Statistics (${selectedMonth})`}
+              </p>
+            </div>
+            
+            <div className="space-y-3 pt-1">
+              {['CWIT', 'ECT', 'SAGT'].map((dept) => {
+                const stats = activeTab === 'daily' 
+                  ? reportData.todayDepartmentStats?.[dept as 'CWIT' | 'ECT' | 'SAGT'] 
+                  : reportData.monthlyDepartmentStats?.[dept as 'CWIT' | 'ECT' | 'SAGT'];
+                
+                return (
+                  <div key={dept} className="bg-slate-50 border border-slate-200/60 rounded-xl p-3 flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-extrabold text-blue-700 bg-blue-50/50 px-2 py-0.5 rounded-md">
+                        {dept}
+                      </span>
+                      <span className="text-xs font-black text-slate-850">
+                        Rs. {(stats?.cost || 0).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-1 text-[10px] font-semibold text-slate-500">
+                      <div>
+                        <span className="block text-slate-400 font-bold text-[8px] uppercase">Breakfast</span>
+                        <span className="font-bold text-slate-700">{stats?.breakfast || 0}</span>
+                      </div>
+                      <div>
+                        <span className="block text-slate-400 font-bold text-[8px] uppercase">Lunch</span>
+                        <span className="font-bold text-slate-700">{stats?.lunch || 0}</span>
+                      </div>
+                      <div>
+                        <span className="block text-slate-400 font-bold text-[8px] uppercase">Dinner</span>
+                        <span className="font-bold text-slate-700">{stats?.dinner || 0}</span>
+                      </div>
+                      <div>
+                        <span className="block text-slate-400 font-bold text-[8px] uppercase">Total Meals</span>
+                        <span className="font-bold text-slate-800">{stats?.total || 0}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Meal Type Distribution Section */}
         <div className="space-y-3">
@@ -612,6 +686,7 @@ function ReportsPageContent() {
                       <tr className="border-b border-slate-200 text-[10px] uppercase font-bold text-slate-400 bg-slate-50/40">
                         <th className="py-2.5 px-4 font-bold">Emp ID</th>
                         <th className="py-2.5 px-3 font-bold">Name</th>
+                        <th className="py-2.5 px-3 font-bold">Site</th>
                         <th className="py-2.5 px-2 text-center font-bold">Breakfast</th>
                         <th className="py-2.5 px-2 text-center font-bold">Lunch</th>
                         <th className="py-2.5 px-2 text-center font-bold">Dinner</th>
@@ -624,6 +699,9 @@ function ReportsPageContent() {
                           <td className="py-3 px-4 font-bold text-slate-700">{item.employeeNo}</td>
                           <td className="py-3 px-3 font-semibold text-slate-800 max-w-[150px] truncate" title={item.employeeName}>
                             {item.employeeName}
+                          </td>
+                          <td className="py-3 px-3 font-bold text-slate-600">
+                            {item.department || 'N/A'}
                           </td>
                           <td className="py-3 px-2 text-center">
                             <span className="font-bold text-slate-700 block">{item.breakfastCount}</span>

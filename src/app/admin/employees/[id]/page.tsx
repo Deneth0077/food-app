@@ -25,6 +25,7 @@ interface Employee {
   phoneNumber: string;
   role: 'ADMIN' | 'EMPLOYEE' | 'CANTEEN';
   isActive: boolean;
+  department?: 'CWIT' | 'ECT' | 'SAGT';
 }
 
 interface Order {
@@ -179,6 +180,50 @@ export default function EmployeeDetailsPage() {
                 <span className={`font-bold uppercase ${employee.isActive ? 'text-green-600' : 'text-slate-400'}`}>
                   {employee.isActive ? 'Active' : 'Inactive'}
                 </span>
+              </div>
+              <div className="py-2.5 flex flex-col gap-2">
+                <span className="font-semibold text-slate-400 flex items-center gap-1.5"><User className="h-4 w-4" /> Work Site / Department</span>
+                <div className="flex gap-2.5 mt-0.5">
+                  {['CWIT', 'ECT', 'SAGT'].map((dept) => (
+                    <button
+                      key={dept}
+                      disabled={toggling}
+                      onClick={async () => {
+                        if (!employee) return;
+                        setToggling(true);
+                        try {
+                          const res = await fetch('/api/admin/employees', {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ employeeId: employee._id, department: dept }),
+                          });
+                          const data = await res.json();
+                          if (!res.ok) throw new Error(data.error || 'Failed to update department');
+                          toast({
+                            title: 'Department Updated',
+                            description: `Successfully moved employee to ${dept}.`,
+                          });
+                          setEmployee(prev => prev ? { ...prev, department: dept as any } : null);
+                        } catch (err: any) {
+                          toast({
+                            variant: 'destructive',
+                            title: 'Update Failed',
+                            description: err.message || 'Something went wrong',
+                          });
+                        } finally {
+                          setToggling(false);
+                        }
+                      }}
+                      className={`px-4 py-1.5 rounded-xl text-xs font-bold border transition-all active:scale-95 ${
+                        employee.department === dept
+                          ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
+                          : 'bg-slate-50 border-slate-200 text-slate-650 hover:bg-slate-100'
+                      }`}
+                    >
+                      {dept}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 

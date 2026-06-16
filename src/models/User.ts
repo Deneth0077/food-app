@@ -7,6 +7,8 @@ export interface IUser extends Document {
   password?: string;
   role: 'ADMIN' | 'EMPLOYEE' | 'CANTEEN';
   isActive: boolean;
+  department?: 'CWIT' | 'ECT' | 'SAGT';
+  deptChangeCount: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -23,6 +25,15 @@ const UserSchema: Schema = new Schema(
       default: 'EMPLOYEE' 
     },
     isActive: { type: Boolean, default: true },
+    department: { 
+      type: String, 
+      enum: ['CWIT', 'ECT', 'SAGT'], 
+      required: false 
+    },
+    deptChangeCount: { 
+      type: Number, 
+      default: 0 
+    },
   },
   { timestamps: true }
 );

@@ -108,6 +108,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'User is inactive or not found' }, { status: 403 });
     }
 
+    if (!dbUser.department) {
+      return NextResponse.json({ error: 'Please select your work site (CWIT, ECT, or SAGT) first.' }, { status: 400 });
+    }
+
     const now = new Date();
     const currentHour = now.getHours();
     const todayStr = format(now, 'yyyy-MM-dd');
@@ -205,6 +209,7 @@ export async function POST(request: Request) {
       status: 'ORDERED',
       requestDate: targetDateStr,
       requestedAt: new Date(),
+      department: dbUser.department,
     });
 
     // Create Admin Notification
