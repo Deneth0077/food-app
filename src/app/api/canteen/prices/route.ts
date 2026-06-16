@@ -44,7 +44,7 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (user.role !== 'CANTEEN' && user.role !== 'ADMIN') {
+    if (user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
@@ -71,7 +71,7 @@ export async function PUT(request: Request) {
 
     // Create admin notification for price change
     await Notification.create({
-      employeeName: 'Canteen Staff',
+      employeeName: 'System Admin',
       employeeNo: 'PRICES',
       mealType: 'BREAKFAST', // satisfy required schema validation
       notes: `Breakfast: Rs. ${breakfast} | Lunch: Rs. ${lunch} | Dinner: Rs. ${dinner}`

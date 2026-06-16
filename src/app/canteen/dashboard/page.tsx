@@ -15,7 +15,12 @@ import {
   CircleAlert,
   Loader2,
   LogOut,
-  Download
+  Download,
+  X,
+  Clock,
+  Lock,
+  Unlock,
+  Calendar
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -49,68 +54,237 @@ export default function CanteenDashboard() {
   const [viewMode, setViewMode] = useState<'TABLE' | 'CARDS'>('TABLE');
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
-  const [showPricesModal, setShowPricesModal] = useState(false);
-  const [prices, setPrices] = useState({ breakfast: 300, lunch: 350, dinner: 400 });
-  const [savingPrices, setSavingPrices] = useState(false);
-  const [fetchingPrices, setFetchingPrices] = useState(false);
   const [scanEmployeeNo, setScanEmployeeNo] = useState('');
+  const [selectedMealDetails, setSelectedMealDetails] = useState<'BREAKFAST' | 'LUNCH' | 'DINNER' | null>(null);
 
-  const fetchPrices = useCallback(async () => {
-    try {
-      setFetchingPrices(true);
-      const res = await fetch('/api/canteen/prices');
-      if (res.ok) {
-        const data = await res.json();
-        if (data.prices) {
-          setPrices({
-            breakfast: data.prices.breakfast,
-            lunch: data.prices.lunch,
-            dinner: data.prices.dinner
+  const handleDownloadSingleMealPDF = (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER') => {
+    const mealOrders = orders.filter(o => o.mealType === mealType);
+    const targetFormattedDate = format(new Date(selectedDate + 'T00:00:00'), 'EEEE, MMMM dd, yyyy');
+    
+    const summaryRows = `
+      <tr>
+        <td><strong>${mealType.charAt(0) + mealType.slice(1).toLowerCase()}</strong></td>
+        <td>${mealOrders.filter(o => o.mealOption === 'VEGETARIAN').length}</td>
+        <td>${mealOrders.filter(o => o.mealOption === 'MEAT').length}</td>
+        <td><strong>${mealOrders.length}</strong></td>
+      </tr>
+    `;
+    
+    const htmlContent = `
+      <html>
+        <head>
+          <title>Meal Logistics Report - ${mealType} - ${selectedDate}</title>
+          <style>
+            body {
+              font-family: 'Inter', sans-serif;
+              color: #333;
+              padding: 20px;
+              line-height: 1.4;
+            }
+            .header {
+              text-align: center;
+              border-bottom: 2px solid #333;
+              padding-bottom: 15px;
+              margin-bottom: 25px;
+            }
+            .header h1 {
+              margin: 0;
+              font-size: 20px;
+              text-transform: uppercase;
+              letter-spacing: 1px;
+            }
+            .header p {
+              margin: 5px 0 0 0;
+              font-size: 12px;
+              color: #666;
+              font-weight: bold;
+            }
+            .summary-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 30px;
+            }
+            .summary-table th, .summary-table td {
+              border: 1px solid #ddd;
+              padding: 8px 12px;
+              text-align: left;
+              font-size: 11px;
+            }
+            .summary-table th {
+              background-color: #f5f5f5;
+              font-weight: bold;
+            }
+            .meal-section {
+              margin-bottom: 30px;
+              page-break-inside: avoid;
+            }
+            .meal-title {
+              font-size: 14px;
+              font-weight: bold;
+              border-bottom: 1.5px solid #666;
+              padding-bottom: 4px;
+              margin-bottom: 10px;
+              text-transform: uppercase;
+            }
+            .order-table {
+              width: 100%;
+              border-collapse: collapse;
+            }
+            .order-table th, .order-table td {
+              border: 1px solid #eee;
+              padding: 7px 10px;
+              text-align: left;
+              font-size: 10px;
+            }
+            .order-table th {
+              background-color: #fafafa;
+              font-weight: bold;
+            }
+            .veg-pill {
+              background-color: #e8f5e9;
+              color: #2e7d32;
+              font-weight: bold;
+              padding: 2px 6px;
+              border-radius: 4px;
+              font-size: 9px;
+            }
+            .meat-pill {
+              background-color: #ffebee;
+              color: #c62828;
+              font-weight: bold;
+              padding: 2px 6px;
+              border-radius: 4px;
+              font-size: 9px;
+            }
+            .notes-text {
+              font-style: italic;
+              color: #555;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>ZPMC Lanka Meal Logistics</h1>
+            <p>${mealType} Operations Report - ${targetFormattedDate}</p>
+          </div>
+          
+          <h2>Summary</h2>
+          <table class="summary-table">
+            <thead>
+              <tr>
+                <th>Meal Time</th>
+                <th>Vegetarian</th>
+                <th>Non Veg</th>
+                <th>Total Orders</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${summaryRows}
+            </tbody>
+          </table>
+          
+          <div class="meal-section">
+            <div class="meal-title">${mealType} Orders for ${selectedDate} (${mealOrders.length})</div>
+            ${mealOrders.length === 0 ? '<p style="font-size: 10px; color: #777;">No orders placed for this date.</p>' : `
+              <table class="order-table">
+                <thead>
+                  <tr>
+                    <th>Emp ID</th>
+                    <th>Name</th>
+                    <th>Phone</th>
+                    <th>Meal Date</th>
+                    <th>Option</th>
+                    <th>Notes / Requests</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${mealOrders.map(o => `
+                    <tr>
+                      <td>${o.employeeNo}</td>
+                      <td><strong>${o.employeeName}</strong></td>
+                      <td>${o.phoneNumber}</td>
+                      <td><strong>${o.requestDate}</strong></td>
+                      <td><span class="${o.mealOption === 'VEGETARIAN' ? 'veg-pill' : 'meat-pill'}">${o.mealOption === 'VEGETARIAN' ? 'VEG' : 'NON-VEG'}</span></td>
+                      <td class="notes-text">${o.notes || '-'}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            `}
+          </div>
+        </body>
+      </html>
+    `;
+    
+    const element = document.createElement('div');
+    element.innerHTML = htmlContent;
+    element.style.position = 'absolute';
+    element.style.left = '-9999px';
+    element.style.top = '-9999px';
+    document.body.appendChild(element);
+
+    const runHtml2Pdf = async () => {
+      try {
+        const jsPDF = (await import('jspdf' as any)).default;
+        const html2canvas = (await import('html2canvas-pro' as any)).default;
+
+        html2canvas(element, {
+          scale: 2,
+          logging: false,
+          useCORS: true,
+          backgroundColor: '#ffffff'
+        }).then((canvas: HTMLCanvasElement) => {
+          const imgData = canvas.toDataURL('image/jpeg', 0.98);
+          
+          const pdf = new jsPDF('p', 'mm', 'a4');
+          const pageWidth = 210;
+          const pageHeight = 297;
+          const margin = 10;
+          const imgWidth = pageWidth - (margin * 2);
+          const imgHeight = (canvas.height * imgWidth) / canvas.width;
+          
+          let heightLeft = imgHeight;
+          let position = margin;
+
+          pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight);
+          heightLeft -= (pageHeight - margin * 2);
+
+          while (heightLeft > 0) {
+            position = heightLeft - imgHeight + margin;
+            pdf.addPage();
+            pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight);
+            heightLeft -= (pageHeight - margin * 2);
+          }
+          
+          pdf.save(`Meal_Logistics_Report_${mealType}_${selectedDate}.pdf`);
+
+          document.body.removeChild(element);
+          toast({
+            title: 'Report Downloaded',
+            description: `${mealType} operations report for ${selectedDate} has been downloaded.`,
           });
-        }
+        }).catch((err: any) => {
+          console.error('PDF generation error:', err);
+          document.body.removeChild(element);
+          toast({
+            variant: 'destructive',
+            title: 'Download Failed',
+            description: 'Failed to generate and download the PDF report.',
+          });
+        });
+      } catch (err: any) {
+        console.error('Failed to load local PDF libraries:', err);
+        document.body.removeChild(element);
+        toast({
+          variant: 'destructive',
+          title: 'Download Failed',
+          description: 'Failed to load modern HTML canvas rendering library.',
+        });
       }
-    } catch (err) {
-      console.error('Failed to fetch prices', err);
-    } finally {
-      setFetchingPrices(false);
-    }
-  }, []);
+    };
 
-  const handleSavePrices = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSavingPrices(true);
-    try {
-      const res = await fetch('/api/canteen/prices', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(prices),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to update prices');
-      }
-
-      toast({
-        title: 'Prices Updated',
-        description: 'Meal prices have been updated successfully.',
-      });
-      setShowPricesModal(false);
-    } catch (err: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Update Failed',
-        description: err.message || 'Something went wrong',
-      });
-    } finally {
-      setSavingPrices(false);
-    }
+    runHtml2Pdf();
   };
-
-  useEffect(() => {
-    fetchPrices();
-  }, [fetchPrices]);
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -821,12 +995,25 @@ export default function CanteenDashboard() {
           </div>
           <div className="grid grid-cols-3 gap-3">
             {/* Breakfast Stats Card */}
-            <div className="bg-white rounded-2xl p-3 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between">
+            <div 
+              onClick={() => setSelectedMealDetails('BREAKFAST')}
+              className={`bg-white rounded-2xl p-3 border transition-all cursor-pointer flex flex-col justify-between hover:shadow-md hover:border-amber-300 active:scale-[0.98] ${
+                isMealDeadlinePassed('BREAKFAST', selectedDate) 
+                  ? 'border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.015)]' 
+                  : 'border-emerald-100 shadow-[0_2px_8px_rgba(16,185,129,0.04)]'
+              }`}
+            >
               <div className="flex justify-between items-start">
                 <div className="h-8 w-8 rounded-lg bg-amber-50 text-amber-500 flex items-center justify-center">
                   <Coffee className="h-4.5 w-4.5" />
                 </div>
-                <span className="text-[9px] font-extrabold text-slate-400 bg-slate-50 px-1 rounded">{breakfastProgress.pct}%</span>
+                <span className={`text-[8px] font-extrabold px-1 py-0.5 rounded uppercase ${
+                  isMealDeadlinePassed('BREAKFAST', selectedDate)
+                    ? 'bg-slate-100 text-slate-500'
+                    : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                }`}>
+                  {isMealDeadlinePassed('BREAKFAST', selectedDate) ? 'Closed' : 'Open'}
+                </span>
               </div>
               <div className="mt-2.5">
                 <p className="text-xl font-bold text-slate-800 leading-tight">{breakfastProgress.total}</p>
@@ -837,16 +1024,32 @@ export default function CanteenDashboard() {
                 <p className="text-[8px] font-extrabold text-slate-400 mt-1.5 leading-none">
                   {breakfastProgress.collected}/{breakfastProgress.total} Coll. • V:{breakfastProgress.vegCount} NV:{breakfastProgress.meatCount}
                 </p>
+                <p className="text-[7px] text-slate-400 font-semibold mt-1.5 italic leading-none flex items-center gap-0.5">
+                  <Clock className="h-2 w-2" /> Cutoff: Prev Day 8 PM
+                </p>
               </div>
             </div>
 
             {/* Lunch Stats Card */}
-            <div className="bg-white rounded-2xl p-3 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between">
+            <div 
+              onClick={() => setSelectedMealDetails('LUNCH')}
+              className={`bg-white rounded-2xl p-3 border transition-all cursor-pointer flex flex-col justify-between hover:shadow-md hover:border-blue-300 active:scale-[0.98] ${
+                isMealDeadlinePassed('LUNCH', selectedDate)
+                  ? 'border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.015)]' 
+                  : 'border-emerald-100 shadow-[0_2px_8px_rgba(16,185,129,0.04)]'
+              }`}
+            >
               <div className="flex justify-between items-start">
                 <div className="h-8 w-8 rounded-lg bg-blue-50 text-blue-505 flex items-center justify-center">
                   <Utensils className="h-4.5 w-4.5" />
                 </div>
-                <span className="text-[9px] font-extrabold text-slate-400 bg-slate-50 px-1 rounded">{lunchProgress.pct}%</span>
+                <span className={`text-[8px] font-extrabold px-1 py-0.5 rounded uppercase ${
+                  isMealDeadlinePassed('LUNCH', selectedDate)
+                    ? 'bg-slate-100 text-slate-500'
+                    : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                }`}>
+                  {isMealDeadlinePassed('LUNCH', selectedDate) ? 'Closed' : 'Open'}
+                </span>
               </div>
               <div className="mt-2.5">
                 <p className="text-xl font-bold text-slate-800 leading-tight">{lunchProgress.total}</p>
@@ -857,16 +1060,32 @@ export default function CanteenDashboard() {
                 <p className="text-[8px] font-extrabold text-slate-400 mt-1.5 leading-none">
                   {lunchProgress.collected}/{lunchProgress.total} Coll. • V:{lunchProgress.vegCount} NV:{lunchProgress.meatCount}
                 </p>
+                <p className="text-[7px] text-slate-400 font-semibold mt-1.5 italic leading-none flex items-center gap-0.5">
+                  <Clock className="h-2 w-2" /> Cutoff: Today 9 AM
+                </p>
               </div>
             </div>
 
             {/* Dinner Stats Card */}
-            <div className="bg-white rounded-2xl p-3 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between">
+            <div 
+              onClick={() => setSelectedMealDetails('DINNER')}
+              className={`bg-white rounded-2xl p-3 border transition-all cursor-pointer flex flex-col justify-between hover:shadow-md hover:border-indigo-300 active:scale-[0.98] ${
+                isMealDeadlinePassed('DINNER', selectedDate)
+                  ? 'border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.015)]' 
+                  : 'border-emerald-100 shadow-[0_2px_8px_rgba(16,185,129,0.04)]'
+              }`}
+            >
               <div className="flex justify-between items-start">
                 <div className="h-8 w-8 rounded-lg bg-indigo-50 text-indigo-500 flex items-center justify-center">
                   <Moon className="h-4.5 w-4.5" />
                 </div>
-                <span className="text-[9px] font-extrabold text-slate-400 bg-slate-50 px-1 rounded">{dinnerProgress.pct}%</span>
+                <span className={`text-[8px] font-extrabold px-1 py-0.5 rounded uppercase ${
+                  isMealDeadlinePassed('DINNER', selectedDate)
+                    ? 'bg-slate-100 text-slate-500'
+                    : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                }`}>
+                  {isMealDeadlinePassed('DINNER', selectedDate) ? 'Closed' : 'Open'}
+                </span>
               </div>
               <div className="mt-2.5">
                 <p className="text-xl font-bold text-slate-800 leading-tight">{dinnerProgress.total}</p>
@@ -876,6 +1095,9 @@ export default function CanteenDashboard() {
                 </div>
                 <p className="text-[8px] font-extrabold text-slate-400 mt-1.5 leading-none">
                   {dinnerProgress.collected}/{dinnerProgress.total} Coll. • V:{dinnerProgress.vegCount} NV:{dinnerProgress.meatCount}
+                </p>
+                <p className="text-[7px] text-slate-400 font-semibold mt-1.5 italic leading-none flex items-center gap-0.5">
+                  <Clock className="h-2 w-2" /> Cutoff: Today 5 PM
                 </p>
               </div>
             </div>
@@ -913,14 +1135,6 @@ export default function CanteenDashboard() {
               >
                 <Download className="h-3.5 w-3.5" />
                 Download PDF Only
-              </button>
-              <button 
-                onClick={() => setShowPricesModal(true)}
-                className="flex-1 h-10 bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 rounded-xl text-[10px] font-extrabold tracking-wide flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-95"
-                title="Manage Prices"
-              >
-                <SlidersHorizontal className="h-3.5 w-3.5" />
-                Change Price
               </button>
             </div>
           </div>
@@ -1307,90 +1521,117 @@ export default function CanteenDashboard() {
         </div>
       )}
 
-      {/* Canteen Prices Management Modal */}
-      {showPricesModal && (
+      {/* Canteen Orders Detailed Modal */}
+      {selectedMealDetails && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 ease-out animate-in fade-in">
-          <div className="absolute inset-0" onClick={() => { setShowPricesModal(false); fetchPrices(); }}></div>
+          <div className="absolute inset-0" onClick={() => setSelectedMealDetails(null)}></div>
           
-          <div className="relative bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl border border-slate-100 transition-all duration-300 ease-out transform animate-in zoom-in-95">
-            <h3 className="text-base font-bold text-slate-850 tracking-tight flex items-center gap-2">
-              <SlidersHorizontal className="h-4.5 w-4.5 text-blue-600" />
-              Manage Meal Prices
-            </h3>
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mt-1">
-              Configure current prices for reports
-            </p>
-
-            <form onSubmit={handleSavePrices} className="space-y-4 mt-5">
-              {/* Breakfast Price Input */}
-              <div className="space-y-1 text-left">
-                <label htmlFor="breakfastPrice" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                  Breakfast (Rs.)
-                </label>
-                <input
-                  id="breakfastPrice"
-                  type="number"
-                  required
-                  min="0"
-                  value={prices.breakfast}
-                  onChange={(e) => setPrices(prev => ({ ...prev, breakfast: Number(e.target.value) }))}
-                  className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white focus-visible:outline-none transition-all font-bold text-slate-700"
-                />
+          <div className="relative bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-100 flex flex-col max-h-[85vh] transition-all duration-300 ease-out transform animate-in zoom-in-95">
+            {/* Modal Header */}
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 rounded-t-2xl">
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
+                  <span className="capitalize">{selectedMealDetails.toLowerCase()}</span> Orders List
+                </h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1 flex items-center gap-1.5">
+                  <Calendar className="h-3 w-3" /> {selectedDate} • {orders.filter(o => o.mealType === selectedMealDetails).length} Orders Total
+                </p>
               </div>
+              <button
+                onClick={() => setSelectedMealDetails(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-650 hover:bg-slate-100 rounded-full transition-colors"
+                title="Close"
+              >
+                <X className="h-4.5 w-4.5" />
+              </button>
+            </div>
 
-              {/* Lunch Price Input */}
-              <div className="space-y-1 text-left">
-                <label htmlFor="lunchPrice" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                  Lunch (Rs.)
-                </label>
-                <input
-                  id="lunchPrice"
-                  type="number"
-                  required
-                  min="0"
-                  value={prices.lunch}
-                  onChange={(e) => setPrices(prev => ({ ...prev, lunch: Number(e.target.value) }))}
-                  className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white focus-visible:outline-none transition-all font-bold text-slate-700"
-                />
-              </div>
+            {/* Modal Body */}
+            <div className="p-5 overflow-y-auto flex-1 min-h-[200px]">
+              {(() => {
+                const mealOrders = orders.filter(o => o.mealType === selectedMealDetails);
+                if (mealOrders.length === 0) {
+                  return (
+                    <div className="flex flex-col items-center justify-center py-12 text-slate-400 font-bold text-xs gap-2">
+                      <CircleAlert className="h-8 w-8 text-slate-350" />
+                      No orders placed for this meal on {selectedDate}.
+                    </div>
+                  );
+                }
 
-              {/* Dinner Price Input */}
-              <div className="space-y-1 text-left">
-                <label htmlFor="dinnerPrice" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                  Dinner (Rs.)
-                </label>
-                <input
-                  id="dinnerPrice"
-                  type="number"
-                  required
-                  min="0"
-                  value={prices.dinner}
-                  onChange={(e) => setPrices(prev => ({ ...prev, dinner: Number(e.target.value) }))}
-                  className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white focus-visible:outline-none transition-all font-bold text-slate-700"
-                />
-              </div>
+                return (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-[11px]">
+                      <thead>
+                        <tr className="border-b border-slate-200 text-slate-400 uppercase tracking-wider text-[9px] font-extrabold bg-slate-50/50">
+                          <th className="py-2.5 px-3">Emp ID</th>
+                          <th className="py-2.5 px-3">Name</th>
+                          <th className="py-2.5 px-3">Phone</th>
+                          <th className="py-2.5 px-3">Choice</th>
+                          <th className="py-2.5 px-3">Status</th>
+                          <th className="py-2.5 px-3">Notes</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                        {mealOrders.map((order) => (
+                          <tr key={order._id} className="hover:bg-slate-50/80 transition-colors">
+                            <td className="py-2.5 px-3 font-extrabold text-slate-550">{order.employeeNo}</td>
+                            <td className="py-2.5 px-3 font-bold text-slate-800">{order.employeeName}</td>
+                            <td className="py-2.5 px-3">{order.phoneNumber}</td>
+                            <td className="py-2.5 px-3">
+                              {order.mealOption ? (
+                                <span className={`px-2 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-wide ${
+                                  order.mealOption === 'VEGETARIAN'
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                                    : 'bg-rose-50 text-rose-700 border border-rose-100'
+                                }`}>
+                                  {order.mealOption === 'VEGETARIAN' ? 'VEG' : 'NON-VEG'}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400">-</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <span className={`px-2 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-wide ${
+                                order.status === 'COLLECTED'
+                                  ? 'bg-green-50 text-green-700 border border-green-100'
+                                  : 'bg-amber-50 text-amber-705 border border-amber-100'
+                              }`}>
+                                {order.status === 'COLLECTED' ? 'Collected' : 'Pending'}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 italic text-slate-500 font-medium max-w-[150px] truncate" title={order.notes || ''}>
+                              {order.notes || '-'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
+            </div>
 
-              <div className="flex gap-3 mt-6">
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3 rounded-b-2xl">
+              <button
+                type="button"
+                onClick={() => setSelectedMealDetails(null)}
+                className="h-10 px-4 border border-slate-200 text-slate-500 font-bold rounded-xl text-xs hover:bg-slate-50 active:scale-[0.98] transition-all"
+              >
+                Close
+              </button>
+              {orders.filter(o => o.mealType === selectedMealDetails).length > 0 && (
                 <button
                   type="button"
-                  onClick={() => { setShowPricesModal(false); fetchPrices(); }}
-                  className="flex-1 h-10 border border-slate-200 text-slate-500 font-bold rounded-xl text-[11px] hover:bg-slate-50 active:scale-98 transition-all"
+                  onClick={() => handleDownloadSingleMealPDF(selectedMealDetails)}
+                  className="h-10 px-4 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shadow-sm"
                 >
-                  Cancel
+                  <Download className="h-4 w-4" />
+                  Download Meal PDF
                 </button>
-                <button
-                  type="submit"
-                  disabled={savingPrices || fetchingPrices}
-                  className="flex-1 h-10 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-[11px] active:scale-98 transition-all flex items-center justify-center gap-1 shadow-sm"
-                >
-                  {savingPrices ? (
-                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    'Save Prices'
-                  )}
-                </button>
-              </div>
-            </form>
+              )}
+            </div>
           </div>
         </div>
       )}
