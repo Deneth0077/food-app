@@ -168,7 +168,77 @@ export default function EmployeeProfilePage() {
         </div>
 
         <form onSubmit={handleUpdateProfile} className="space-y-4">
-          {/* Details List */}
+          {/* Active Work Site Card */}
+          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs flex-shrink-0">
+                  SITE
+                </div>
+                <div>
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Active Work Site</p>
+                  {!isEditing ? (
+                    <p className="text-sm font-bold text-slate-800">{user?.department || 'Not Selected'}</p>
+                  ) : (
+                    <span className="block text-xs font-semibold text-slate-400">Select new site</span>
+                  )}
+                </div>
+              </div>
+              {!isEditing && (
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(true)}
+                  className="text-xs font-bold text-blue-600 hover:underline bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-100"
+                >
+                  Wrong site? Change
+                </button>
+              )}
+            </div>
+
+            {isEditing && (
+              <div className="border-t border-slate-100 pt-3 animate-in fade-in duration-200">
+                {(user?.deptChangeCount || 0) < 2 ? (
+                  <div className="flex gap-2">
+                    {['CWIT', 'ECT', 'SAGT'].map((d) => (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => setEditDept(d as any)}
+                        className={`flex-1 py-2.5 text-xs font-bold border rounded-xl transition-all duration-200 active:scale-95 ${
+                          editDept === d
+                            ? 'bg-blue-600 border-blue-600 text-white shadow-sm font-extrabold'
+                            : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
+                        }`}
+                      >
+                        {d}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-red-500 font-bold leading-normal">
+                    Site changes limit reached (2 changes allowed). Please contact an Admin to change your site.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Employee ID & Info Card */}
+          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex items-center gap-4">
+            <div className="h-12 w-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 flex-shrink-0">
+              <UserIcon className="h-6 w-6 stroke-[2.25]" />
+            </div>
+            <div className="flex-1">
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Employee ID</p>
+              <p className="text-sm font-bold text-slate-800">{user?.employeeNo}</p>
+              <p className="text-[11px] font-medium text-slate-500 mt-0.5">{user?.phoneNumber}</p>
+            </div>
+            <div className="bg-slate-50 rounded-lg px-2.5 py-1 text-[10px] font-bold text-slate-500 border border-slate-100 flex-shrink-0">
+              Active
+            </div>
+          </div>
+
+          {/* Editable Personal Info Details (Name & PIN) */}
           <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.025)] divide-y divide-slate-100">
             {/* Full Name Edit/View */}
             <div className="p-4 flex items-center gap-4">
@@ -210,67 +280,6 @@ export default function EmployeeProfilePage() {
                 </div>
               </div>
             )}
-
-            {/* Employee ID */}
-            <div className="p-4 flex items-center gap-4 opacity-80 bg-slate-50/35">
-              <div className="h-9 w-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
-                <FileText className="h-5 w-5 stroke-[2.25]" />
-              </div>
-              <div>
-                <span className="block text-[9px] uppercase tracking-wider text-slate-400 font-bold">Employee ID</span>
-                <span className="text-sm font-bold text-slate-850">{user?.employeeNo}</span>
-              </div>
-            </div>
-
-            {/* Phone Number */}
-            <div className="p-4 flex items-center gap-4 opacity-80 bg-slate-50/35">
-              <div className="h-9 w-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
-                <Phone className="h-5 w-5 stroke-[2.25]" />
-              </div>
-              <div>
-                <span className="block text-[9px] uppercase tracking-wider text-slate-400 font-bold">Phone Number</span>
-                <span className="text-sm font-bold text-slate-855">{user?.phoneNumber}</span>
-              </div>
-            </div>
-
-            {/* Department / Work Site */}
-            <div className="p-4 flex items-center gap-4">
-              <div className="h-9 w-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0 font-bold text-[10px]">
-                SITE
-              </div>
-              <div className="flex-1">
-                <span className="block text-[9px] uppercase tracking-wider text-slate-400 font-bold">Work Site</span>
-                {isEditing ? (
-                  (user?.deptChangeCount || 0) < 2 ? (
-                    <div className="flex gap-2 mt-1.5">
-                      {['CWIT', 'ECT', 'SAGT'].map((d) => (
-                        <button
-                          key={d}
-                          type="button"
-                          onClick={() => setEditDept(d as any)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
-                            editDept === d
-                              ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
-                              : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
-                          }`}
-                        >
-                          {d}
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="space-y-1.5 mt-1">
-                      <span className="text-sm font-bold text-slate-800">{user?.department || 'Not Selected'}</span>
-                      <p className="text-[10px] text-red-500 font-bold leading-normal">
-                        Site changes limit reached (2 changes allowed). Please contact an Admin to change your site.
-                      </p>
-                    </div>
-                  )
-                ) : (
-                  <span className="text-sm font-bold text-slate-800">{user?.department || 'Not Selected'}</span>
-                )}
-              </div>
-            </div>
           </div>
 
           {/* Edit Actions buttons */}

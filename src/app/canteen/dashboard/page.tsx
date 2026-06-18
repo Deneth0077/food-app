@@ -44,6 +44,7 @@ export default function CanteenDashboard() {
   const { toast } = useToast();
   
   const [orders, setOrders] = useState<Order[]>([]);
+  const [tomorrowOrders, setTomorrowOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMealFilter, setSelectedMealFilter] = useState<'ALL' | 'BREAKFAST' | 'LUNCH' | 'DINNER'>('ALL');
@@ -56,6 +57,8 @@ export default function CanteenDashboard() {
   const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
   const [scanEmployeeNo, setScanEmployeeNo] = useState('');
   const [selectedMealDetails, setSelectedMealDetails] = useState<'BREAKFAST' | 'LUNCH' | 'DINNER' | null>(null);
+  const [selectedMealDetailsDate, setSelectedMealDetailsDate] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   const handleDownloadSingleMealPDF = (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER') => {
     const mealOrders = orders.filter(o => o.mealType === mealType);
@@ -286,19 +289,42 @@ export default function CanteenDashboard() {
     runHtml2Pdf();
   };
 
+  const getTomorrowDateStr = (dateStr: string) => {
+    const date = new Date(dateStr + 'T00:00:00');
+    date.setDate(date.getDate() + 1);
+    return format(date, 'yyyy-MM-dd');
+  };
+
   const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/orders?requestDate=${selectedDate}`);
-      if (!res.ok) {
-        if (res.status === 401 || res.status === 403) {
+      
+      const tomorrowDateStr = getTomorrowDateStr(selectedDate);
+
+      const [resToday, resTomorrow] = await Promise.all([
+        fetch(`/api/orders?requestDate=${selectedDate}`),
+        fetch(`/api/orders?requestDate=${tomorrowDateStr}`)
+      ]);
+
+      if (!resToday.ok) {
+        if (resToday.status === 401 || resToday.status === 403) {
           router.push('/auth/login');
           return;
         }
-        throw new Error('Failed to load orders');
+        throw new Error("Failed to load today's orders");
       }
-      const data = await res.json();
-      setOrders(data.orders || []);
+
+      if (!resTomorrow.ok) {
+        throw new Error("Failed to load tomorrow's orders");
+      }
+
+      const [dataToday, dataTomorrow] = await Promise.all([
+        resToday.json(),
+        resTomorrow.json()
+      ]);
+
+      setOrders(dataToday.orders || []);
+      setTomorrowOrders(dataTomorrow.orders || []);
     } catch (err: any) {
       toast({
         variant: 'destructive',
@@ -313,6 +339,13 @@ export default function CanteenDashboard() {
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const handleMarkAsCollected = async (orderId: string) => {
     setUpdatingOrderId(orderId);
@@ -336,6 +369,7 @@ export default function CanteenDashboard() {
 
       // Update the order in local state
       setOrders(prev => prev.map(o => o._id === orderId ? { ...o, status: 'COLLECTED', collectedAt: new Date().toISOString() } : o));
+      setTomorrowOrders(prev => prev.map(o => o._id === orderId ? { ...o, status: 'COLLECTED', collectedAt: new Date().toISOString() } : o));
     } catch (err: any) {
       toast({
         variant: 'destructive',
@@ -449,36 +483,67 @@ export default function CanteenDashboard() {
     }
   };
 
-  const isMealDeadlinePassed = (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER', targetDate: string) => {
-    const now = new Date();
-    const todayStr = format(now, 'yyyy-MM-dd');
+  const isMealDeadlinePassed = (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER', targetDateStr: string) => {
+    // Parse target date strictly in local time to avoid timezone drift
+    const targetDate = new Date(targetDateStr + 'T00:00:00');
     
-    if (targetDate < todayStr) {
-      return true;
-    }
-    
-    if (targetDate > todayStr) {
-      const tomorrow = new Date(now);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const tomorrowStr = format(tomorrow, 'yyyy-MM-dd');
-      
-      if (targetDate === tomorrowStr && mealType === 'BREAKFAST') {
-        return now.getHours() >= 20; // 8:00 PM today
-      }
-      return false;
-    }
-    
-    // Today
-    const currentHour = now.getHours();
+    let lockTime: Date;
     if (mealType === 'BREAKFAST') {
-      return true; // Today's breakfast locks yesterday at 8 PM, so it's passed
+      const dayBefore = new Date(targetDate.getTime());
+      dayBefore.setDate(dayBefore.getDate() - 1);
+      dayBefore.setHours(20, 0, 0, 0); // 8:00 PM the day before
+      lockTime = dayBefore;
     } else if (mealType === 'LUNCH') {
-      return currentHour >= 9; // 9:00 AM
-    } else if (mealType === 'DINNER') {
-      return currentHour >= 17; // 5:00 PM
+      const dayOf = new Date(targetDate.getTime());
+      dayOf.setHours(9, 0, 0, 0); // 9:00 AM the day of
+      lockTime = dayOf;
+    } else {
+      const dayOf = new Date(targetDate.getTime());
+      dayOf.setHours(17, 0, 0, 0); // 5:00 PM the day of
+      lockTime = dayOf;
     }
-    return false;
+    
+    return currentTime.getTime() >= lockTime.getTime();
   };
+
+  const isMealActivelyPreparing = (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER', targetDateStr: string) => {
+    // Parse target date strictly in local time to avoid timezone drift
+    const targetDate = new Date(targetDateStr + 'T00:00:00');
+    
+    let prepStart: Date;
+    let prepEnd: Date;
+    
+    if (mealType === 'BREAKFAST') {
+      const dayBefore = new Date(targetDate.getTime());
+      dayBefore.setDate(dayBefore.getDate() - 1);
+      dayBefore.setHours(20, 0, 0, 0); // 8:00 PM the day before
+      prepStart = dayBefore;
+      
+      const dayOf = new Date(targetDate.getTime());
+      dayOf.setHours(9, 0, 0, 0); // 9:00 AM the day of
+      prepEnd = dayOf;
+    } else if (mealType === 'LUNCH') {
+      const dayOf = new Date(targetDate.getTime());
+      dayOf.setHours(9, 0, 0, 0); // 9:00 AM the day of
+      prepStart = dayOf;
+      
+      const dayOfEnd = new Date(targetDate.getTime());
+      dayOfEnd.setHours(14, 0, 0, 0); // 2:00 PM the day of
+      prepEnd = dayOfEnd;
+    } else {
+      const dayOf = new Date(targetDate.getTime());
+      dayOf.setHours(17, 0, 0, 0); // 5:00 PM the day of
+      prepStart = dayOf;
+      
+      const dayOfEnd = new Date(targetDate.getTime());
+      dayOfEnd.setHours(21, 0, 0, 0); // 9:00 PM the day of
+      prepEnd = dayOfEnd;
+    }
+    
+    const timeMs = currentTime.getTime();
+    return timeMs >= prepStart.getTime() && timeMs < prepEnd.getTime();
+  };
+
 
   const handleDownloadPDF = () => {
     const targetFormattedDate = format(new Date(selectedDate + 'T00:00:00'), 'EEEE, MMMM dd, yyyy');
@@ -894,9 +959,9 @@ export default function CanteenDashboard() {
     return matchesSearch && matchesMeal && matchesPreference && matchesStatus;
   });
 
-  // Expected stats counts for today
-  const getMealProgress = (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER') => {
-    const mealOrders = orders.filter(o => o.mealType === mealType);
+  // Expected stats counts for a list of orders
+  const getMealProgressForOrders = (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER', ordersList: Order[]) => {
+    const mealOrders = ordersList.filter(o => o.mealType === mealType);
     const total = mealOrders.length;
     const collected = mealOrders.filter(o => o.status === 'COLLECTED').length;
     const pct = total > 0 ? Math.round((collected / total) * 100) : 0;
@@ -908,9 +973,13 @@ export default function CanteenDashboard() {
     return { total, collected, pct, vegCount, meatCount };
   };
 
-  const breakfastProgress = getMealProgress('BREAKFAST');
-  const lunchProgress = getMealProgress('LUNCH');
-  const dinnerProgress = getMealProgress('DINNER');
+  const breakfastProgress = getMealProgressForOrders('BREAKFAST', orders);
+  const lunchProgress = getMealProgressForOrders('LUNCH', orders);
+  const dinnerProgress = getMealProgressForOrders('DINNER', orders);
+
+  const tomorrowBreakfastProgress = getMealProgressForOrders('BREAKFAST', tomorrowOrders);
+  const tomorrowLunchProgress = getMealProgressForOrders('LUNCH', tomorrowOrders);
+  const tomorrowDinnerProgress = getMealProgressForOrders('DINNER', tomorrowOrders);
 
   const pendingActiveCount = orders.filter(o => o.status === 'ORDERED').length;
 
@@ -996,24 +1065,36 @@ export default function CanteenDashboard() {
           <div className="grid grid-cols-3 gap-3">
             {/* Breakfast Stats Card */}
             <div 
-              onClick={() => setSelectedMealDetails('BREAKFAST')}
+              onClick={() => {
+                setSelectedMealDetails('BREAKFAST');
+                setSelectedMealDetailsDate(selectedDate);
+              }}
               className={`bg-white rounded-2xl p-3 border transition-all cursor-pointer flex flex-col justify-between hover:shadow-md hover:border-amber-300 active:scale-[0.98] ${
-                isMealDeadlinePassed('BREAKFAST', selectedDate) 
-                  ? 'border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.015)]' 
-                  : 'border-emerald-100 shadow-[0_2px_8px_rgba(16,185,129,0.04)]'
+                isMealActivelyPreparing('BREAKFAST', selectedDate)
+                  ? 'canteen-locked-card'
+                  : 'border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.015)]'
               }`}
             >
               <div className="flex justify-between items-start">
                 <div className="h-8 w-8 rounded-lg bg-amber-50 text-amber-500 flex items-center justify-center">
                   <Coffee className="h-4.5 w-4.5" />
                 </div>
-                <span className={`text-[8px] font-extrabold px-1 py-0.5 rounded uppercase ${
-                  isMealDeadlinePassed('BREAKFAST', selectedDate)
-                    ? 'bg-slate-100 text-slate-500'
-                    : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                }`}>
-                  {isMealDeadlinePassed('BREAKFAST', selectedDate) ? 'Closed' : 'Open'}
-                </span>
+                {isMealActivelyPreparing('BREAKFAST', selectedDate) ? (
+                  <span className="text-[8.5px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider flex items-center gap-1 bg-rose-600 text-white shadow-sm border border-rose-700 font-black">
+                    <span className="animate-pulse flex items-center gap-1">
+                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-white animate-ping shrink-0" />
+                      🍳 Start Preparing
+                    </span>
+                  </span>
+                ) : isMealDeadlinePassed('BREAKFAST', selectedDate) ? (
+                  <span className="text-[8.5px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider flex items-center gap-1 bg-slate-100 text-slate-500 border border-slate-200">
+                    Closed
+                  </span>
+                ) : (
+                  <span className="text-[8.5px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-100">
+                    Open
+                  </span>
+                )}
               </div>
               <div className="mt-2.5">
                 <p className="text-xl font-bold text-slate-800 leading-tight">{breakfastProgress.total}</p>
@@ -1021,9 +1102,17 @@ export default function CanteenDashboard() {
                 <div className="w-full bg-slate-100 h-1 rounded-full mt-2 overflow-hidden">
                   <div className="bg-amber-500 h-full rounded-full transition-all duration-300" style={{ width: `${breakfastProgress.pct}%` }} />
                 </div>
-                <p className="text-[8px] font-extrabold text-slate-400 mt-1.5 leading-none">
-                  {breakfastProgress.collected}/{breakfastProgress.total} Coll. • V:{breakfastProgress.vegCount} NV:{breakfastProgress.meatCount}
-                </p>
+                <div className="flex justify-between items-center text-[9px] font-bold text-slate-400 mt-2.5 mb-1.5 leading-none">
+                  <span>Collected: {breakfastProgress.collected}/{breakfastProgress.total}</span>
+                </div>
+                <div className="flex gap-1.5 mt-1.5 bg-slate-50/60 p-1 rounded-lg border border-slate-100">
+                  <span className="flex-1 text-center py-1 text-[11px] font-black rounded bg-emerald-50 text-emerald-700 border border-emerald-100 shadow-[0_1px_2px_rgba(16,185,129,0.03)]">
+                    V: {breakfastProgress.vegCount}
+                  </span>
+                  <span className="flex-1 text-center py-1 text-[11px] font-black rounded bg-rose-50 text-rose-700 border border-rose-100 shadow-[0_1px_2px_rgba(244,63,94,0.03)]">
+                    NV: {breakfastProgress.meatCount}
+                  </span>
+                </div>
                 <p className="text-[7px] text-slate-400 font-semibold mt-1.5 italic leading-none flex items-center gap-0.5">
                   <Clock className="h-2 w-2" /> Cutoff: Prev Day 8 PM
                 </p>
@@ -1032,24 +1121,36 @@ export default function CanteenDashboard() {
 
             {/* Lunch Stats Card */}
             <div 
-              onClick={() => setSelectedMealDetails('LUNCH')}
+              onClick={() => {
+                setSelectedMealDetails('LUNCH');
+                setSelectedMealDetailsDate(selectedDate);
+              }}
               className={`bg-white rounded-2xl p-3 border transition-all cursor-pointer flex flex-col justify-between hover:shadow-md hover:border-blue-300 active:scale-[0.98] ${
-                isMealDeadlinePassed('LUNCH', selectedDate)
-                  ? 'border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.015)]' 
-                  : 'border-emerald-100 shadow-[0_2px_8px_rgba(16,185,129,0.04)]'
+                isMealActivelyPreparing('LUNCH', selectedDate)
+                  ? 'canteen-locked-card'
+                  : 'border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.015)]'
               }`}
             >
               <div className="flex justify-between items-start">
-                <div className="h-8 w-8 rounded-lg bg-blue-50 text-blue-505 flex items-center justify-center">
+                <div className="h-8 w-8 rounded-lg bg-blue-50 text-blue-555 flex items-center justify-center">
                   <Utensils className="h-4.5 w-4.5" />
                 </div>
-                <span className={`text-[8px] font-extrabold px-1 py-0.5 rounded uppercase ${
-                  isMealDeadlinePassed('LUNCH', selectedDate)
-                    ? 'bg-slate-100 text-slate-500'
-                    : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                }`}>
-                  {isMealDeadlinePassed('LUNCH', selectedDate) ? 'Closed' : 'Open'}
-                </span>
+                {isMealActivelyPreparing('LUNCH', selectedDate) ? (
+                  <span className="text-[8.5px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider flex items-center gap-1 bg-rose-600 text-white shadow-sm border border-rose-700 font-black">
+                    <span className="animate-pulse flex items-center gap-1">
+                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-white animate-ping shrink-0" />
+                      🍳 Start Preparing
+                    </span>
+                  </span>
+                ) : isMealDeadlinePassed('LUNCH', selectedDate) ? (
+                  <span className="text-[8.5px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider flex items-center gap-1 bg-slate-100 text-slate-500 border border-slate-200">
+                    Closed
+                  </span>
+                ) : (
+                  <span className="text-[8.5px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-100">
+                    Open
+                  </span>
+                )}
               </div>
               <div className="mt-2.5">
                 <p className="text-xl font-bold text-slate-800 leading-tight">{lunchProgress.total}</p>
@@ -1057,9 +1158,17 @@ export default function CanteenDashboard() {
                 <div className="w-full bg-slate-100 h-1 rounded-full mt-2 overflow-hidden">
                   <div className="bg-blue-600 h-full rounded-full transition-all duration-300" style={{ width: `${lunchProgress.pct}%` }} />
                 </div>
-                <p className="text-[8px] font-extrabold text-slate-400 mt-1.5 leading-none">
-                  {lunchProgress.collected}/{lunchProgress.total} Coll. • V:{lunchProgress.vegCount} NV:{lunchProgress.meatCount}
-                </p>
+                <div className="flex justify-between items-center text-[9px] font-bold text-slate-400 mt-2.5 mb-1.5 leading-none">
+                  <span>Collected: {lunchProgress.collected}/{lunchProgress.total}</span>
+                </div>
+                <div className="flex gap-1.5 mt-1.5 bg-slate-50/60 p-1 rounded-lg border border-slate-100">
+                  <span className="flex-1 text-center py-1 text-[11px] font-black rounded bg-emerald-50 text-emerald-700 border border-emerald-100 shadow-[0_1px_2px_rgba(16,185,129,0.03)]">
+                    V: {lunchProgress.vegCount}
+                  </span>
+                  <span className="flex-1 text-center py-1 text-[11px] font-black rounded bg-rose-50 text-rose-700 border border-rose-100 shadow-[0_1px_2px_rgba(244,63,94,0.03)]">
+                    NV: {lunchProgress.meatCount}
+                  </span>
+                </div>
                 <p className="text-[7px] text-slate-400 font-semibold mt-1.5 italic leading-none flex items-center gap-0.5">
                   <Clock className="h-2 w-2" /> Cutoff: Today 9 AM
                 </p>
@@ -1068,24 +1177,36 @@ export default function CanteenDashboard() {
 
             {/* Dinner Stats Card */}
             <div 
-              onClick={() => setSelectedMealDetails('DINNER')}
+              onClick={() => {
+                setSelectedMealDetails('DINNER');
+                setSelectedMealDetailsDate(selectedDate);
+              }}
               className={`bg-white rounded-2xl p-3 border transition-all cursor-pointer flex flex-col justify-between hover:shadow-md hover:border-indigo-300 active:scale-[0.98] ${
-                isMealDeadlinePassed('DINNER', selectedDate)
-                  ? 'border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.015)]' 
-                  : 'border-emerald-100 shadow-[0_2px_8px_rgba(16,185,129,0.04)]'
+                isMealActivelyPreparing('DINNER', selectedDate)
+                  ? 'canteen-locked-card'
+                  : 'border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.015)]'
               }`}
             >
               <div className="flex justify-between items-start">
                 <div className="h-8 w-8 rounded-lg bg-indigo-50 text-indigo-500 flex items-center justify-center">
                   <Moon className="h-4.5 w-4.5" />
                 </div>
-                <span className={`text-[8px] font-extrabold px-1 py-0.5 rounded uppercase ${
-                  isMealDeadlinePassed('DINNER', selectedDate)
-                    ? 'bg-slate-100 text-slate-500'
-                    : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                }`}>
-                  {isMealDeadlinePassed('DINNER', selectedDate) ? 'Closed' : 'Open'}
-                </span>
+                {isMealActivelyPreparing('DINNER', selectedDate) ? (
+                  <span className="text-[8.5px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider flex items-center gap-1 bg-rose-600 text-white shadow-sm border border-rose-700 font-black">
+                    <span className="animate-pulse flex items-center gap-1">
+                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-white animate-ping shrink-0" />
+                      🍳 Start Preparing
+                    </span>
+                  </span>
+                ) : isMealDeadlinePassed('DINNER', selectedDate) ? (
+                  <span className="text-[8.5px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider flex items-center gap-1 bg-slate-100 text-slate-500 border border-slate-200">
+                    Closed
+                  </span>
+                ) : (
+                  <span className="text-[8.5px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-100">
+                    Open
+                  </span>
+                )}
               </div>
               <div className="mt-2.5">
                 <p className="text-xl font-bold text-slate-800 leading-tight">{dinnerProgress.total}</p>
@@ -1093,9 +1214,192 @@ export default function CanteenDashboard() {
                 <div className="w-full bg-slate-100 h-1 rounded-full mt-2 overflow-hidden">
                   <div className="bg-indigo-500 h-full rounded-full transition-all duration-300" style={{ width: `${dinnerProgress.pct}%` }} />
                 </div>
-                <p className="text-[8px] font-extrabold text-slate-400 mt-1.5 leading-none">
-                  {dinnerProgress.collected}/{dinnerProgress.total} Coll. • V:{dinnerProgress.vegCount} NV:{dinnerProgress.meatCount}
+                <div className="flex justify-between items-center text-[9px] font-bold text-slate-400 mt-2.5 mb-1.5 leading-none">
+                  <span>Collected: {dinnerProgress.collected}/{dinnerProgress.total}</span>
+                </div>
+                <div className="flex gap-1.5 mt-1.5 bg-slate-50/60 p-1 rounded-lg border border-slate-100">
+                  <span className="flex-1 text-center py-1 text-[11px] font-black rounded bg-emerald-50 text-emerald-700 border border-emerald-100 shadow-[0_1px_2px_rgba(16,185,129,0.03)]">
+                    V: {dinnerProgress.vegCount}
+                  </span>
+                  <span className="flex-1 text-center py-1 text-[11px] font-black rounded bg-rose-50 text-rose-700 border border-rose-100 shadow-[0_1px_2px_rgba(244,63,94,0.03)]">
+                    NV: {dinnerProgress.meatCount}
+                  </span>
+                </div>
+                <p className="text-[7px] text-slate-400 font-semibold mt-1.5 italic leading-none flex items-center gap-0.5">
+                  <Clock className="h-2 w-2" /> Cutoff: Today 5 PM
                 </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between pt-3 border-t border-slate-200/80">
+            <h2 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+              Overview for Tomorrow ({format(new Date(getTomorrowDateStr(selectedDate) + 'T00:00:00'), 'MMM dd, yyyy')})
+            </h2>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            {/* Tomorrow's Breakfast Stats Card */}
+            <div 
+              onClick={() => {
+                setSelectedMealDetails('BREAKFAST');
+                setSelectedMealDetailsDate(getTomorrowDateStr(selectedDate));
+              }}
+              className={`bg-white rounded-2xl p-3 border transition-all cursor-pointer flex flex-col justify-between hover:shadow-md hover:border-amber-300 active:scale-[0.98] ${
+                isMealActivelyPreparing('BREAKFAST', getTomorrowDateStr(selectedDate))
+                  ? 'canteen-locked-card'
+                  : 'border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.015)]'
+              }`}
+            >
+              <div className="flex justify-between items-start">
+                <div className="h-8 w-8 rounded-lg bg-amber-50 text-amber-500 flex items-center justify-center">
+                  <Coffee className="h-4.5 w-4.5" />
+                </div>
+                {isMealActivelyPreparing('BREAKFAST', getTomorrowDateStr(selectedDate)) ? (
+                  <span className="text-[8.5px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider flex items-center gap-1 bg-rose-600 text-white shadow-sm border border-rose-700 font-black">
+                    <span className="animate-pulse flex items-center gap-1">
+                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-white animate-ping shrink-0" />
+                      🍳 Start Preparing
+                    </span>
+                  </span>
+                ) : isMealDeadlinePassed('BREAKFAST', getTomorrowDateStr(selectedDate)) ? (
+                  <span className="text-[8.5px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider flex items-center gap-1 bg-slate-100 text-slate-500 border border-slate-200">
+                    Closed
+                  </span>
+                ) : (
+                  <span className="text-[8.5px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-100">
+                    Open
+                  </span>
+                )}
+              </div>
+              <div className="mt-2.5">
+                <p className="text-xl font-bold text-slate-800 leading-tight">{tomorrowBreakfastProgress.total}</p>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mt-1 leading-none">Breakfast</p>
+                <div className="w-full bg-slate-100 h-1 rounded-full mt-2 overflow-hidden">
+                  <div className="bg-amber-500 h-full rounded-full transition-all duration-300" style={{ width: `${tomorrowBreakfastProgress.pct}%` }} />
+                </div>
+                <div className="flex justify-between items-center text-[9px] font-bold text-slate-400 mt-2.5 mb-1.5 leading-none">
+                  <span>Collected: {tomorrowBreakfastProgress.collected}/{tomorrowBreakfastProgress.total}</span>
+                </div>
+                <div className="flex gap-1.5 mt-1.5 bg-slate-50/60 p-1 rounded-lg border border-slate-100">
+                  <span className="flex-1 text-center py-1 text-[11px] font-black rounded bg-emerald-50 text-emerald-700 border border-emerald-100 shadow-[0_1px_2px_rgba(16,185,129,0.03)]">
+                    V: {tomorrowBreakfastProgress.vegCount}
+                  </span>
+                  <span className="flex-1 text-center py-1 text-[11px] font-black rounded bg-rose-50 text-rose-700 border border-rose-100 shadow-[0_1px_2px_rgba(244,63,94,0.03)]">
+                    NV: {tomorrowBreakfastProgress.meatCount}
+                  </span>
+                </div>
+                <p className="text-[7px] text-slate-400 font-semibold mt-1.5 italic leading-none flex items-center gap-0.5">
+                  <Clock className="h-2 w-2" /> Cutoff: Prev Day 8 PM
+                </p>
+              </div>
+            </div>
+
+            {/* Tomorrow's Lunch Stats Card */}
+            <div 
+              onClick={() => {
+                setSelectedMealDetails('LUNCH');
+                setSelectedMealDetailsDate(getTomorrowDateStr(selectedDate));
+              }}
+              className={`bg-white rounded-2xl p-3 border transition-all cursor-pointer flex flex-col justify-between hover:shadow-md hover:border-blue-300 active:scale-[0.98] ${
+                isMealActivelyPreparing('LUNCH', getTomorrowDateStr(selectedDate))
+                  ? 'canteen-locked-card'
+                  : 'border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.015)]'
+              }`}
+            >
+              <div className="flex justify-between items-start">
+                <div className="h-8 w-8 rounded-lg bg-blue-50 text-blue-555 flex items-center justify-center">
+                  <Utensils className="h-4.5 w-4.5" />
+                </div>
+                {isMealActivelyPreparing('LUNCH', getTomorrowDateStr(selectedDate)) ? (
+                  <span className="text-[8.5px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider flex items-center gap-1 bg-rose-600 text-white shadow-sm border border-rose-700 font-black">
+                    <span className="animate-pulse flex items-center gap-1">
+                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-white animate-ping shrink-0" />
+                      🍳 Start Preparing
+                    </span>
+                  </span>
+                ) : isMealDeadlinePassed('LUNCH', getTomorrowDateStr(selectedDate)) ? (
+                  <span className="text-[8.5px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider flex items-center gap-1 bg-slate-100 text-slate-500 border border-slate-200">
+                    Closed
+                  </span>
+                ) : (
+                  <span className="text-[8.5px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-100">
+                    Open
+                  </span>
+                )}
+              </div>
+              <div className="mt-2.5">
+                <p className="text-xl font-bold text-slate-800 leading-tight">{tomorrowLunchProgress.total}</p>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mt-1 leading-none">Lunch</p>
+                <div className="w-full bg-slate-100 h-1 rounded-full mt-2 overflow-hidden">
+                  <div className="bg-blue-600 h-full rounded-full transition-all duration-300" style={{ width: `${tomorrowLunchProgress.pct}%` }} />
+                </div>
+                <div className="flex justify-between items-center text-[9px] font-bold text-slate-400 mt-2.5 mb-1.5 leading-none">
+                  <span>Collected: {tomorrowLunchProgress.collected}/{tomorrowLunchProgress.total}</span>
+                </div>
+                <div className="flex gap-1.5 mt-1.5 bg-slate-50/60 p-1 rounded-lg border border-slate-100">
+                  <span className="flex-1 text-center py-1 text-[11px] font-black rounded bg-emerald-50 text-emerald-700 border border-emerald-100 shadow-[0_1px_2px_rgba(16,185,129,0.03)]">
+                    V: {tomorrowLunchProgress.vegCount}
+                  </span>
+                  <span className="flex-1 text-center py-1 text-[11px] font-black rounded bg-rose-50 text-rose-700 border border-rose-100 shadow-[0_1px_2px_rgba(244,63,94,0.03)]">
+                    NV: {tomorrowLunchProgress.meatCount}
+                  </span>
+                </div>
+                <p className="text-[7px] text-slate-400 font-semibold mt-1.5 italic leading-none flex items-center gap-0.5">
+                  <Clock className="h-2 w-2" /> Cutoff: Today 9 AM
+                </p>
+              </div>
+            </div>
+
+            {/* Tomorrow's Dinner Stats Card */}
+            <div 
+              onClick={() => {
+                setSelectedMealDetails('DINNER');
+                setSelectedMealDetailsDate(getTomorrowDateStr(selectedDate));
+              }}
+              className={`bg-white rounded-2xl p-3 border transition-all cursor-pointer flex flex-col justify-between hover:shadow-md hover:border-indigo-300 active:scale-[0.98] ${
+                isMealActivelyPreparing('DINNER', getTomorrowDateStr(selectedDate))
+                  ? 'canteen-locked-card'
+                  : 'border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.015)]'
+              }`}
+            >
+              <div className="flex justify-between items-start">
+                <div className="h-8 w-8 rounded-lg bg-indigo-50 text-indigo-500 flex items-center justify-center">
+                  <Moon className="h-4.5 w-4.5" />
+                </div>
+                {isMealActivelyPreparing('DINNER', getTomorrowDateStr(selectedDate)) ? (
+                  <span className="text-[8.5px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider flex items-center gap-1 bg-rose-600 text-white shadow-sm border border-rose-700 font-black">
+                    <span className="animate-pulse flex items-center gap-1">
+                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-white animate-ping shrink-0" />
+                      🍳 Start Preparing
+                    </span>
+                  </span>
+                ) : isMealDeadlinePassed('DINNER', getTomorrowDateStr(selectedDate)) ? (
+                  <span className="text-[8.5px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider flex items-center gap-1 bg-slate-100 text-slate-500 border border-slate-200">
+                    Closed
+                  </span>
+                ) : (
+                  <span className="text-[8.5px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-100">
+                    Open
+                  </span>
+                )}
+              </div>
+              <div className="mt-2.5">
+                <p className="text-xl font-bold text-slate-800 leading-tight">{tomorrowDinnerProgress.total}</p>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mt-1 leading-none">Dinner</p>
+                <div className="w-full bg-slate-100 h-1 rounded-full mt-2 overflow-hidden">
+                  <div className="bg-indigo-500 h-full rounded-full transition-all duration-300" style={{ width: `${tomorrowDinnerProgress.pct}%` }} />
+                </div>
+                <div className="flex justify-between items-center text-[9px] font-bold text-slate-400 mt-2.5 mb-1.5 leading-none">
+                  <span>Collected: {tomorrowDinnerProgress.collected}/{tomorrowDinnerProgress.total}</span>
+                </div>
+                <div className="flex gap-1.5 mt-1.5 bg-slate-50/60 p-1 rounded-lg border border-slate-100">
+                  <span className="flex-1 text-center py-1 text-[11px] font-black rounded bg-emerald-50 text-emerald-700 border border-emerald-100 shadow-[0_1px_2px_rgba(16,185,129,0.03)]">
+                    V: {tomorrowDinnerProgress.vegCount}
+                  </span>
+                  <span className="flex-1 text-center py-1 text-[11px] font-black rounded bg-rose-50 text-rose-700 border border-rose-100 shadow-[0_1px_2px_rgba(244,63,94,0.03)]">
+                    NV: {tomorrowDinnerProgress.meatCount}
+                  </span>
+                </div>
                 <p className="text-[7px] text-slate-400 font-semibold mt-1.5 italic leading-none flex items-center gap-0.5">
                   <Clock className="h-2 w-2" /> Cutoff: Today 5 PM
                 </p>
@@ -1529,32 +1833,42 @@ export default function CanteenDashboard() {
           <div className="relative bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-100 flex flex-col max-h-[85vh] transition-all duration-300 ease-out transform animate-in zoom-in-95">
             {/* Modal Header */}
             <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 rounded-t-2xl">
-              <div>
-                <h3 className="text-sm font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
-                  <span className="capitalize">{selectedMealDetails.toLowerCase()}</span> Orders List
-                </h3>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1 flex items-center gap-1.5">
-                  <Calendar className="h-3 w-3" /> {selectedDate} • {orders.filter(o => o.mealType === selectedMealDetails).length} Orders Total
-                </p>
-              </div>
-              <button
-                onClick={() => setSelectedMealDetails(null)}
-                className="p-1.5 text-slate-400 hover:text-slate-650 hover:bg-slate-100 rounded-full transition-colors"
-                title="Close"
-              >
-                <X className="h-4.5 w-4.5" />
-              </button>
+              {(() => {
+                const targetOrders = selectedMealDetailsDate === selectedDate ? orders : tomorrowOrders;
+                const mealOrders = targetOrders.filter(o => o.mealType === selectedMealDetails);
+                
+                return (
+                  <>
+                    <div>
+                      <h3 className="text-sm font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
+                        <span className="capitalize">{selectedMealDetails.toLowerCase()}</span> Orders List
+                      </h3>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1 flex items-center gap-1.5">
+                        <Calendar className="h-3 w-3" /> {selectedMealDetailsDate} • {mealOrders.length} Orders Total
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setSelectedMealDetails(null)}
+                      className="p-1.5 text-slate-400 hover:text-slate-650 hover:bg-slate-100 rounded-full transition-colors"
+                      title="Close"
+                    >
+                      <X className="h-4.5 w-4.5" />
+                    </button>
+                  </>
+                );
+              })()}
             </div>
 
             {/* Modal Body */}
             <div className="p-5 overflow-y-auto flex-1 min-h-[200px]">
               {(() => {
-                const mealOrders = orders.filter(o => o.mealType === selectedMealDetails);
+                const targetOrders = selectedMealDetailsDate === selectedDate ? orders : tomorrowOrders;
+                const mealOrders = targetOrders.filter(o => o.mealType === selectedMealDetails);
                 if (mealOrders.length === 0) {
                   return (
                     <div className="flex flex-col items-center justify-center py-12 text-slate-400 font-bold text-xs gap-2">
                       <CircleAlert className="h-8 w-8 text-slate-350" />
-                      No orders placed for this meal on {selectedDate}.
+                      No orders placed for this meal on {selectedMealDetailsDate}.
                     </div>
                   );
                 }

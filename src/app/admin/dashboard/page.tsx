@@ -555,10 +555,28 @@ export default function AdminDashboard() {
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Requests Today</p>
               <p className="text-2xl font-bold text-slate-800 mt-0.5">{requestsToday}</p>
               {data?.todayStats.lunchVeg !== undefined && (
-                <div className="text-[9px] font-bold text-slate-500 mt-1 space-y-0.5 leading-none">
-                  <p>BF • V: {data.todayStats.breakfastVeg} NV: {data.todayStats.breakfastMeat}</p>
-                  <p>LH • V: {data.todayStats.lunchVeg} NV: {data.todayStats.lunchMeat}</p>
-                  <p>DN • V: {data.todayStats.dinnerVeg} NV: {data.todayStats.dinnerMeat}</p>
+                <div className="text-[9px] font-bold text-slate-500 mt-2.5 space-y-1 leading-none border-t border-slate-100 pt-2.5">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[8px] font-bold text-slate-400 uppercase">BF:</span>
+                    <div className="flex gap-1">
+                      <span className="px-1 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100/50 rounded text-[8px] font-extrabold">V: {data.todayStats.breakfastVeg}</span>
+                      <span className="px-1 py-0.5 bg-rose-50 text-rose-700 border border-rose-100/50 rounded text-[8px] font-extrabold">NV: {data.todayStats.breakfastMeat}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[8px] font-bold text-slate-400 uppercase">LH:</span>
+                    <div className="flex gap-1">
+                      <span className="px-1 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100/50 rounded text-[8px] font-extrabold">V: {data.todayStats.lunchVeg}</span>
+                      <span className="px-1 py-0.5 bg-rose-50 text-rose-700 border border-rose-100/50 rounded text-[8px] font-extrabold">NV: {data.todayStats.lunchMeat}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[8px] font-bold text-slate-400 uppercase">DN:</span>
+                    <div className="flex gap-1">
+                      <span className="px-1 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100/50 rounded text-[8px] font-extrabold">V: {data.todayStats.dinnerVeg}</span>
+                      <span className="px-1 py-0.5 bg-rose-50 text-rose-700 border border-rose-100/50 rounded text-[8px] font-extrabold">NV: {data.todayStats.dinnerMeat}</span>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

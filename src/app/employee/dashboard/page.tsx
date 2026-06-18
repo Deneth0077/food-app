@@ -548,41 +548,7 @@ export default function EmployeeDashboard() {
           </p>
         </div>
 
-        {/* Active Site Indicator */}
-        {user?.department && (
-          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs">
-                SITE
-              </div>
-              <div>
-                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Active Work Site</p>
-                <p className="text-sm font-bold text-slate-800">{user.department}</p>
-              </div>
-            </div>
-            <button
-              onClick={() => router.push('/employee/profile')}
-              className="text-xs font-bold text-blue-600 hover:underline bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-100"
-            >
-              Wrong site? Change
-            </button>
-          </div>
-        )}
 
-        {/* Employee Info Card */}
-        <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex items-center gap-4">
-          <div className="h-12 w-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
-            <UserIcon className="h-6 w-6 stroke-[2.25]" />
-          </div>
-          <div className="flex-1">
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Employee ID</p>
-            <p className="text-sm font-bold text-slate-800">{user?.employeeNo}</p>
-            <p className="text-[11px] font-medium text-slate-500 mt-0.5">{user?.phoneNumber}</p>
-          </div>
-          <div className="bg-slate-50 rounded-lg px-2.5 py-1 text-[10px] font-bold text-slate-500 border border-slate-100">
-            Active
-          </div>
-        </div>
 
         {/* Portal Tabs */}
         <div className="bg-white p-1 rounded-xl border border-slate-200/60 shadow-sm flex gap-1">
