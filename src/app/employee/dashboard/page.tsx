@@ -69,9 +69,6 @@ export default function EmployeeDashboard() {
   const [prices, setPrices] = useState({ breakfast: 300, lunch: 350, dinner: 400 });
 
   const selectedDateObj = new Date(selectedBookingDate + 'T00:00:00');
-  const tomorrowOfSelectedObj = new Date(selectedDateObj.getTime());
-  tomorrowOfSelectedObj.setDate(tomorrowOfSelectedObj.getDate() + 1);
-  const tomorrowOfSelectedStr = format(tomorrowOfSelectedObj, 'yyyy-MM-dd');
 
   const isMealLocked = useCallback((mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER', bookingDateStr: string) => {
     const now = new Date();
@@ -96,7 +93,7 @@ export default function EmployeeDashboard() {
     return now.getTime() >= lockTime.getTime();
   }, []);
 
-  const isBreakfastLocked = isMealLocked('BREAKFAST', tomorrowOfSelectedStr);
+  const isBreakfastLocked = isMealLocked('BREAKFAST', selectedBookingDate);
   const isLunchLocked = isMealLocked('LUNCH', selectedBookingDate);
   const isDinnerLocked = isMealLocked('DINNER', selectedBookingDate);
 
@@ -164,7 +161,7 @@ export default function EmployeeDashboard() {
   const handleRequestMeal = async (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER', mealOption?: 'VEGETARIAN' | 'MEAT', notes?: string) => {
     setSubmittingMeal(mealType);
     try {
-      const targetDateStr = mealType === 'BREAKFAST' ? tomorrowOfSelectedStr : selectedBookingDate;
+      const targetDateStr = selectedBookingDate;
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -217,7 +214,7 @@ export default function EmployeeDashboard() {
 
   const handleUpdateOrder = async (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER', mealOption: 'VEGETARIAN' | 'MEAT', notes: string) => {
     try {
-      const targetDateStr = mealType === 'BREAKFAST' ? tomorrowOfSelectedStr : selectedBookingDate;
+      const targetDateStr = selectedBookingDate;
       const res = await fetch('/api/orders', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -249,7 +246,7 @@ export default function EmployeeDashboard() {
   const handleCancelOrder = async (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER') => {
     if (!confirm(`Are you sure you want to cancel your ${mealType.toLowerCase()} order?`)) return;
     try {
-      const targetDateStr = mealType === 'BREAKFAST' ? tomorrowOfSelectedStr : selectedBookingDate;
+      const targetDateStr = selectedBookingDate;
       const res = await fetch(`/api/orders?mealType=${mealType}&requestDate=${targetDateStr}`, {
         method: 'DELETE',
       });
@@ -276,7 +273,7 @@ export default function EmployeeDashboard() {
   const handleSkipTimer = async (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER') => {
     if (!confirm(`Are you sure you want to skip the cancellation grace period and finalize your ${mealType.toLowerCase()} order? It cannot be cancelled after this.`)) return;
     try {
-      const targetDateStr = mealType === 'BREAKFAST' ? tomorrowOfSelectedStr : selectedBookingDate;
+      const targetDateStr = selectedBookingDate;
       const res = await fetch('/api/orders', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -335,7 +332,7 @@ export default function EmployeeDashboard() {
   const handleCardClick = (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER') => {
     let existingOrder;
     if (mealType === 'BREAKFAST') {
-      existingOrder = orders.find(o => o.requestDate === tomorrowOfSelectedStr && o.mealType === 'BREAKFAST');
+      existingOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === 'BREAKFAST');
     } else if (mealType === 'LUNCH') {
       existingOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === 'LUNCH');
     } else {
@@ -349,11 +346,9 @@ export default function EmployeeDashboard() {
           description: `Booking for this ${mealType.toLowerCase()} is closed. You cannot modify or cancel this request.`,
         });
       } else {
-        const targetDateText = mealType === 'BREAKFAST' 
-          ? (tomorrowOfSelectedStr === tomorrowStr ? 'tomorrow\'s' : `scheduled ${tomorrowOfSelectedStr}`)
-          : (selectedBookingDate === todayStr ? 'today\'s' : `scheduled ${selectedBookingDate}`);
+        const targetDateText = selectedBookingDate === todayStr ? 'today\'s' : 'tomorrow\'s';
         const displayTime = mealType === 'BREAKFAST' 
-          ? `8:00 PM on ${format(subDays(new Date(tomorrowOfSelectedStr + 'T00:00:00'), 1), 'yyyy-MM-dd')}` 
+          ? `8:00 PM on ${format(subDays(new Date(selectedBookingDate + 'T00:00:00'), 1), 'yyyy-MM-dd')}` 
           : mealType === 'LUNCH' ? `9:00 AM on ${selectedBookingDate}` : `5:00 PM on ${selectedBookingDate}`;
         toast({
           variant: 'destructive',
@@ -395,7 +390,7 @@ export default function EmployeeDashboard() {
     );
   }
 
-  const activeBreakfastOrder = orders.find(o => o.requestDate === tomorrowOfSelectedStr && o.mealType === 'BREAKFAST');
+  const activeBreakfastOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === 'BREAKFAST');
   const activeLunchOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === 'LUNCH');
   const activeDinnerOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === 'DINNER');
   
@@ -583,7 +578,7 @@ export default function EmployeeDashboard() {
               Selected: {format(selectedDateObj, 'EEE, MMM dd')}
             </span>
           </div>
-          <div className="grid grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-2 gap-2.5">
             <button
               type="button"
               onClick={() => setSelectedBookingDate(todayStr)}
@@ -606,33 +601,6 @@ export default function EmployeeDashboard() {
             >
               Tomorrow
             </button>
-            <div className="relative">
-              <input
-                type="date"
-                min={todayStr}
-                max={tomorrowStr}
-                value={selectedBookingDate}
-                onChange={(e) => {
-                  if (e.target.value) {
-                    const val = e.target.value;
-                    if (val === todayStr || val === tomorrowStr) {
-                      setSelectedBookingDate(val);
-                    } else {
-                      toast({
-                        variant: 'destructive',
-                        title: 'Invalid Date',
-                        description: 'You can only select Today or Tomorrow.',
-                      });
-                    }
-                  }
-                }}
-                className={`w-full py-1.5 px-2 text-xs font-bold rounded-xl bg-slate-50 hover:bg-slate-100 border transition-all cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-center ${
-                  selectedBookingDate !== todayStr && selectedBookingDate !== tomorrowStr
-                    ? 'border-blue-500 text-blue-700 font-extrabold bg-blue-50/20'
-                    : 'border-slate-100 text-slate-650'
-                }`}
-              />
-            </div>
           </div>
         </div>
 
@@ -662,9 +630,9 @@ export default function EmployeeDashboard() {
                   <div className="flex items-center gap-2">
                     <h4 className="text-sm font-bold text-slate-855">Breakfast <span className="text-xs font-normal text-slate-500">(Rs. {prices.breakfast})</span></h4>
                     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700">
-                      {tomorrowOfSelectedStr === tomorrowStr 
-                        ? `For Tomorrow (${format(tomorrowOfSelectedObj, 'MMM dd')})` 
-                        : `For ${format(tomorrowOfSelectedObj, 'EEE, MMM dd')}`
+                      {selectedBookingDate === tomorrowStr 
+                        ? `For Tomorrow (${format(selectedDateObj, 'MMM dd')})` 
+                        : `For Today (${format(selectedDateObj, 'MMM dd')})`
                       }
                     </span>
                   </div>
@@ -672,7 +640,7 @@ export default function EmployeeDashboard() {
                     {isBreakfastLocked && !activeBreakfastOrder ? (
                       <span className="text-red-500 font-bold">Booking Closed</span>
                     ) : (
-                      `Book before 8:00 PM on ${format(subDays(tomorrowOfSelectedObj, 1), 'MMM dd')}`
+                      `Book before 8:00 PM on ${format(subDays(selectedDateObj, 1), 'MMM dd')}`
                     )}
                   </p>
                 </div>
@@ -806,7 +774,7 @@ export default function EmployeeDashboard() {
             <div className="py-3 flex flex-col gap-1 text-xs">
               <div className="flex items-center justify-between">
                 <span className="font-semibold text-slate-650 flex items-center gap-2">
-                  <Coffee className="h-4 w-4 text-amber-500" /> Breakfast ({tomorrowOfSelectedStr === tomorrowStr ? 'For Tomorrow' : `For ${format(tomorrowOfSelectedObj, 'MMM dd')}`})
+                  <Coffee className="h-4 w-4 text-amber-500" /> Breakfast ({selectedBookingDate === tomorrowStr ? 'For Tomorrow' : `For Today (${format(selectedDateObj, 'MMM dd')})`})
                   {activeBreakfastOrder?.mealOption && (
                     <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
                       activeBreakfastOrder.mealOption === 'VEGETARIAN' 
