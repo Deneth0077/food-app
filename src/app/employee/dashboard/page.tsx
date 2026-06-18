@@ -42,6 +42,7 @@ interface Order {
   requestedAt: string;
   collectedAt?: string;
   notes?: string;
+  department?: 'CWIT' | 'ECT' | 'SAGT';
 }
 
 export default function EmployeeDashboard() {
@@ -55,9 +56,11 @@ export default function EmployeeDashboard() {
   const [activeMealSelection, setActiveMealSelection] = useState<'BREAKFAST' | 'LUNCH' | 'DINNER' | null>(null);
   const [selectedOption, setSelectedOption] = useState<'VEGETARIAN' | 'MEAT' | null>(null);
   const [orderNotes, setOrderNotes] = useState('');
+  const [selectedOrderDepartment, setSelectedOrderDepartment] = useState<'CWIT' | 'ECT' | 'SAGT' | null>(null);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [isUpdatingNotesOnly, setIsUpdatingNotesOnly] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [activeSiteChangeMeal, setActiveSiteChangeMeal] = useState<'BREAKFAST' | 'LUNCH' | 'DINNER' | null>(null);
 
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const tomorrow = new Date();
@@ -158,14 +161,14 @@ export default function EmployeeDashboard() {
   }, []);
 
   // Handle meal request submission
-  const handleRequestMeal = async (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER', mealOption?: 'VEGETARIAN' | 'MEAT', notes?: string) => {
+  const handleRequestMeal = async (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER', mealOption?: 'VEGETARIAN' | 'MEAT', notes?: string, department?: string) => {
     setSubmittingMeal(mealType);
     try {
       const targetDateStr = selectedBookingDate;
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mealType, mealOption, notes, requestDate: targetDateStr }),
+        body: JSON.stringify({ mealType, mealOption, notes, requestDate: targetDateStr, department }),
       });
 
       const data = await res.json();
@@ -212,13 +215,13 @@ export default function EmployeeDashboard() {
     }
   };
 
-  const handleUpdateOrder = async (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER', mealOption: 'VEGETARIAN' | 'MEAT', notes: string) => {
+  const handleUpdateOrder = async (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER', mealOption: 'VEGETARIAN' | 'MEAT', notes: string, department?: string) => {
     try {
       const targetDateStr = selectedBookingDate;
       const res = await fetch('/api/orders', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mealType, mealOption, notes, requestDate: targetDateStr }),
+        body: JSON.stringify({ mealType, mealOption, notes, requestDate: targetDateStr, department }),
       });
 
       const data = await res.json();
@@ -230,6 +233,46 @@ export default function EmployeeDashboard() {
       toast({
         title: 'Request Updated',
         description: `Successfully updated your ${mealType.toLowerCase()} request.`,
+      });
+
+      // Refresh data
+      fetchData();
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Update Failed',
+        description: error.message || 'Something went wrong',
+      });
+    }
+  };
+
+  const handleQuickUpdateSite = async (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER', site: 'CWIT' | 'ECT' | 'SAGT') => {
+    const existingOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === mealType);
+    if (!existingOrder) return;
+    
+    try {
+      const targetDateStr = selectedBookingDate;
+      const res = await fetch('/api/orders', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          mealType, 
+          mealOption: existingOrder.mealOption, 
+          notes: existingOrder.notes || '', 
+          requestDate: targetDateStr, 
+          department: site 
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to update site');
+      }
+
+      toast({
+        title: 'Site Updated',
+        description: `Successfully updated ${mealType.toLowerCase()} site to ${site}.`,
       });
 
       // Refresh data
@@ -370,11 +413,13 @@ export default function EmployeeDashboard() {
       setIsUpdatingNotesOnly(true);
       setSelectedOption(existingOrder.mealOption || null);
       setOrderNotes(existingOrder.notes || '');
+      setSelectedOrderDepartment(existingOrder.department || (user?.department as 'CWIT' | 'ECT' | 'SAGT') || null);
       setActiveMealSelection(mealType);
     } else {
       setIsUpdatingNotesOnly(false);
       setSelectedOption(null);
       setOrderNotes('');
+      setSelectedOrderDepartment((user?.department as 'CWIT' | 'ECT' | 'SAGT') || null);
       setActiveMealSelection(mealType);
     }
   };
@@ -643,6 +688,26 @@ export default function EmployeeDashboard() {
                       `Book before 8:00 PM on ${format(subDays(selectedDateObj, 1), 'MMM dd')}`
                     )}
                   </p>
+                  {activeBreakfastOrder?.department && (
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      <span 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (getMealLockedStatus('BREAKFAST')) {
+                            toast({
+                              title: 'Booking Closed',
+                              description: 'Booking is closed. You cannot change the work site.',
+                            });
+                            return;
+                          }
+                          setActiveSiteChangeMeal('BREAKFAST');
+                        }}
+                        className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-100 cursor-pointer active:scale-95 transition-all"
+                      >
+                        Site: {activeBreakfastOrder.department}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
               <div>
@@ -692,6 +757,26 @@ export default function EmployeeDashboard() {
                       `Book before 9:00 AM on ${format(selectedDateObj, 'MMM dd')}`
                     )}
                   </p>
+                  {activeLunchOrder?.department && (
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      <span 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (getMealLockedStatus('LUNCH')) {
+                            toast({
+                              title: 'Booking Closed',
+                              description: 'Booking is closed. You cannot change the work site.',
+                            });
+                            return;
+                          }
+                          setActiveSiteChangeMeal('LUNCH');
+                        }}
+                        className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-100 cursor-pointer active:scale-95 transition-all"
+                      >
+                        Site: {activeLunchOrder.department}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
               <div>
@@ -741,6 +826,26 @@ export default function EmployeeDashboard() {
                       `Book before 5:00 PM on ${format(selectedDateObj, 'MMM dd')}`
                     )}
                   </p>
+                  {activeDinnerOrder?.department && (
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      <span 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (getMealLockedStatus('DINNER')) {
+                            toast({
+                              title: 'Booking Closed',
+                              description: 'Booking is closed. You cannot change the work site.',
+                            });
+                            return;
+                          }
+                          setActiveSiteChangeMeal('DINNER');
+                        }}
+                        className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-100 cursor-pointer active:scale-95 transition-all"
+                      >
+                        Site: {activeDinnerOrder.department}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
               <div>
@@ -782,6 +887,24 @@ export default function EmployeeDashboard() {
                         : 'bg-rose-50 text-rose-700 border border-rose-100'
                     }`}>
                       {activeBreakfastOrder.mealOption === 'VEGETARIAN' ? 'Veg' : 'Non-Veg'}
+                    </span>
+                  )}
+                  {activeBreakfastOrder?.department && (
+                    <span 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (getMealLockedStatus('BREAKFAST')) {
+                          toast({
+                            title: 'Booking Closed',
+                            description: 'Booking is closed. You cannot change the work site.',
+                          });
+                          return;
+                        }
+                        setActiveSiteChangeMeal('BREAKFAST');
+                      }}
+                      className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-100 cursor-pointer active:scale-95 transition-all"
+                    >
+                      {activeBreakfastOrder.department}
                     </span>
                   )}
                 </span>
@@ -866,6 +989,24 @@ export default function EmployeeDashboard() {
                       {activeLunchOrder.mealOption === 'VEGETARIAN' ? 'Veg' : 'Non-Veg'}
                     </span>
                   )}
+                  {activeLunchOrder?.department && (
+                    <span 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (getMealLockedStatus('LUNCH')) {
+                          toast({
+                            title: 'Booking Closed',
+                            description: 'Booking is closed. You cannot change the work site.',
+                          });
+                          return;
+                        }
+                        setActiveSiteChangeMeal('LUNCH');
+                      }}
+                      className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-100 cursor-pointer active:scale-95 transition-all"
+                    >
+                      {activeLunchOrder.department}
+                    </span>
+                  )}
                 </span>
                 <div className="flex items-center gap-1.5">
                   <span className={`px-2 py-0.5 font-bold rounded-full text-[10px] ${
@@ -946,6 +1087,24 @@ export default function EmployeeDashboard() {
                         : 'bg-rose-50 text-rose-700 border border-rose-100'
                     }`}>
                       {activeDinnerOrder.mealOption === 'VEGETARIAN' ? 'Veg' : 'Non-Veg'}
+                    </span>
+                  )}
+                  {activeDinnerOrder?.department && (
+                    <span 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (getMealLockedStatus('DINNER')) {
+                          toast({
+                            title: 'Booking Closed',
+                            description: 'Booking is closed. You cannot change the work site.',
+                          });
+                          return;
+                        }
+                        setActiveSiteChangeMeal('DINNER');
+                      }}
+                      className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-100 cursor-pointer active:scale-95 transition-all"
+                    >
+                      {activeDinnerOrder.department}
                     </span>
                   )}
                 </span>
@@ -1245,14 +1404,10 @@ export default function EmployeeDashboard() {
 
       {/* Meal Preference Selection Modal */}
       {activeMealSelection && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 ease-out animate-in fade-in">
-          {/* Click outside to close */}
-          <div className="absolute inset-0" onClick={() => { setActiveMealSelection(null); setSelectedOption(null); setOrderNotes(''); }}></div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 ease-out animate-in fade-in">
+          <div className="absolute inset-0" onClick={() => { setActiveMealSelection(null); setSelectedOption(null); setOrderNotes(''); setSelectedOrderDepartment(null); }}></div>
           
-          <div className="relative bg-white w-full max-w-sm rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl border border-slate-100 transition-all duration-300 ease-out transform animate-in slide-in-from-bottom-8 sm:zoom-in-95">
-            {/* Grab handle for mobile aesthetics */}
-            <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-4 sm:hidden" />
-            
+          <div className="relative bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl border border-slate-100 transition-all duration-300 ease-out transform animate-in zoom-in-95">
             <h3 className="text-lg font-bold text-slate-800 tracking-tight">
               {isUpdatingNotesOnly ? `Update ${activeMealSelection.toLowerCase()} Request` : `Select ${activeMealSelection.toLowerCase()} Preference`}
             </h3>
@@ -1294,6 +1449,29 @@ export default function EmployeeDashboard() {
               </button>
             </div>
 
+            {/* Site / Department Selector */}
+            {selectedOption && (
+              <div className="mt-5 space-y-2 text-left animate-in fade-in slide-in-from-top-3 duration-300">
+                <span className="text-[11px] font-bold text-slate-500 block uppercase tracking-wider">Work Site for this meal</span>
+                <div className="grid grid-cols-3 gap-2">
+                  {['CWIT', 'ECT', 'SAGT'].map((dept) => (
+                    <button
+                      key={dept}
+                      type="button"
+                      onClick={() => setSelectedOrderDepartment(dept as 'CWIT' | 'ECT' | 'SAGT')}
+                      className={`py-2.5 text-xs font-bold rounded-xl border transition-all duration-200 active:scale-95 ${
+                        selectedOrderDepartment === dept
+                          ? 'border-blue-500 bg-blue-50/50 text-blue-700 font-extrabold shadow-sm'
+                          : 'border-slate-200 bg-white text-slate-650 hover:border-slate-300'
+                      }`}
+                    >
+                      {dept}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Cancel countdown timer inside the modal */}
             {isUpdatingNotesOnly && (() => {
               let order;
@@ -1325,6 +1503,7 @@ export default function EmployeeDashboard() {
                             setActiveMealSelection(null);
                             setSelectedOption(null);
                             setOrderNotes('');
+                            setSelectedOrderDepartment(null);
                           }}
                           className="px-2.5 py-1 text-[9px] font-bold text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg active:scale-95 transition-all shadow-sm"
                         >
@@ -1337,6 +1516,7 @@ export default function EmployeeDashboard() {
                             setActiveMealSelection(null);
                             setSelectedOption(null);
                             setOrderNotes('');
+                            setSelectedOrderDepartment(null);
                           }}
                           className="px-2.5 py-1 text-[9px] font-bold text-red-700 bg-red-100 hover:bg-red-200 rounded-lg active:scale-95 transition-all shadow-sm"
                         >
@@ -1349,43 +1529,101 @@ export default function EmployeeDashboard() {
               }
               return null;
             })()}
-            {/* Special Request field removed */}
  
             <div className="flex gap-3 mt-5">
               <button
                 type="button"
-                onClick={() => { setActiveMealSelection(null); setSelectedOption(null); setOrderNotes(''); }}
+                onClick={() => { setActiveMealSelection(null); setSelectedOption(null); setOrderNotes(''); setSelectedOrderDepartment(null); }}
                 className="flex-1 h-11 border border-slate-200 text-slate-500 font-bold rounded-xl text-xs hover:bg-slate-50 active:scale-98 transition-all"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                disabled={!selectedOption}
+                disabled={!selectedOption || !selectedOrderDepartment}
                 onClick={async () => {
                   if (activeMealSelection && selectedOption) {
                     const mealType = activeMealSelection;
                     const mealOption = selectedOption;
                     const notes = orderNotes;
+                    const dept = selectedOrderDepartment || undefined;
                     
                     setActiveMealSelection(null);
                     setSelectedOption(null);
                     setOrderNotes('');
+                    setSelectedOrderDepartment(null);
                     
                     if (isUpdatingNotesOnly) {
-                      await handleUpdateOrder(mealType, mealOption, notes);
+                      await handleUpdateOrder(mealType, mealOption, notes, dept);
                     } else {
-                      await handleRequestMeal(mealType, mealOption, notes);
+                      await handleRequestMeal(mealType, mealOption, notes, dept);
                     }
                   }
                 }}
                 className={`flex-1 h-11 font-bold rounded-xl text-xs active:scale-98 transition-all flex items-center justify-center gap-1.5 ${
-                  selectedOption 
+                  selectedOption && selectedOrderDepartment
                     ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm' 
                     : 'bg-slate-100 text-slate-400 cursor-not-allowed'
                 }`}
               >
                 {isUpdatingNotesOnly ? 'Update Request' : 'Confirm (OK)'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Work Site Selection Modal */}
+      {activeSiteChangeMeal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 ease-out animate-in fade-in">
+          <div 
+            className="absolute inset-0" 
+            onClick={() => setActiveSiteChangeMeal(null)}
+          />
+          
+          <div className="relative bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl border border-slate-100 transition-all duration-300 ease-out transform animate-in zoom-in-95">
+            <h3 className="text-lg font-bold text-slate-800 tracking-tight">
+              Change Work Site
+            </h3>
+            <p className="text-xs text-slate-500 mt-1 font-semibold">
+              Select the work site for your {activeSiteChangeMeal.toLowerCase()} order.
+            </p>
+            
+            <div className="grid grid-cols-3 gap-2.5 mt-6">
+              {['CWIT', 'ECT', 'SAGT'].map((dept) => {
+                const existingOrder = orders.find(
+                  o => o.requestDate === selectedBookingDate && o.mealType === activeSiteChangeMeal
+                );
+                const isSelected = existingOrder?.department === dept;
+                
+                return (
+                  <button
+                    key={dept}
+                    type="button"
+                    onClick={async () => {
+                      const mealType = activeSiteChangeMeal;
+                      setActiveSiteChangeMeal(null);
+                      await handleQuickUpdateSite(mealType, dept as 'CWIT' | 'ECT' | 'SAGT');
+                    }}
+                    className={`py-3 text-xs font-bold rounded-xl border transition-all duration-200 active:scale-95 ${
+                      isSelected
+                        ? 'border-blue-500 bg-blue-50/50 text-blue-700 font-extrabold shadow-sm'
+                        : 'border-slate-200 bg-white text-slate-650 hover:border-slate-350 hover:bg-slate-50'
+                    }`}
+                  >
+                    {dept}
+                  </button>
+                );
+              })}
+            </div>
+            
+            <div className="mt-5">
+              <button
+                type="button"
+                onClick={() => setActiveSiteChangeMeal(null)}
+                className="w-full h-11 border border-slate-200 text-slate-500 font-bold rounded-xl text-xs hover:bg-slate-50 active:scale-98 transition-all"
+              >
+                Cancel
               </button>
             </div>
           </div>

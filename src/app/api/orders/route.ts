@@ -92,7 +92,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { mealType, mealOption, notes, requestDate } = body;
+    const { mealType, mealOption, notes, requestDate, department } = body;
 
     if (!mealType || !['BREAKFAST', 'LUNCH', 'DINNER'].includes(mealType)) {
       return NextResponse.json({ error: 'Invalid meal type requested' }, { status: 400 });
@@ -100,6 +100,10 @@ export async function POST(request: Request) {
 
     if (!mealOption || !['VEGETARIAN', 'MEAT'].includes(mealOption)) {
       return NextResponse.json({ error: `Please select Vegetarian or Non vegetarian for ${mealType.toLowerCase()}.` }, { status: 400 });
+    }
+
+    if (department && !['CWIT', 'ECT', 'SAGT'].includes(department)) {
+      return NextResponse.json({ error: 'Invalid department/site selected' }, { status: 400 });
     }
 
     // Fetch full user details to ensure they are active and get phone number
@@ -196,7 +200,7 @@ export async function POST(request: Request) {
       status: 'ORDERED',
       requestDate: targetDateStr,
       requestedAt: new Date(),
-      department: dbUser.department,
+      department: department || dbUser.department,
     });
 
     // Create Admin Notification
@@ -286,10 +290,14 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json();
-    const { mealType, mealOption, notes, skipTimer, requestDate } = body;
+    const { mealType, mealOption, notes, skipTimer, requestDate, department } = body;
 
     if (!mealType || !['BREAKFAST', 'LUNCH', 'DINNER'].includes(mealType)) {
       return NextResponse.json({ error: 'Invalid or missing meal type.' }, { status: 400 });
+    }
+
+    if (department && !['CWIT', 'ECT', 'SAGT'].includes(department)) {
+      return NextResponse.json({ error: 'Invalid department/site selected' }, { status: 400 });
     }
 
     const now = new Date();
@@ -373,6 +381,9 @@ export async function PUT(request: Request) {
       order.mealOption = mealOption;
     }
     order.notes = notes !== undefined ? (notes ? notes.trim() : undefined) : order.notes;
+    if (department) {
+      order.department = department;
+    }
     await order.save();
 
     // Also update notification if it exists for this user, today, and matching mealType

@@ -97,6 +97,12 @@ function ReportsPageContent() {
     dinnerCount: number;
     dinnerCollected?: number;
     totalCost: number;
+    siteBreakdown?: {
+      CWIT: number;
+      ECT: number;
+      SAGT: number;
+      'N/A': number;
+    };
   }
   interface DetailedOrder {
     employeeNo: string;
@@ -107,6 +113,7 @@ function ReportsPageContent() {
     requestDate: string;
     notes?: string;
     collectedAt?: string;
+    department?: string;
   }
   interface SpendingResponse {
     month: string;
@@ -205,6 +212,9 @@ function ReportsPageContent() {
         'Lunch Collected', 
         'Dinner Ordered', 
         'Dinner Collected', 
+        'CWIT Cost (Rs.)',
+        'ECT Cost (Rs.)',
+        'SAGT Cost (Rs.)',
         'Total Monthly Food Price (Rs.)'
       ];
       
@@ -220,6 +230,9 @@ function ReportsPageContent() {
           item.lunchCollected || 0,
           item.dinnerCount,
           item.dinnerCollected || 0,
+          item.siteBreakdown?.CWIT || 0,
+          item.siteBreakdown?.ECT || 0,
+          item.siteBreakdown?.SAGT || 0,
           item.totalCost
         ])
       ];
@@ -245,6 +258,7 @@ function ReportsPageContent() {
         // Individual sheet headers
         const empHeaders = [
           'Date',
+          'Work Site',
           'Meal Time',
           'Choice (Veg / Non-Veg)',
           'Special Requests / Notes',
@@ -253,30 +267,44 @@ function ReportsPageContent() {
         ];
 
         let calculatedTotalBill = 0;
+        let cwitBill = 0;
+        let ectBill = 0;
+        let sagtBill = 0;
+
+        const mappedOrders = empOrders.map(o => {
+          let price = 0;
+          if (o.mealType === 'BREAKFAST') price = spendingData.prices.breakfast;
+          else if (o.mealType === 'LUNCH') price = spendingData.prices.lunch;
+          else if (o.mealType === 'DINNER') price = spendingData.prices.dinner;
+
+          calculatedTotalBill += price;
+          const site = o.department || 'N/A';
+          if (site === 'CWIT') cwitBill += price;
+          else if (site === 'ECT') ectBill += price;
+          else if (site === 'SAGT') sagtBill += price;
+
+          return [
+            o.requestDate,
+            site,
+            o.mealType,
+            o.mealOption === 'VEGETARIAN' ? 'VEG' : o.mealOption === 'MEAT' ? 'NON-VEG' : 'Standard',
+            o.notes || '-',
+            o.status === 'COLLECTED' ? 'Collected' : 'Ordered (Pending)',
+            price
+          ];
+        });
+
         const empRows = [
           ['Employee No:', emp.employeeNo],
           ['Employee Name:', emp.employeeName],
           [], // empty row for spacing
           empHeaders,
-          ...empOrders.map(o => {
-            let price = 0;
-            if (o.mealType === 'BREAKFAST') price = spendingData.prices.breakfast;
-            else if (o.mealType === 'LUNCH') price = spendingData.prices.lunch;
-            else if (o.mealType === 'DINNER') price = spendingData.prices.dinner;
-
-            calculatedTotalBill += price;
-
-            return [
-              o.requestDate,
-              o.mealType,
-              o.mealOption === 'VEGETARIAN' ? 'VEG' : o.mealOption === 'MEAT' ? 'NON-VEG' : 'Standard',
-              o.notes || '-',
-              o.status === 'COLLECTED' ? 'Collected' : 'Ordered (Pending)',
-              price
-            ];
-          }),
+          ...mappedOrders,
           [], // empty spacing row
-          ['Total Monthly Bill', '', '', '', '', calculatedTotalBill]
+          ['CWIT Site Total', '', '', '', '', '', cwitBill],
+          ['ECT Site Total', '', '', '', '', '', ectBill],
+          ['SAGT Site Total', '', '', '', '', '', sagtBill],
+          ['Total Monthly Bill', '', '', '', '', '', calculatedTotalBill]
         ];
 
         const empSheet = XLSX.utils.aoa_to_sheet(empRows);
@@ -700,8 +728,15 @@ function ReportsPageContent() {
                           <td className="py-3 px-3 font-semibold text-slate-800 max-w-[150px] truncate" title={item.employeeName}>
                             {item.employeeName}
                           </td>
-                          <td className="py-3 px-3 font-bold text-slate-600">
-                            {item.department || 'N/A'}
+                          <td className="py-3 px-3 font-semibold text-slate-660">
+                            <span className="font-bold text-slate-700 block text-[11px] mb-0.5">Profile: {item.department || 'N/A'}</span>
+                            {item.siteBreakdown ? (
+                              <div className="text-[9px] text-slate-400 leading-tight space-y-0.5 font-bold">
+                                {item.siteBreakdown.CWIT > 0 && <span className="block text-blue-600">CWIT: Rs. {item.siteBreakdown.CWIT}</span>}
+                                {item.siteBreakdown.ECT > 0 && <span className="block text-indigo-600">ECT: Rs. {item.siteBreakdown.ECT}</span>}
+                                {item.siteBreakdown.SAGT > 0 && <span className="block text-purple-600">SAGT: Rs. {item.siteBreakdown.SAGT}</span>}
+                              </div>
+                            ) : null}
                           </td>
                           <td className="py-3 px-2 text-center">
                             <span className="font-bold text-slate-700 block">{item.breakfastCount}</span>
