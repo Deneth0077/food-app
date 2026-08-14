@@ -57,6 +57,7 @@ export default function EmployeeDashboard() {
   const [selectedOption, setSelectedOption] = useState<'VEGETARIAN' | 'MEAT' | null>(null);
   const [orderNotes, setOrderNotes] = useState('');
   const [selectedOrderDepartment, setSelectedOrderDepartment] = useState<'CWIT' | 'ECT' | 'SAGT' | null>(null);
+  const [mealModalStep, setMealModalStep] = useState<'PREFERENCE' | 'SITE'>('PREFERENCE');
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [isUpdatingNotesOnly, setIsUpdatingNotesOnly] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -414,12 +415,14 @@ export default function EmployeeDashboard() {
       setSelectedOption(existingOrder.mealOption || null);
       setOrderNotes(existingOrder.notes || '');
       setSelectedOrderDepartment(existingOrder.department || (user?.department as 'CWIT' | 'ECT' | 'SAGT') || null);
+      setMealModalStep('PREFERENCE');
       setActiveMealSelection(mealType);
     } else {
       setIsUpdatingNotesOnly(false);
       setSelectedOption(null);
       setOrderNotes('');
       setSelectedOrderDepartment((user?.department as 'CWIT' | 'ECT' | 'SAGT') || null);
+      setMealModalStep('PREFERENCE');
       setActiveMealSelection(mealType);
     }
   };
@@ -1371,171 +1374,190 @@ export default function EmployeeDashboard() {
       {/* Meal Preference Selection Modal */}
       {activeMealSelection && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 ease-out animate-in fade-in">
-          <div className="absolute inset-0" onClick={() => { setActiveMealSelection(null); setSelectedOption(null); setOrderNotes(''); setSelectedOrderDepartment(null); }}></div>
+          <div className="absolute inset-0" onClick={() => { setActiveMealSelection(null); setSelectedOption(null); setOrderNotes(''); setSelectedOrderDepartment(null); setMealModalStep('PREFERENCE'); }}></div>
           
-          <div className="relative bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl border border-slate-100 transition-all duration-300 ease-out transform animate-in zoom-in-95">
-            <h3 className="text-lg font-bold text-slate-800 tracking-tight">
-              {isUpdatingNotesOnly ? `Update ${activeMealSelection.toLowerCase()} Request` : `Select ${activeMealSelection.toLowerCase()} Preference`}
-            </h3>
-            <p className="text-xs text-slate-500 mt-1 font-semibold">
-              {isUpdatingNotesOnly ? "Modify your meal option for today's order." : 'Please choose your meal type below before confirming.'}
-            </p>
-            
-            <div className="grid grid-cols-2 gap-4 mt-5">
-              {/* Vegetarian Option Card */}
-              <button
-                type="button"
-                onClick={() => setSelectedOption('VEGETARIAN')}
-                className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all duration-300 transform shadow-[0_2px_8px_rgba(0,0,0,0.01)] ${
-                  selectedOption === 'VEGETARIAN'
-                    ? 'border-green-500 bg-green-50/45 text-green-700 shadow-green-100/50 shadow-md -translate-y-0.5 scale-[1.02]'
-                    : 'border-slate-200 hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] bg-white text-slate-600'
-                }`}
-              >
-                <div className={`h-10 w-10 rounded-full flex items-center justify-center mb-2.5 ${selectedOption === 'VEGETARIAN' ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-500'}`}>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 3.5 1 9.8a7 7 0 0 1-9 8.2Z"/><path d="M9 22v-4h-2.5a2.5 2.5 0 0 1 0-5H9m2-5.5v4"/></svg>
-                </div>
-                <span className="text-xs font-extrabold uppercase tracking-wider">Vegetarian</span>
-              </button>
- 
-              {/* Meat Option Card */}
-              <button
-                type="button"
-                onClick={() => setSelectedOption('MEAT')}
-                className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all duration-300 transform shadow-[0_2px_8px_rgba(0,0,0,0.01)] ${
-                  selectedOption === 'MEAT'
-                    ? 'border-blue-500 bg-blue-50/45 text-blue-700 shadow-blue-100/50 shadow-md -translate-y-0.5 scale-[1.02]'
-                    : 'border-slate-200 hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] bg-white text-slate-600'
-                }`}
-              >
-                <div className={`h-10 w-10 rounded-full flex items-center justify-center mb-2.5 ${selectedOption === 'MEAT' ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-500'}`}>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a5 5 0 1 0 10 0V2Z"/><path d="m15.4 7.6-6.1 6.1m-2.1.3a2.5 2.5 0 1 0-3.5 3.5m4.3-1.4a2.5 2.5 0 1 0 3.5-3.5m-3.5 3.5h0Z"/></svg>
-                </div>
-                <span className="text-xs font-extrabold uppercase tracking-wider">Non vegetarian</span>
-              </button>
-            </div>
-
-            {/* Site / Department Selector */}
-            {selectedOption && (
-              <div className="mt-5 space-y-2 text-left animate-in fade-in slide-in-from-top-3 duration-300">
-                <span className="text-[11px] font-bold text-slate-500 block uppercase tracking-wider">Work Site for this meal</span>
-                <div className="grid grid-cols-3 gap-2">
-                  {['CWIT', 'ECT', 'SAGT'].map((dept) => (
-                    <button
-                      key={dept}
-                      type="button"
-                      onClick={() => setSelectedOrderDepartment(dept as 'CWIT' | 'ECT' | 'SAGT')}
-                      className={`py-2.5 text-xs font-bold rounded-xl border transition-all duration-200 active:scale-95 ${
-                        selectedOrderDepartment === dept
-                          ? 'border-blue-500 bg-blue-50/50 text-blue-700 font-extrabold shadow-sm'
-                          : 'border-slate-200 bg-white text-slate-650 hover:border-slate-300'
-                      }`}
-                    >
-                      {dept}
-                    </button>
-                  ))}
-                </div>
+          {mealModalStep === 'PREFERENCE' ? (
+            <div className="relative bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl border border-slate-100 transition-all duration-300 ease-out transform animate-in zoom-in-95">
+              <h3 className="text-lg font-bold text-slate-800 tracking-tight">
+                {isUpdatingNotesOnly ? `Update ${activeMealSelection.toLowerCase()} Request` : `Select ${activeMealSelection.toLowerCase()} Preference`}
+              </h3>
+              <p className="text-xs text-slate-500 mt-1 font-semibold">
+                {isUpdatingNotesOnly ? "Modify your meal option for today's order." : 'Please choose your meal type below before confirming.'}
+              </p>
+              
+              <div className="grid grid-cols-2 gap-4 mt-5">
+                {/* Vegetarian Option Card */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedOption('VEGETARIAN')}
+                  className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all duration-300 transform shadow-[0_2px_8px_rgba(0,0,0,0.01)] ${
+                    selectedOption === 'VEGETARIAN'
+                      ? 'border-green-500 bg-green-50/45 text-green-700 shadow-green-100/50 shadow-md -translate-y-0.5 scale-[1.02]'
+                      : 'border-slate-200 hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] bg-white text-slate-600'
+                  }`}
+                >
+                  <div className={`h-10 w-10 rounded-full flex items-center justify-center mb-2.5 ${selectedOption === 'VEGETARIAN' ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-500'}`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 3.5 1 9.8a7 7 0 0 1-9 8.2Z"/><path d="M9 22v-4h-2.5a2.5 2.5 0 0 1 0-5H9m2-5.5v4"/></svg>
+                  </div>
+                  <span className="text-xs font-extrabold uppercase tracking-wider">Vegetarian</span>
+                </button>
+   
+                {/* Meat Option Card */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedOption('MEAT')}
+                  className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all duration-300 transform shadow-[0_2px_8px_rgba(0,0,0,0.01)] ${
+                    selectedOption === 'MEAT'
+                      ? 'border-blue-500 bg-blue-50/45 text-blue-700 shadow-blue-100/50 shadow-md -translate-y-0.5 scale-[1.02]'
+                      : 'border-slate-200 hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] bg-white text-slate-600'
+                  }`}
+                >
+                  <div className={`h-10 w-10 rounded-full flex items-center justify-center mb-2.5 ${selectedOption === 'MEAT' ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-500'}`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a5 5 0 1 0 10 0V2Z"/><path d="m15.4 7.6-6.1 6.1m-2.1.3a2.5 2.5 0 1 0-3.5 3.5m4.3-1.4a2.5 2.5 0 1 0 3.5-3.5m-3.5 3.5h0Z"/></svg>
+                  </div>
+                  <span className="text-xs font-extrabold uppercase tracking-wider">Non vegetarian</span>
+                </button>
               </div>
-            )}
 
-            {/* Cancel countdown timer inside the modal */}
-            {isUpdatingNotesOnly && (() => {
-              let order;
-              if (activeMealSelection === 'BREAKFAST') {
-                order = activeBreakfastOrder;
-              } else if (activeMealSelection === 'LUNCH') {
-                order = activeLunchOrder;
-              } else {
-                order = activeDinnerOrder;
-              }
-              if (order && order.status === 'ORDERED' && !getMealLockedStatus(activeMealSelection)) {
-                const msRemaining = (new Date(order.requestedAt).getTime() + 10 * 60 * 1000) - currentTime.getTime();
-                if (msRemaining > 0) {
-                  const mins = Math.floor(msRemaining / (1000 * 60));
-                  const secs = Math.floor((msRemaining % (1000 * 60)) / 1000);
-                  const formattedTime = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-                  
-                  return (
-                    <div className="mt-4 flex items-center justify-between bg-red-50/40 border border-red-100/50 rounded-xl p-2.5 animate-in fade-in duration-200">
-                      <span className="text-[10px] font-bold text-red-600 flex items-center gap-1">
-                        <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-ping shrink-0" />
-                        Cancel available: {formattedTime}
-                      </span>
-                      <div className="flex gap-1.5">
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            await handleSkipTimer(activeMealSelection);
-                            setActiveMealSelection(null);
-                            setSelectedOption(null);
-                            setOrderNotes('');
-                            setSelectedOrderDepartment(null);
-                          }}
-                          className="px-2.5 py-1 text-[9px] font-bold text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg active:scale-95 transition-all shadow-sm"
-                        >
-                          Skip Time
-                        </button>
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            await handleCancelOrder(activeMealSelection);
-                            setActiveMealSelection(null);
-                            setSelectedOption(null);
-                            setOrderNotes('');
-                            setSelectedOrderDepartment(null);
-                          }}
-                          className="px-2.5 py-1 text-[9px] font-bold text-red-700 bg-red-100 hover:bg-red-200 rounded-lg active:scale-95 transition-all shadow-sm"
-                        >
-                          Cancel Order
-                        </button>
-                      </div>
-                    </div>
-                  );
+              {/* Cancel countdown timer inside the modal */}
+              {isUpdatingNotesOnly && (() => {
+                let order;
+                if (activeMealSelection === 'BREAKFAST') {
+                  order = activeBreakfastOrder;
+                } else if (activeMealSelection === 'LUNCH') {
+                  order = activeLunchOrder;
+                } else {
+                  order = activeDinnerOrder;
                 }
-              }
-              return null;
-            })()}
- 
-            <div className="flex gap-3 mt-5">
-              <button
-                type="button"
-                onClick={() => { setActiveMealSelection(null); setSelectedOption(null); setOrderNotes(''); setSelectedOrderDepartment(null); }}
-                className="flex-1 h-11 border border-slate-200 text-slate-500 font-bold rounded-xl text-xs hover:bg-slate-50 active:scale-98 transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={!selectedOption || !selectedOrderDepartment}
-                onClick={async () => {
-                  if (activeMealSelection && selectedOption) {
-                    const mealType = activeMealSelection;
-                    const mealOption = selectedOption;
-                    const notes = orderNotes;
-                    const dept = selectedOrderDepartment || undefined;
+                if (order && order.status === 'ORDERED' && !getMealLockedStatus(activeMealSelection)) {
+                  const msRemaining = (new Date(order.requestedAt).getTime() + 10 * 60 * 1000) - currentTime.getTime();
+                  if (msRemaining > 0) {
+                    const mins = Math.floor(msRemaining / (1000 * 60));
+                    const secs = Math.floor((msRemaining % (1000 * 60)) / 1000);
+                    const formattedTime = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
                     
-                    setActiveMealSelection(null);
-                    setSelectedOption(null);
-                    setOrderNotes('');
-                    setSelectedOrderDepartment(null);
-                    
-                    if (isUpdatingNotesOnly) {
-                      await handleUpdateOrder(mealType, mealOption, notes, dept);
-                    } else {
-                      await handleRequestMeal(mealType, mealOption, notes, dept);
-                    }
+                    return (
+                      <div className="mt-4 flex items-center justify-between bg-red-50/40 border border-red-100/50 rounded-xl p-2.5 animate-in fade-in duration-200">
+                        <span className="text-[10px] font-bold text-red-600 flex items-center gap-1">
+                          <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-ping shrink-0" />
+                          Cancel available: {formattedTime}
+                        </span>
+                        <div className="flex gap-1.5">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              await handleSkipTimer(activeMealSelection);
+                              setActiveMealSelection(null);
+                              setSelectedOption(null);
+                              setOrderNotes('');
+                              setSelectedOrderDepartment(null);
+                              setMealModalStep('PREFERENCE');
+                            }}
+                            className="px-2.5 py-1 text-[9px] font-bold text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg active:scale-95 transition-all shadow-sm"
+                          >
+                            Skip Time
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              await handleCancelOrder(activeMealSelection);
+                              setActiveMealSelection(null);
+                              setSelectedOption(null);
+                              setOrderNotes('');
+                              setSelectedOrderDepartment(null);
+                              setMealModalStep('PREFERENCE');
+                            }}
+                            className="px-2.5 py-1 text-[9px] font-bold text-red-700 bg-red-100 hover:bg-red-200 rounded-lg active:scale-95 transition-all shadow-sm"
+                          >
+                            Cancel Order
+                          </button>
+                        </div>
+                      </div>
+                    );
                   }
-                }}
-                className={`flex-1 h-11 font-bold rounded-xl text-xs active:scale-98 transition-all flex items-center justify-center gap-1.5 ${
-                  selectedOption && selectedOrderDepartment
-                    ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm' 
-                    : 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                }`}
-              >
-                {isUpdatingNotesOnly ? 'Update Request' : 'Confirm (OK)'}
-              </button>
+                }
+                return null;
+              })()}
+   
+              <div className="flex gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => { setActiveMealSelection(null); setSelectedOption(null); setOrderNotes(''); setSelectedOrderDepartment(null); setMealModalStep('PREFERENCE'); }}
+                  className="flex-1 h-11 border border-slate-200 text-slate-500 font-bold rounded-xl text-xs hover:bg-slate-50 active:scale-98 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={!selectedOption}
+                  onClick={() => {
+                    if (selectedOption) {
+                      setMealModalStep('SITE');
+                    }
+                  }}
+                  className={`flex-1 h-11 font-bold rounded-xl text-xs active:scale-98 transition-all flex items-center justify-center gap-1.5 ${
+                    selectedOption
+                      ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm' 
+                      : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                  }`}
+                >
+                  Next
+                  <ChevronRight className="w-4 h-4 ml-0.5" />
+                </button>
+              </div>
             </div>
-          </div>
+          ) : (
+            /* Step 2: Work Site Card Popup */
+            <div className="relative bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl border border-slate-100 text-center animate-in zoom-in-95">
+              <h3 className="text-lg font-bold text-slate-800 tracking-tight">Select Your Work Site</h3>
+              <p className="text-xs text-slate-500 mt-2 font-semibold">
+                Please choose your current work site (CWIT, ECT, or SAGT) to proceed.
+              </p>
+              
+              <div className="flex flex-col gap-3 mt-6">
+                {['CWIT', 'ECT', 'SAGT'].map((dept) => (
+                  <button
+                    key={dept}
+                    type="button"
+                    disabled={submittingMeal === activeMealSelection}
+                    onClick={async () => {
+                      if (activeMealSelection && selectedOption) {
+                        const mealType = activeMealSelection;
+                        const mealOption = selectedOption;
+                        const notes = orderNotes;
+                        const chosenDept = dept as 'CWIT' | 'ECT' | 'SAGT';
+                        
+                        setActiveMealSelection(null);
+                        setSelectedOption(null);
+                        setOrderNotes('');
+                        setSelectedOrderDepartment(null);
+                        setMealModalStep('PREFERENCE');
+                        
+                        if (isUpdatingNotesOnly) {
+                          await handleUpdateOrder(mealType, mealOption, notes, chosenDept);
+                        } else {
+                          await handleRequestMeal(mealType, mealOption, notes, chosenDept);
+                        }
+                      }
+                    }}
+                    className="h-12 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold rounded-xl text-sm transition-all flex items-center justify-center shadow-sm"
+                  >
+                    {dept}
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={() => setMealModalStep('PREFERENCE')}
+                  className="w-full h-11 border border-slate-200 text-slate-500 font-bold rounded-xl text-xs hover:bg-slate-50 active:scale-98 transition-all"
+                >
+                  Back
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1591,51 +1613,6 @@ export default function EmployeeDashboard() {
               >
                 Cancel
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Site selection startup modal */}
-      {user && !user.department && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 ease-out animate-in fade-in">
-          <div className="relative bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl border border-slate-100 text-center animate-in zoom-in-95">
-            <h3 className="text-lg font-bold text-slate-800 tracking-tight">Select Your Work Site</h3>
-            <p className="text-xs text-slate-500 mt-2 font-semibold">
-              Please choose your current work site (CWIT, ECT, or SAGT) to proceed.
-            </p>
-            <div className="flex flex-col gap-3 mt-6">
-              {['CWIT', 'ECT', 'SAGT'].map((dept) => (
-                <button
-                  key={dept}
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      const res = await fetch('/api/auth/me', {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ department: dept }),
-                      });
-                      const data = await res.json();
-                      if (!res.ok) throw new Error(data.error || 'Failed to set site');
-                      toast({
-                        title: 'Work Site Configured',
-                        description: `Successfully set current site to ${dept}.`,
-                      });
-                      setUser(data.user);
-                    } catch (err: any) {
-                      toast({
-                        variant: 'destructive',
-                        title: 'Error',
-                        description: err.message || 'Something went wrong',
-                      });
-                    }
-                  }}
-                  className="h-12 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold rounded-xl text-sm transition-all flex items-center justify-center shadow-sm"
-                >
-                  {dept}
-                </button>
-              ))}
             </div>
           </div>
         </div>

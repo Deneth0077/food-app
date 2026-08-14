@@ -112,8 +112,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'User is inactive or not found' }, { status: 403 });
     }
 
-    if (!dbUser.department) {
+    const orderDepartment = department || dbUser.department;
+    if (!orderDepartment) {
       return NextResponse.json({ error: 'Please select your work site (CWIT, ECT, or SAGT) first.' }, { status: 400 });
+    }
+
+    if (!dbUser.department && department) {
+      dbUser.department = department;
+      await dbUser.save();
     }
 
     const now = new Date();
