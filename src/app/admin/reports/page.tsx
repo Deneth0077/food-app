@@ -63,11 +63,13 @@ interface ReportResponse {
     CWIT: DepartmentStat;
     ECT: DepartmentStat;
     SAGT: DepartmentStat;
+    CICT: DepartmentStat;
   };
   monthlyDepartmentStats?: {
     CWIT: DepartmentStat;
     ECT: DepartmentStat;
     SAGT: DepartmentStat;
+    CICT: DepartmentStat;
   };
 }
 
@@ -101,6 +103,7 @@ function ReportsPageContent() {
       CWIT: number;
       ECT: number;
       SAGT: number;
+      CICT: number;
       'N/A': number;
     };
   }
@@ -215,6 +218,7 @@ function ReportsPageContent() {
         'CWIT Cost (Rs.)',
         'ECT Cost (Rs.)',
         'SAGT Cost (Rs.)',
+        'CICT Cost (Rs.)',
         'Total Monthly Food Price (Rs.)'
       ];
       
@@ -233,6 +237,7 @@ function ReportsPageContent() {
           item.siteBreakdown?.CWIT || 0,
           item.siteBreakdown?.ECT || 0,
           item.siteBreakdown?.SAGT || 0,
+          item.siteBreakdown?.CICT || 0,
           item.totalCost
         ])
       ];
@@ -270,6 +275,7 @@ function ReportsPageContent() {
         let cwitBill = 0;
         let ectBill = 0;
         let sagtBill = 0;
+        let cictBill = 0;
 
         const mappedOrders = empOrders.map(o => {
           let price = 0;
@@ -282,6 +288,7 @@ function ReportsPageContent() {
           if (site === 'CWIT') cwitBill += price;
           else if (site === 'ECT') ectBill += price;
           else if (site === 'SAGT') sagtBill += price;
+          else if (site === 'CICT') cictBill += price;
 
           return [
             o.requestDate,
@@ -304,6 +311,7 @@ function ReportsPageContent() {
           ['CWIT Site Total', '', '', '', '', '', cwitBill],
           ['ECT Site Total', '', '', '', '', '', ectBill],
           ['SAGT Site Total', '', '', '', '', '', sagtBill],
+          ['CICT Site Total', '', '', '', '', '', cictBill],
           ['Total Monthly Bill', '', '', '', '', '', calculatedTotalBill]
         ];
 
@@ -472,10 +480,10 @@ function ReportsPageContent() {
             </div>
             
             <div className="space-y-3 pt-1">
-              {['CWIT', 'ECT', 'SAGT'].map((dept) => {
+              {['CWIT', 'ECT', 'SAGT', 'CICT'].map((dept) => {
                 const stats = activeTab === 'daily' 
-                  ? reportData.todayDepartmentStats?.[dept as 'CWIT' | 'ECT' | 'SAGT'] 
-                  : reportData.monthlyDepartmentStats?.[dept as 'CWIT' | 'ECT' | 'SAGT'];
+                  ? reportData.todayDepartmentStats?.[dept as 'CWIT' | 'ECT' | 'SAGT' | 'CICT'] 
+                  : reportData.monthlyDepartmentStats?.[dept as 'CWIT' | 'ECT' | 'SAGT' | 'CICT'];
                 
                 return (
                   <div key={dept} className="bg-slate-50 border border-slate-200/60 rounded-xl p-3 flex flex-col gap-2">
@@ -735,6 +743,7 @@ function ReportsPageContent() {
                                 {item.siteBreakdown.CWIT > 0 && <span className="block text-blue-600">CWIT: Rs. {item.siteBreakdown.CWIT}</span>}
                                 {item.siteBreakdown.ECT > 0 && <span className="block text-indigo-600">ECT: Rs. {item.siteBreakdown.ECT}</span>}
                                 {item.siteBreakdown.SAGT > 0 && <span className="block text-purple-600">SAGT: Rs. {item.siteBreakdown.SAGT}</span>}
+                                {item.siteBreakdown.CICT > 0 && <span className="block text-emerald-600">CICT: Rs. {item.siteBreakdown.CICT}</span>}
                               </div>
                             ) : null}
                           </td>

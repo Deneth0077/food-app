@@ -61,6 +61,7 @@ export async function GET(request: Request) {
           CWIT: number;
           ECT: number;
           SAGT: number;
+          CICT: number;
           'N/A': number;
         };
       };
@@ -77,7 +78,7 @@ export async function GET(request: Request) {
         lunchCollected: 0,
         dinnerCount: 0,
         dinnerCollected: 0,
-        siteBreakdown: { CWIT: 0, ECT: 0, SAGT: 0, 'N/A': 0 }
+        siteBreakdown: { CWIT: 0, ECT: 0, SAGT: 0, CICT: 0, 'N/A': 0 }
       };
     });
 
@@ -95,7 +96,7 @@ export async function GET(request: Request) {
           lunchCollected: 0,
           dinnerCount: 0,
           dinnerCollected: 0,
-          siteBreakdown: { CWIT: 0, ECT: 0, SAGT: 0, 'N/A': 0 }
+          siteBreakdown: { CWIT: 0, ECT: 0, SAGT: 0, CICT: 0, 'N/A': 0 }
         };
       }
 
@@ -117,8 +118,8 @@ export async function GET(request: Request) {
       }
 
 
-      const site = (o.department || 'N/A') as 'CWIT' | 'ECT' | 'SAGT' | 'N/A';
-      if (site === 'CWIT' || site === 'ECT' || site === 'SAGT') {
+      const site = (o.department || 'N/A') as 'CWIT' | 'ECT' | 'SAGT' | 'CICT' | 'N/A';
+      if (site === 'CWIT' || site === 'ECT' || site === 'SAGT' || site === 'CICT') {
         employeeMap[empNo].siteBreakdown[site] += orderPrice;
       } else {
         employeeMap[empNo].siteBreakdown['N/A'] += orderPrice;

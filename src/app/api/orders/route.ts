@@ -102,7 +102,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Please select Vegetarian or Non vegetarian for ${mealType.toLowerCase()}.` }, { status: 400 });
     }
 
-    if (department && !['CWIT', 'ECT', 'SAGT'].includes(department)) {
+    if (department && !['CWIT', 'ECT', 'SAGT', 'CICT'].includes(department)) {
       return NextResponse.json({ error: 'Invalid department/site selected' }, { status: 400 });
     }
 
@@ -114,7 +114,7 @@ export async function POST(request: Request) {
 
     const orderDepartment = department || dbUser.department;
     if (!orderDepartment) {
-      return NextResponse.json({ error: 'Please select your work site (CWIT, ECT, or SAGT) first.' }, { status: 400 });
+      return NextResponse.json({ error: 'Please select your work site (CWIT, ECT, SAGT, or CICT) first.' }, { status: 400 });
     }
 
     if (!dbUser.department && department) {
@@ -302,7 +302,7 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Invalid or missing meal type.' }, { status: 400 });
     }
 
-    if (department && !['CWIT', 'ECT', 'SAGT'].includes(department)) {
+    if (department && !['CWIT', 'ECT', 'SAGT', 'CICT'].includes(department)) {
       return NextResponse.json({ error: 'Invalid department/site selected' }, { status: 400 });
     }
 

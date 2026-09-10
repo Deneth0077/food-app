@@ -12,7 +12,7 @@ export interface IOrder extends Document {
   requestDate: string; // YYYY-MM-DD format
   requestedAt: Date;
   collectedAt?: Date;
-  department?: 'CWIT' | 'ECT' | 'SAGT';
+  department?: 'CWIT' | 'ECT' | 'SAGT' | 'CICT';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -47,7 +47,7 @@ const OrderSchema: Schema = new Schema(
     collectedAt: { type: Date },
     department: {
       type: String,
-      enum: ['CWIT', 'ECT', 'SAGT'],
+      enum: ['CWIT', 'ECT', 'SAGT', 'CICT'],
       required: false
     },
   },

@@ -25,7 +25,7 @@ interface Employee {
   phoneNumber: string;
   role: 'ADMIN' | 'EMPLOYEE' | 'CANTEEN';
   isActive: boolean;
-  department?: 'CWIT' | 'ECT' | 'SAGT';
+  department?: 'CWIT' | 'ECT' | 'SAGT' | 'CICT';
 }
 
 interface Order {
@@ -183,8 +183,8 @@ export default function EmployeeDetailsPage() {
               </div>
               <div className="py-2.5 flex flex-col gap-2">
                 <span className="font-semibold text-slate-400 flex items-center gap-1.5"><User className="h-4 w-4" /> Work Site / Department</span>
-                <div className="flex gap-2.5 mt-0.5">
-                  {['CWIT', 'ECT', 'SAGT'].map((dept) => (
+                <div className="grid grid-cols-4 gap-2 mt-0.5">
+                  {['CWIT', 'ECT', 'SAGT', 'CICT'].map((dept) => (
                     <button
                       key={dept}
                       disabled={toggling}

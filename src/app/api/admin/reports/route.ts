@@ -45,7 +45,7 @@ export async function GET(request: Request) {
     }
 
     const getDeptStats = (ordersList: any[], prices: any) => {
-      const depts = ['CWIT', 'ECT', 'SAGT'];
+      const depts = ['CWIT', 'ECT', 'SAGT', 'CICT'];
       const stats: any = {};
       depts.forEach(d => {
         const deptOrders = ordersList.filter(o => o.department === d);

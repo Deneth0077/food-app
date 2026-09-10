@@ -29,7 +29,7 @@ interface UserProfile {
   employeeNo: string;
   phoneNumber: string;
   role: string;
-  department?: 'CWIT' | 'ECT' | 'SAGT';
+  department?: 'CWIT' | 'ECT' | 'SAGT' | 'CICT';
   deptChangeCount: number;
 }
 
@@ -42,7 +42,7 @@ interface Order {
   requestedAt: string;
   collectedAt?: string;
   notes?: string;
-  department?: 'CWIT' | 'ECT' | 'SAGT';
+  department?: 'CWIT' | 'ECT' | 'SAGT' | 'CICT';
 }
 
 export default function EmployeeDashboard() {
@@ -56,7 +56,7 @@ export default function EmployeeDashboard() {
   const [activeMealSelection, setActiveMealSelection] = useState<'BREAKFAST' | 'LUNCH' | 'DINNER' | null>(null);
   const [selectedOption, setSelectedOption] = useState<'VEGETARIAN' | 'MEAT' | null>(null);
   const [orderNotes, setOrderNotes] = useState('');
-  const [selectedOrderDepartment, setSelectedOrderDepartment] = useState<'CWIT' | 'ECT' | 'SAGT' | null>(null);
+  const [selectedOrderDepartment, setSelectedOrderDepartment] = useState<'CWIT' | 'ECT' | 'SAGT' | 'CICT' | null>(null);
   const [mealModalStep, setMealModalStep] = useState<'PREFERENCE' | 'SITE'>('PREFERENCE');
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [isUpdatingNotesOnly, setIsUpdatingNotesOnly] = useState(false);
@@ -247,7 +247,7 @@ export default function EmployeeDashboard() {
     }
   };
 
-  const handleQuickUpdateSite = async (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER', site: 'CWIT' | 'ECT' | 'SAGT') => {
+  const handleQuickUpdateSite = async (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER', site: 'CWIT' | 'ECT' | 'SAGT' | 'CICT') => {
     const existingOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === mealType);
     if (!existingOrder) return;
     
@@ -414,14 +414,14 @@ export default function EmployeeDashboard() {
       setIsUpdatingNotesOnly(true);
       setSelectedOption(existingOrder.mealOption || null);
       setOrderNotes(existingOrder.notes || '');
-      setSelectedOrderDepartment(existingOrder.department || (user?.department as 'CWIT' | 'ECT' | 'SAGT') || null);
+      setSelectedOrderDepartment(existingOrder.department || (user?.department as 'CWIT' | 'ECT' | 'SAGT' | 'CICT') || null);
       setMealModalStep('PREFERENCE');
       setActiveMealSelection(mealType);
     } else {
       setIsUpdatingNotesOnly(false);
       setSelectedOption(null);
       setOrderNotes('');
-      setSelectedOrderDepartment((user?.department as 'CWIT' | 'ECT' | 'SAGT') || null);
+      setSelectedOrderDepartment((user?.department as 'CWIT' | 'ECT' | 'SAGT' | 'CICT') || null);
       setMealModalStep('PREFERENCE');
       setActiveMealSelection(mealType);
     }
@@ -1511,11 +1511,11 @@ export default function EmployeeDashboard() {
             <div className="relative bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl border border-slate-100 text-center animate-in zoom-in-95">
               <h3 className="text-lg font-bold text-slate-800 tracking-tight">Select Your Work Site</h3>
               <p className="text-xs text-slate-500 mt-2 font-semibold">
-                Please choose your current work site (CWIT, ECT, or SAGT) to proceed.
+                Please choose your current work site (CWIT, ECT, SAGT, or CICT) to proceed.
               </p>
               
               <div className="flex flex-col gap-3 mt-6">
-                {['CWIT', 'ECT', 'SAGT'].map((dept) => (
+                {['CWIT', 'ECT', 'SAGT', 'CICT'].map((dept) => (
                   <button
                     key={dept}
                     type="button"
@@ -1525,7 +1525,7 @@ export default function EmployeeDashboard() {
                         const mealType = activeMealSelection;
                         const mealOption = selectedOption;
                         const notes = orderNotes;
-                        const chosenDept = dept as 'CWIT' | 'ECT' | 'SAGT';
+                        const chosenDept = dept as 'CWIT' | 'ECT' | 'SAGT' | 'CICT';
                         
                         setActiveMealSelection(null);
                         setSelectedOption(null);
@@ -1577,8 +1577,8 @@ export default function EmployeeDashboard() {
               Select the work site for your {activeSiteChangeMeal.toLowerCase()} order.
             </p>
             
-            <div className="grid grid-cols-3 gap-2.5 mt-6">
-              {['CWIT', 'ECT', 'SAGT'].map((dept) => {
+            <div className="grid grid-cols-2 gap-2.5 mt-6">
+              {['CWIT', 'ECT', 'SAGT', 'CICT'].map((dept) => {
                 const existingOrder = orders.find(
                   o => o.requestDate === selectedBookingDate && o.mealType === activeSiteChangeMeal
                 );
@@ -1591,7 +1591,7 @@ export default function EmployeeDashboard() {
                     onClick={async () => {
                       const mealType = activeSiteChangeMeal;
                       setActiveSiteChangeMeal(null);
-                      await handleQuickUpdateSite(mealType, dept as 'CWIT' | 'ECT' | 'SAGT');
+                      await handleQuickUpdateSite(mealType, dept as 'CWIT' | 'ECT' | 'SAGT' | 'CICT');
                     }}
                     className={`py-3 text-xs font-bold rounded-xl border transition-all duration-200 active:scale-95 ${
                       isSelected

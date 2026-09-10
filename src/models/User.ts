@@ -7,7 +7,7 @@ export interface IUser extends Document {
   password?: string;
   role: 'ADMIN' | 'EMPLOYEE' | 'CANTEEN';
   isActive: boolean;
-  department?: 'CWIT' | 'ECT' | 'SAGT';
+  department?: 'CWIT' | 'ECT' | 'SAGT' | 'CICT';
   deptChangeCount: number;
   createdAt: Date;
   updatedAt: Date;
@@ -27,7 +27,7 @@ const UserSchema: Schema = new Schema(
     isActive: { type: Boolean, default: true },
     department: { 
       type: String, 
-      enum: ['CWIT', 'ECT', 'SAGT'], 
+      enum: ['CWIT', 'ECT', 'SAGT', 'CICT'], 
       required: false 
     },
     deptChangeCount: { 

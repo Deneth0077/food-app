@@ -81,7 +81,7 @@ export async function PUT(request: Request) {
       employee.role = role;
     }
 
-    if (department && ['CWIT', 'ECT', 'SAGT'].includes(department)) {
+    if (department && ['CWIT', 'ECT', 'SAGT', 'CICT'].includes(department)) {
       employee.department = department;
     }
 

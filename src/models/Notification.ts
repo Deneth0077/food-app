@@ -23,4 +23,7 @@ const NotificationSchema: Schema = new Schema(
   { timestamps: true }
 );
 
+// Auto-expire notifications older than 2 days (48 hours = 172800 seconds)
+NotificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 172800 });
+
 export default mongoose.models.Notification || mongoose.model<INotification>('Notification', NotificationSchema);

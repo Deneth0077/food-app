@@ -15,7 +15,11 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    const notifications = await Notification.find({})
+    // Auto-remove notifications older than 2 days (48 hours)
+    const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+    await Notification.deleteMany({ createdAt: { $lt: twoDaysAgo } });
+
+    const notifications = await Notification.find({ createdAt: { $gte: twoDaysAgo } })
       .sort({ createdAt: -1 })
       .limit(50);
 

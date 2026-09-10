@@ -22,7 +22,7 @@ interface UserProfile {
   employeeNo: string;
   phoneNumber: string;
   role: string;
-  department?: 'CWIT' | 'ECT' | 'SAGT';
+  department?: 'CWIT' | 'ECT' | 'SAGT' | 'CICT';
   deptChangeCount: number;
 }
 
@@ -37,7 +37,7 @@ export default function EmployeeProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const [editPin, setEditPin] = useState('');
-  const [editDept, setEditDept] = useState<'CWIT' | 'ECT' | 'SAGT' | ''>('');
+  const [editDept, setEditDept] = useState<'CWIT' | 'ECT' | 'SAGT' | 'CICT' | ''>('');
   const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
@@ -198,13 +198,13 @@ export default function EmployeeProfilePage() {
             {isEditing && (
               <div className="border-t border-slate-100 pt-3 animate-in fade-in duration-200">
                 {(user?.deptChangeCount || 0) < 2 ? (
-                  <div className="flex gap-2">
-                    {['CWIT', 'ECT', 'SAGT'].map((d) => (
+                  <div className="grid grid-cols-4 gap-2">
+                    {['CWIT', 'ECT', 'SAGT', 'CICT'].map((d) => (
                       <button
                         key={d}
                         type="button"
                         onClick={() => setEditDept(d as any)}
-                        className={`flex-1 py-2.5 text-xs font-bold border rounded-xl transition-all duration-200 active:scale-95 ${
+                        className={`py-2.5 text-xs font-bold border rounded-xl transition-all duration-200 active:scale-95 ${
                           editDept === d
                             ? 'bg-blue-600 border-blue-600 text-white shadow-sm font-extrabold'
                             : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'

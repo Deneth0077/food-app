@@ -23,7 +23,7 @@ interface Employee {
   phoneNumber: string;
   role: 'ADMIN' | 'EMPLOYEE' | 'CANTEEN';
   isActive: boolean;
-  department?: 'CWIT' | 'ECT' | 'SAGT';
+  department?: 'CWIT' | 'ECT' | 'SAGT' | 'CICT';
 }
 
 export default function AdminEmployeesPage() {
@@ -34,7 +34,7 @@ export default function AdminEmployeesPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<'ALL' | 'ADMIN' | 'EMPLOYEE' | 'CANTEEN'>('ALL');
-  const [selectedDeptFilter, setSelectedDeptFilter] = useState<'ALL' | 'CWIT' | 'ECT' | 'SAGT'>('ALL');
+  const [selectedDeptFilter, setSelectedDeptFilter] = useState<'ALL' | 'CWIT' | 'ECT' | 'SAGT' | 'CICT'>('ALL');
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const fetchEmployees = useCallback(async () => {
@@ -170,7 +170,7 @@ export default function AdminEmployeesPage() {
 
           {/* Department filter bar */}
           <div className="flex gap-1.5 overflow-x-auto pb-1">
-            {['ALL', 'CWIT', 'ECT', 'SAGT'].map(dept => (
+            {['ALL', 'CWIT', 'ECT', 'SAGT', 'CICT'].map(dept => (
               <button
                 key={dept}
                 onClick={() => setSelectedDeptFilter(dept as any)}

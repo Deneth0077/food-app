@@ -104,7 +104,7 @@ export async function PUT(request: Request) {
     }
 
     if (department) {
-      if (!['CWIT', 'ECT', 'SAGT'].includes(department)) {
+      if (!['CWIT', 'ECT', 'SAGT', 'CICT'].includes(department)) {
         return NextResponse.json({ error: 'Invalid department/site selected' }, { status: 400 });
       }
       if (user.department && user.department !== department) {
