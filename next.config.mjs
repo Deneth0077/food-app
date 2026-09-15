@@ -5,9 +5,6 @@ const withPWA = withPWAInit({
   disable: process.env.NODE_ENV === 'development',
   register: true,
   skipWaiting: true,
-  fallback: {
-    document: '/offline.html',
-  },
 });
 
 /** @type {import('next').NextConfig} */

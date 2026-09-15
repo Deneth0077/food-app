@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Home, ClipboardList, User, Users, BarChart3 } from 'lucide-react';
+import { Home, ClipboardList, User, Users, BarChart3, UtensilsCrossed } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function BottomNav() {
@@ -36,6 +36,7 @@ export function BottomNav() {
 
   const adminNavItems = [
     { name: 'Home', href: '/admin/dashboard', icon: Home },
+    { name: 'Menu', href: '/admin/menu', icon: UtensilsCrossed },
     { name: 'Employees', href: '/admin/employees', icon: Users },
     { name: 'Reports', href: '/admin/reports', icon: BarChart3 },
   ];

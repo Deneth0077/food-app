@@ -45,12 +45,32 @@ interface Order {
   department?: 'CWIT' | 'ECT' | 'SAGT' | 'CICT';
 }
 
+interface MenuItem {
+  name: string;
+  category?: string;
+  dietary?: 'VEG' | 'NON_VEG' | 'ALL';
+}
+
+interface MealPlan {
+  title?: string;
+  description?: string;
+  items: MenuItem[];
+  isAvailable: boolean;
+}
+
+interface DailyMenu {
+  breakfast: MealPlan;
+  lunch: MealPlan;
+  dinner: MealPlan;
+}
+
 export default function EmployeeDashboard() {
   const router = useRouter();
   const { toast } = useToast();
   
   const [user, setUser] = useState<UserProfile | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [dailyMenu, setDailyMenu] = useState<DailyMenu | null>(null);
   const [loading, setLoading] = useState(true);
   const [submittingMeal, setSubmittingMeal] = useState<string | null>(null);
   const [activeMealSelection, setActiveMealSelection] = useState<'BREAKFAST' | 'LUNCH' | 'DINNER' | null>(null);
@@ -138,6 +158,13 @@ export default function EmployeeDashboard() {
           });
         }
       }
+
+      // Fetch daily menu for selected booking date
+      const menuRes = await fetch(`/api/menu?date=${selectedBookingDate}`);
+      if (menuRes.ok) {
+        const menuData = await menuRes.json();
+        setDailyMenu(menuData.menu || null);
+      }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       toast({
@@ -148,11 +175,26 @@ export default function EmployeeDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [router, toast]);
+  }, [router, toast, selectedBookingDate]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    const fetchMenu = async () => {
+      try {
+        const menuRes = await fetch(`/api/menu?date=${selectedBookingDate}`);
+        if (menuRes.ok) {
+          const menuData = await menuRes.json();
+          setDailyMenu(menuData.menu || null);
+        }
+      } catch (err) {
+        console.error('Error fetching menu:', err);
+      }
+    };
+    fetchMenu();
+  }, [selectedBookingDate]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -677,6 +719,30 @@ export default function EmployeeDashboard() {
                       </span>
                     </div>
                   )}
+
+                  {/* Daily Menu items preview on Card */}
+                  {dailyMenu?.breakfast?.items && dailyMenu.breakfast.items.length > 0 && (
+                    <div className="mt-2 pt-1.5 border-t border-slate-100 flex flex-wrap items-center gap-1">
+                      <span className="text-[9px] font-extrabold text-amber-700 uppercase tracking-wide">
+                        Menu:
+                      </span>
+                      {dailyMenu.breakfast.title && (
+                        <span className="text-[9.5px] font-bold text-slate-700 mr-0.5">
+                          {dailyMenu.breakfast.title} •
+                        </span>
+                      )}
+                      {dailyMenu.breakfast.items.slice(0, 3).map((item, idx) => (
+                        <span key={idx} className="text-[9px] font-semibold bg-amber-50 text-amber-900 border border-amber-200/60 px-1.5 py-0.2 rounded">
+                          {item.name}
+                        </span>
+                      ))}
+                      {dailyMenu.breakfast.items.length > 3 && (
+                        <span className="text-[8.5px] font-bold text-blue-600">
+                          +{dailyMenu.breakfast.items.length - 3} more
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
               <div>
@@ -746,6 +812,30 @@ export default function EmployeeDashboard() {
                       </span>
                     </div>
                   )}
+
+                  {/* Daily Menu items preview on Card */}
+                  {dailyMenu?.lunch?.items && dailyMenu.lunch.items.length > 0 && (
+                    <div className="mt-2 pt-1.5 border-t border-slate-100 flex flex-wrap items-center gap-1">
+                      <span className="text-[9px] font-extrabold text-blue-700 uppercase tracking-wide">
+                        Menu:
+                      </span>
+                      {dailyMenu.lunch.title && (
+                        <span className="text-[9.5px] font-bold text-slate-700 mr-0.5">
+                          {dailyMenu.lunch.title} •
+                        </span>
+                      )}
+                      {dailyMenu.lunch.items.slice(0, 3).map((item, idx) => (
+                        <span key={idx} className="text-[9px] font-semibold bg-blue-50 text-blue-900 border border-blue-200/60 px-1.5 py-0.2 rounded">
+                          {item.name}
+                        </span>
+                      ))}
+                      {dailyMenu.lunch.items.length > 3 && (
+                        <span className="text-[8.5px] font-bold text-blue-600">
+                          +{dailyMenu.lunch.items.length - 3} more
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
               <div>
@@ -813,6 +903,30 @@ export default function EmployeeDashboard() {
                       >
                         Site: {activeDinnerOrder.department}
                       </span>
+                    </div>
+                  )}
+
+                  {/* Daily Menu items preview on Card */}
+                  {dailyMenu?.dinner?.items && dailyMenu.dinner.items.length > 0 && (
+                    <div className="mt-2 pt-1.5 border-t border-slate-100 flex flex-wrap items-center gap-1">
+                      <span className="text-[9px] font-extrabold text-indigo-700 uppercase tracking-wide">
+                        Menu:
+                      </span>
+                      {dailyMenu.dinner.title && (
+                        <span className="text-[9.5px] font-bold text-slate-700 mr-0.5">
+                          {dailyMenu.dinner.title} •
+                        </span>
+                      )}
+                      {dailyMenu.dinner.items.slice(0, 3).map((item, idx) => (
+                        <span key={idx} className="text-[9px] font-semibold bg-indigo-50 text-indigo-900 border border-indigo-200/60 px-1.5 py-0.2 rounded">
+                          {item.name}
+                        </span>
+                      ))}
+                      {dailyMenu.dinner.items.length > 3 && (
+                        <span className="text-[8.5px] font-bold text-blue-600">
+                          +{dailyMenu.dinner.items.length - 3} more
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1384,6 +1498,61 @@ export default function EmployeeDashboard() {
               <p className="text-xs text-slate-500 mt-1 font-semibold">
                 {isUpdatingNotesOnly ? "Modify your meal option for today's order." : 'Please choose your meal type below before confirming.'}
               </p>
+
+              {/* Daily Menu items preview inside Modal */}
+              {(() => {
+                const mealKey = activeMealSelection?.toLowerCase() as 'breakfast' | 'lunch' | 'dinner';
+                const plan = dailyMenu?.[mealKey];
+                if (!plan || (!plan.title && (!plan.items || plan.items.length === 0))) {
+                  return (
+                    <div className="mt-4 p-3 bg-slate-50 border border-slate-200/80 rounded-xl text-center">
+                      <p className="text-[11px] font-semibold text-slate-400">
+                        Menu items not published yet for this meal.
+                      </p>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="mt-4 p-3.5 bg-gradient-to-br from-blue-50/70 via-indigo-50/40 to-slate-50 border border-blue-100/80 rounded-xl space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-blue-700 flex items-center gap-1.5">
+                        <Utensils className="h-3 w-3" /> Included In This Meal
+                      </span>
+                      {plan.items && plan.items.length > 0 && (
+                        <span className="text-[9px] font-bold bg-white text-blue-800 px-2 py-0.5 rounded-full border border-blue-200 shadow-2xs">
+                          {plan.items.length} items
+                        </span>
+                      )}
+                    </div>
+                    {plan.title && (
+                      <p className="text-xs font-bold text-slate-800 leading-tight">{plan.title}</p>
+                    )}
+                    {plan.description && (
+                      <p className="text-[10px] text-slate-500 font-medium italic">{plan.description}</p>
+                    )}
+                    {plan.items && plan.items.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 pt-0.5">
+                        {plan.items.map((item, idx) => (
+                          <span
+                            key={idx}
+                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border flex items-center gap-1 ${
+                              item.dietary === 'VEG'
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200/80 font-medium'
+                                : item.dietary === 'NON_VEG'
+                                ? 'bg-rose-50 text-rose-800 border-rose-200/80 font-medium'
+                                : 'bg-white text-slate-700 border-slate-200 shadow-2xs'
+                            }`}
+                          >
+                            {item.dietary === 'VEG' && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />}
+                            {item.dietary === 'NON_VEG' && <span className="h-1.5 w-1.5 rounded-full bg-rose-500 shrink-0" />}
+                            {item.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
               
               <div className="grid grid-cols-2 gap-4 mt-5">
                 {/* Vegetarian Option Card */}

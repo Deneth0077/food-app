@@ -39,12 +39,33 @@ interface Order {
   notes?: string;
 }
 
+interface MenuItem {
+  name: string;
+  category?: string;
+  dietary?: 'VEG' | 'NON_VEG' | 'ALL';
+}
+
+interface MealPlan {
+  title?: string;
+  description?: string;
+  items: MenuItem[];
+  isAvailable: boolean;
+}
+
+interface DailyMenu {
+  breakfast: MealPlan;
+  lunch: MealPlan;
+  dinner: MealPlan;
+}
+
 export default function CanteenDashboard() {
   const router = useRouter();
   const { toast } = useToast();
   
   const [orders, setOrders] = useState<Order[]>([]);
   const [tomorrowOrders, setTomorrowOrders] = useState<Order[]>([]);
+  const [dailyMenu, setDailyMenu] = useState<DailyMenu | null>(null);
+  const [tomorrowDailyMenu, setTomorrowDailyMenu] = useState<DailyMenu | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMealFilter, setSelectedMealFilter] = useState<'ALL' | 'BREAKFAST' | 'LUNCH' | 'DINNER'>('ALL');
@@ -63,6 +84,8 @@ export default function CanteenDashboard() {
   const handleDownloadSingleMealPDF = (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER') => {
     const mealOrders = orders.filter(o => o.mealType === mealType);
     const targetFormattedDate = format(new Date(selectedDate + 'T00:00:00'), 'EEEE, MMMM dd, yyyy');
+    const mealKey = mealType.toLowerCase() as 'breakfast' | 'lunch' | 'dinner';
+    const menuPlan = (selectedMealDetailsDate === selectedDate ? dailyMenu : tomorrowDailyMenu)?.[mealKey];
     
     const summaryRows = `
       <tr>
@@ -72,6 +95,14 @@ export default function CanteenDashboard() {
         <td><strong>${mealOrders.length}</strong></td>
       </tr>
     `;
+
+    const menuSectionHtml = menuPlan?.items && menuPlan.items.length > 0 ? `
+      <div style="margin-bottom: 25px; padding: 14px; background-color: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 6px;">
+        <h3 style="margin: 0 0 6px 0; font-size: 13px; color: #1e293b; text-transform: uppercase; letter-spacing: 0.5px;">Planned Menu Dishes to Cook:</h3>
+        ${menuPlan.title ? `<p style="margin: 0 0 6px 0; font-size: 12px; font-weight: bold; color: #0f172a;">${menuPlan.title}</p>` : ''}
+        <p style="margin: 0; font-size: 11px; color: #334155; line-height: 1.5;"><strong>Dishes:</strong> ${menuPlan.items.map(i => i.name).join(', ')}</p>
+      </div>
+    ` : '';
     
     const htmlContent = `
       <html>
@@ -185,6 +216,8 @@ export default function CanteenDashboard() {
               ${summaryRows}
             </tbody>
           </table>
+
+          ${menuSectionHtml}
           
           <div class="meal-section">
             <div class="meal-title">${mealType} Orders for ${selectedDate} (${mealOrders.length})</div>
@@ -301,9 +334,11 @@ export default function CanteenDashboard() {
       
       const tomorrowDateStr = getTomorrowDateStr(selectedDate);
 
-      const [resToday, resTomorrow] = await Promise.all([
+      const [resToday, resTomorrow, resMenuToday, resMenuTomorrow] = await Promise.all([
         fetch(`/api/orders?requestDate=${selectedDate}`),
-        fetch(`/api/orders?requestDate=${tomorrowDateStr}`)
+        fetch(`/api/orders?requestDate=${tomorrowDateStr}`),
+        fetch(`/api/menu?date=${selectedDate}`),
+        fetch(`/api/menu?date=${tomorrowDateStr}`)
       ]);
 
       if (!resToday.ok) {
@@ -318,13 +353,17 @@ export default function CanteenDashboard() {
         throw new Error("Failed to load tomorrow's orders");
       }
 
-      const [dataToday, dataTomorrow] = await Promise.all([
+      const [dataToday, dataTomorrow, dataMenuToday, dataMenuTomorrow] = await Promise.all([
         resToday.json(),
-        resTomorrow.json()
+        resTomorrow.json(),
+        resMenuToday.ok ? resMenuToday.json() : Promise.resolve({ menu: null }),
+        resMenuTomorrow.ok ? resMenuTomorrow.json() : Promise.resolve({ menu: null })
       ]);
 
       setOrders(dataToday.orders || []);
       setTomorrowOrders(dataTomorrow.orders || []);
+      setDailyMenu(dataMenuToday.menu || null);
+      setTomorrowDailyMenu(dataMenuTomorrow.menu || null);
     } catch (err: any) {
       toast({
         variant: 'destructive',
@@ -1116,6 +1155,16 @@ export default function CanteenDashboard() {
                 <p className="text-[7px] text-slate-400 font-semibold mt-1.5 italic leading-none flex items-center gap-0.5">
                   <Clock className="h-2 w-2" /> Cutoff: Prev Day 8 PM
                 </p>
+                {dailyMenu?.breakfast?.items && dailyMenu.breakfast.items.length > 0 && (
+                  <div className="mt-2 pt-1.5 border-t border-slate-100">
+                    <p className="text-[8px] font-extrabold text-amber-700 uppercase tracking-wide">
+                      Prep Items:
+                    </p>
+                    <p className="text-[8.5px] font-medium text-slate-600 line-clamp-2 mt-0.5">
+                      {dailyMenu.breakfast.items.map(i => i.name).join(', ')}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1172,6 +1221,16 @@ export default function CanteenDashboard() {
                 <p className="text-[7px] text-slate-400 font-semibold mt-1.5 italic leading-none flex items-center gap-0.5">
                   <Clock className="h-2 w-2" /> Cutoff: Today 9 AM
                 </p>
+                {dailyMenu?.lunch?.items && dailyMenu.lunch.items.length > 0 && (
+                  <div className="mt-2 pt-1.5 border-t border-slate-100">
+                    <p className="text-[8px] font-extrabold text-blue-700 uppercase tracking-wide">
+                      Prep Items:
+                    </p>
+                    <p className="text-[8.5px] font-medium text-slate-600 line-clamp-2 mt-0.5">
+                      {dailyMenu.lunch.items.map(i => i.name).join(', ')}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1228,6 +1287,16 @@ export default function CanteenDashboard() {
                 <p className="text-[7px] text-slate-400 font-semibold mt-1.5 italic leading-none flex items-center gap-0.5">
                   <Clock className="h-2 w-2" /> Cutoff: Today 5 PM
                 </p>
+                {dailyMenu?.dinner?.items && dailyMenu.dinner.items.length > 0 && (
+                  <div className="mt-2 pt-1.5 border-t border-slate-100">
+                    <p className="text-[8px] font-extrabold text-indigo-700 uppercase tracking-wide">
+                      Prep Items:
+                    </p>
+                    <p className="text-[8.5px] font-medium text-slate-600 line-clamp-2 mt-0.5">
+                      {dailyMenu.dinner.items.map(i => i.name).join(', ')}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1403,6 +1472,138 @@ export default function CanteenDashboard() {
                 <p className="text-[7px] text-slate-400 font-semibold mt-1.5 italic leading-none flex items-center gap-0.5">
                   <Clock className="h-2 w-2" /> Cutoff: Today 5 PM
                 </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Kitchen Daily Cooking Plan Card */}
+        <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <div className="h-7 w-7 rounded-lg bg-orange-500 text-white flex items-center justify-center shadow-2xs">
+                <Utensils className="h-4 w-4" />
+              </div>
+              <div>
+                <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                  Kitchen Preparation &amp; Cooking Sheet
+                </h3>
+                <p className="text-[9px] font-bold text-slate-400">
+                  Daily menu dishes to cook &amp; required portions
+                </p>
+              </div>
+            </div>
+            <span className="text-[10px] font-bold text-orange-700 bg-orange-50 px-2.5 py-0.5 rounded-md border border-orange-100">
+              {format(new Date(selectedDate + 'T00:00:00'), 'MMM dd, yyyy')}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* Breakfast Prep Column */}
+            <div className="bg-amber-50/40 rounded-xl p-3 border border-amber-100/80 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-black text-amber-900 flex items-center gap-1">
+                  <Coffee className="h-3.5 w-3.5 text-amber-600" /> Breakfast
+                </span>
+                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
+                  {breakfastProgress.total} Portions
+                </span>
+              </div>
+              <div className="flex gap-1 text-[9px] font-extrabold">
+                <span className="px-1.5 py-0.5 bg-emerald-100/80 text-emerald-800 rounded">
+                  Veg: {breakfastProgress.vegCount}
+                </span>
+                <span className="px-1.5 py-0.5 bg-rose-100/80 text-rose-800 rounded">
+                  Meat: {breakfastProgress.meatCount}
+                </span>
+              </div>
+              <div className="pt-1 border-t border-amber-200/50">
+                <p className="text-[9px] font-extrabold text-amber-800 uppercase tracking-wider mb-1">
+                  Dishes to cook:
+                </p>
+                {dailyMenu?.breakfast?.items && dailyMenu.breakfast.items.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {dailyMenu.breakfast.items.map((item, idx) => (
+                      <span key={idx} className="text-[9.5px] font-semibold bg-white text-slate-700 border border-amber-200 px-1.5 py-0.5 rounded shadow-2xs">
+                        {item.name}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-slate-400 italic">No menu items set yet by Admin.</p>
+                )}
+              </div>
+            </div>
+
+            {/* Lunch Prep Column */}
+            <div className="bg-blue-50/40 rounded-xl p-3 border border-blue-100/80 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-black text-blue-900 flex items-center gap-1">
+                  <Utensils className="h-3.5 w-3.5 text-blue-600" /> Lunch
+                </span>
+                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800">
+                  {lunchProgress.total} Portions
+                </span>
+              </div>
+              <div className="flex gap-1 text-[9px] font-extrabold">
+                <span className="px-1.5 py-0.5 bg-emerald-100/80 text-emerald-800 rounded">
+                  Veg: {lunchProgress.vegCount}
+                </span>
+                <span className="px-1.5 py-0.5 bg-rose-100/80 text-rose-800 rounded">
+                  Meat: {lunchProgress.meatCount}
+                </span>
+              </div>
+              <div className="pt-1 border-t border-blue-200/50">
+                <p className="text-[9px] font-extrabold text-blue-800 uppercase tracking-wider mb-1">
+                  Dishes to cook:
+                </p>
+                {dailyMenu?.lunch?.items && dailyMenu.lunch.items.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {dailyMenu.lunch.items.map((item, idx) => (
+                      <span key={idx} className="text-[9.5px] font-semibold bg-white text-slate-700 border border-blue-200 px-1.5 py-0.5 rounded shadow-2xs">
+                        {item.name}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-slate-400 italic">No menu items set yet by Admin.</p>
+                )}
+              </div>
+            </div>
+
+            {/* Dinner Prep Column */}
+            <div className="bg-indigo-50/40 rounded-xl p-3 border border-indigo-100/80 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-black text-indigo-900 flex items-center gap-1">
+                  <Moon className="h-3.5 w-3.5 text-indigo-600" /> Dinner
+                </span>
+                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800">
+                  {dinnerProgress.total} Portions
+                </span>
+              </div>
+              <div className="flex gap-1 text-[9px] font-extrabold">
+                <span className="px-1.5 py-0.5 bg-emerald-100/80 text-emerald-800 rounded">
+                  Veg: {dinnerProgress.vegCount}
+                </span>
+                <span className="px-1.5 py-0.5 bg-rose-100/80 text-rose-800 rounded">
+                  Meat: {dinnerProgress.meatCount}
+                </span>
+              </div>
+              <div className="pt-1 border-t border-indigo-200/50">
+                <p className="text-[9px] font-extrabold text-indigo-800 uppercase tracking-wider mb-1">
+                  Dishes to cook:
+                </p>
+                {dailyMenu?.dinner?.items && dailyMenu.dinner.items.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {dailyMenu.dinner.items.map((item, idx) => (
+                      <span key={idx} className="text-[9.5px] font-semibold bg-white text-slate-700 border border-indigo-200 px-1.5 py-0.5 rounded shadow-2xs">
+                        {item.name}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-slate-400 italic">No menu items set yet by Admin.</p>
+                )}
               </div>
             </div>
           </div>
@@ -1864,17 +2065,53 @@ export default function CanteenDashboard() {
               {(() => {
                 const targetOrders = selectedMealDetailsDate === selectedDate ? orders : tomorrowOrders;
                 const mealOrders = targetOrders.filter(o => o.mealType === selectedMealDetails);
-                if (mealOrders.length === 0) {
-                  return (
-                    <div className="flex flex-col items-center justify-center py-12 text-slate-400 font-bold text-xs gap-2">
-                      <CircleAlert className="h-8 w-8 text-slate-350" />
-                      No orders placed for this meal on {selectedMealDetailsDate}.
-                    </div>
-                  );
-                }
+                const activeMenu = (selectedMealDetailsDate === selectedDate ? dailyMenu : tomorrowDailyMenu)?.[selectedMealDetails.toLowerCase() as 'breakfast' | 'lunch' | 'dinner'];
+                const vegCount = mealOrders.filter(o => o.mealOption === 'VEGETARIAN').length;
+                const meatCount = mealOrders.filter(o => o.mealOption === 'MEAT').length;
 
                 return (
-                  <div className="overflow-x-auto">
+                  <div className="space-y-4">
+                    {/* Kitchen Meal Menu & Prep Target Banner */}
+                    <div className="p-3.5 bg-gradient-to-r from-blue-50/70 to-indigo-50/60 rounded-xl border border-blue-100 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-blue-700 flex items-center gap-1.5">
+                          <Utensils className="h-3.5 w-3.5" /> Kitchen Preparation Target
+                        </span>
+                        <div className="flex gap-1.5 text-[9.5px] font-extrabold">
+                          <span className="bg-white px-2 py-0.5 rounded border border-blue-200 text-blue-800 shadow-2xs">
+                            Total: {mealOrders.length}
+                          </span>
+                          <span className="bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-emerald-700 shadow-2xs">
+                            Veg: {vegCount}
+                          </span>
+                          <span className="bg-rose-50 px-2 py-0.5 rounded border border-rose-200 text-rose-700 shadow-2xs">
+                            Meat: {meatCount}
+                          </span>
+                        </div>
+                      </div>
+                      {activeMenu?.title && (
+                        <p className="text-xs font-bold text-slate-800">{activeMenu.title}</p>
+                      )}
+                      {activeMenu?.items && activeMenu.items.length > 0 ? (
+                        <div className="flex flex-wrap gap-1 pt-0.5">
+                          {activeMenu.items.map((item, idx) => (
+                            <span key={idx} className="text-[10px] font-semibold bg-white text-slate-700 border border-slate-200 px-2 py-0.5 rounded shadow-2xs">
+                              {item.name}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-[10px] text-slate-400 italic">No specific menu items posted yet by Admin.</p>
+                      )}
+                    </div>
+
+                    {mealOrders.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-12 text-slate-400 font-bold text-xs gap-2">
+                        <CircleAlert className="h-8 w-8 text-slate-350" />
+                        No orders placed for this meal on {selectedMealDetailsDate}.
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse text-[11px]">
                       <thead>
                         <tr className="border-b border-slate-200 text-slate-400 uppercase tracking-wider text-[9px] font-extrabold bg-slate-50/50">
@@ -1922,8 +2159,10 @@ export default function CanteenDashboard() {
                       </tbody>
                     </table>
                   </div>
-                );
-              })()}
+                )}
+              </div>
+            );
+          })()}
             </div>
 
             {/* Modal Footer */}

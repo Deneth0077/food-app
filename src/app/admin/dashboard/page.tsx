@@ -690,6 +690,22 @@ export default function AdminDashboard() {
           
           <div className="space-y-2.5">
             <Link 
+              href="/admin/menu" 
+              className="flex items-center justify-between p-3.5 bg-gradient-to-r from-blue-50/90 to-indigo-50/60 rounded-xl hover:from-blue-100/80 hover:to-indigo-100/70 border border-blue-100 text-slate-800 font-bold text-xs transition-all active:scale-[0.99] shadow-xs"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="h-7 w-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
+                  <Utensils className="h-4 w-4 stroke-[2.25]" />
+                </div>
+                <div>
+                  <div className="font-extrabold text-slate-900">Manage Daily Menus</div>
+                  <div className="text-[10px] text-slate-500 font-medium">Create &amp; edit Breakfast, Lunch &amp; Dinner menus</div>
+                </div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-blue-600" />
+            </Link>
+
+            <Link 
               href="/admin/employees" 
               className="flex items-center justify-between p-3.5 bg-slate-50/80 rounded-xl hover:bg-slate-50 border border-slate-100 text-slate-700 font-bold text-xs transition-all active:scale-[0.99]"
             >
