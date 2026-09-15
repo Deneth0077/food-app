@@ -12,7 +12,7 @@ export function BottomNav() {
   if (pathname.startsWith('/auth') || pathname === '/') return null;
 
   let role: 'employee' | 'canteen' | 'admin' = 'employee';
-  if (pathname.startsWith('/admin')) {
+  if (pathname.startsWith('/admin') || pathname.startsWith('/superadmin')) {
     role = 'admin';
   } else if (pathname.startsWith('/canteen')) {
     role = 'canteen';
@@ -36,6 +36,7 @@ export function BottomNav() {
 
   const adminNavItems = [
     { name: 'Home', href: '/admin/dashboard', icon: Home },
+    { name: 'Orders', href: '/admin/orders', icon: ClipboardList },
     { name: 'Menu', href: '/admin/menu', icon: UtensilsCrossed },
     { name: 'Employees', href: '/admin/employees', icon: Users },
     { name: 'Reports', href: '/admin/reports', icon: BarChart3 },

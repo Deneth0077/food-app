@@ -19,7 +19,9 @@ import {
   Check,
   Coffee,
   Moon,
-  Download
+  Download,
+  ShieldAlert,
+  ClipboardList
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -72,6 +74,28 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
 
+  // User role and system feature flags
+  const [userRole, setUserRole] = useState<'SUPERADMIN' | 'ADMIN'>('ADMIN');
+  const [systemSettings, setSystemSettings] = useState<{
+    mealPricesManagement: boolean;
+    menuManagement: boolean;
+    orderCancellation: boolean;
+    mealOrdering: boolean;
+    selfCollection: boolean;
+    reportsExport: boolean;
+    employeeDirectory: boolean;
+    maintenanceMessage: string;
+  }>({
+    mealPricesManagement: false,
+    menuManagement: true,
+    orderCancellation: true,
+    mealOrdering: true,
+    selfCollection: true,
+    reportsExport: true,
+    employeeDirectory: true,
+    maintenanceMessage: 'This service is temporarily deactivated',
+  });
+
   // Price configuration states
   const [showPricesModal, setShowPricesModal] = useState(false);
   const [prices, setPrices] = useState({ breakfast: 300, lunch: 350, dinner: 400 });
@@ -101,6 +125,14 @@ export default function AdminDashboard() {
 
   const handleSavePrices = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (systemSettings.mealPricesManagement === false && userRole !== 'SUPERADMIN') {
+      toast({
+        variant: 'destructive',
+        title: 'Service Unavailable',
+        description: systemSettings.maintenanceMessage || 'This service is temporarily deactivated',
+      });
+      return;
+    }
     setSavingPrices(true);
     try {
       const res = await fetch('/api/canteen/prices', {
@@ -325,6 +357,26 @@ export default function AdminDashboard() {
     const fetchDashboardStats = async () => {
       try {
         setLoading(true);
+
+        // Fetch user session for role
+        const meRes = await fetch('/api/auth/me');
+        if (meRes.ok) {
+          const meData = await meRes.json();
+          if (meData.user?.role) {
+            setUserRole(meData.user.role);
+          }
+        }
+
+        // Fetch system feature toggles
+        const settingsRes = await fetch('/api/system/settings');
+        if (settingsRes.ok) {
+          const sData = await settingsRes.json();
+          if (sData.settings) {
+            setSystemSettings(sData.settings);
+          }
+        }
+
+        // Fetch reports
         const res = await fetch('/api/admin/reports');
         if (!res.ok) {
           if (res.status === 401 || res.status === 403) {
@@ -686,9 +738,59 @@ export default function AdminDashboard() {
 
         {/* Management Options */}
         <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] space-y-3.5">
-          <h3 className="text-sm font-bold text-slate-800">Management</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-slate-800">Management</h3>
+            {userRole === 'SUPERADMIN' && (
+              <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
+                Superadmin
+              </span>
+            )}
+          </div>
           
           <div className="space-y-2.5">
+            {/* Superadmin Exclusive Control Center */}
+            {userRole === 'SUPERADMIN' && (
+              <Link 
+                href="/superadmin/settings" 
+                className="flex items-center justify-between p-3.5 bg-gradient-to-r from-purple-50 via-indigo-50/60 to-purple-50/80 rounded-xl hover:from-purple-100/90 hover:to-indigo-100/80 border border-purple-200 text-slate-800 font-bold text-xs transition-all active:scale-[0.99] shadow-xs"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="h-7 w-7 rounded-lg bg-purple-600 text-white flex items-center justify-center shadow-xs">
+                    <ShieldAlert className="h-4 w-4 stroke-[2.25]" />
+                  </div>
+                  <div>
+                    <div className="font-extrabold text-purple-900 flex items-center gap-1.5">
+                      Superadmin Control Center
+                    </div>
+                    <div className="text-[10px] text-purple-700 font-medium">Toggle &amp; govern system services on/off</div>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-purple-600" />
+              </Link>
+            )}
+
+            {/* Live Order Management Card */}
+            <Link 
+              href="/admin/orders" 
+              className="flex items-center justify-between p-3.5 bg-gradient-to-r from-emerald-50/90 via-teal-50/60 to-emerald-50/80 rounded-xl hover:from-emerald-100/80 hover:to-teal-100/70 border border-emerald-100 text-slate-800 font-bold text-xs transition-all active:scale-[0.99] shadow-xs"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="h-7 w-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+                  <ClipboardList className="h-4 w-4 stroke-[2.25]" />
+                </div>
+                <div>
+                  <div className="font-extrabold text-slate-900 flex items-center gap-1.5">
+                    Live Order Management
+                    <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                      Live
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-medium">Track who ordered, timestamps, cancellations &amp; collect</div>
+                </div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-emerald-600" />
+            </Link>
+
             <Link 
               href="/admin/menu" 
               className="flex items-center justify-between p-3.5 bg-gradient-to-r from-blue-50/90 to-indigo-50/60 rounded-xl hover:from-blue-100/80 hover:to-indigo-100/70 border border-blue-100 text-slate-800 font-bold text-xs transition-all active:scale-[0.99] shadow-xs"
@@ -728,12 +830,31 @@ export default function AdminDashboard() {
             </Link>
 
             <button 
-              onClick={() => setShowPricesModal(true)}
-              className="w-full flex items-center justify-between p-3.5 bg-slate-50/80 rounded-xl hover:bg-slate-50 border border-slate-100 text-slate-700 font-bold text-xs transition-all active:scale-[0.99]"
+              onClick={() => {
+                if (systemSettings.mealPricesManagement === false && userRole !== 'SUPERADMIN') {
+                  toast({
+                    variant: 'destructive',
+                    title: 'Service Unavailable',
+                    description: systemSettings.maintenanceMessage || 'This service is temporarily deactivated',
+                  });
+                  return;
+                }
+                setShowPricesModal(true);
+              }}
+              className={`w-full flex items-center justify-between p-3.5 rounded-xl border text-xs font-bold transition-all active:scale-[0.99] ${
+                systemSettings.mealPricesManagement === false && userRole !== 'SUPERADMIN'
+                  ? 'bg-slate-50/70 border-slate-200 text-slate-500 hover:bg-slate-100/80'
+                  : 'bg-slate-50/80 hover:bg-slate-50 border-slate-100 text-slate-700'
+              }`}
             >
               <div className="flex items-center gap-2.5">
                 <SlidersHorizontal className="h-4 w-4 text-blue-600 stroke-[2.25]" />
-                Configure Meal Prices
+                <span>Configure Meal Prices</span>
+                {systemSettings.mealPricesManagement === false && (
+                  <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200 uppercase tracking-wider">
+                    Deactivated
+                  </span>
+                )}
               </div>
               <ChevronRight className="h-4 w-4 text-slate-400" />
             </button>

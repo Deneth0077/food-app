@@ -112,7 +112,7 @@ function ReportsPageContent() {
     employeeName: string;
     mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER';
     mealOption?: 'VEGETARIAN' | 'MEAT';
-    status: 'ORDERED' | 'COLLECTED';
+    status: 'ORDERED' | 'COLLECTED' | 'CANCELLED';
     requestDate: string;
     notes?: string;
     collectedAt?: string;

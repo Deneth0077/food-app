@@ -92,7 +92,7 @@ export async function verifyJWT(token: string, secret: string): Promise<any | nu
   }
 }
 
-export async function getAuthUser(request: Request): Promise<{ userId: string; fullName: string; employeeNo: string; role: 'ADMIN' | 'EMPLOYEE' | 'CANTEEN' } | null> {
+export async function getAuthUser(request: Request): Promise<{ userId: string; fullName: string; employeeNo: string; role: 'SUPERADMIN' | 'ADMIN' | 'EMPLOYEE' | 'CANTEEN' } | null> {
   try {
     const cookieHeader = request.headers.get('cookie') || '';
     const cookies = Object.fromEntries(

@@ -23,7 +23,7 @@ interface Order {
   phoneNumber: string;
   mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER';
   mealOption?: 'VEGETARIAN' | 'MEAT';
-  status: 'ORDERED' | 'COLLECTED';
+  status: 'ORDERED' | 'COLLECTED' | 'CANCELLED';
   requestedAt: string;
   collectedAt?: string;
   requestDate: string;

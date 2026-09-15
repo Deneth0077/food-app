@@ -42,7 +42,9 @@ export async function POST(request: Request) {
     // Let's check: we will register with default role 'EMPLOYEE' but if employeeNo is e.g. "ADMIN001" or starts with "ADMIN", make it ADMIN, or canteen if starts with "CANTEEN". This makes setup and demo extremely easy for the user!
     let role = 'EMPLOYEE';
     const cleanEmpNo = employeeNo.trim().toUpperCase();
-    if (cleanEmpNo.startsWith('ADMIN')) {
+    if (cleanEmpNo.startsWith('SUPERADMIN')) {
+      role = 'SUPERADMIN';
+    } else if (cleanEmpNo.startsWith('ADMIN')) {
       role = 'ADMIN';
     } else if (cleanEmpNo.startsWith('CANTEEN')) {
       role = 'CANTEEN';

@@ -31,7 +31,7 @@ interface Employee {
 interface Order {
   _id: string;
   mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER';
-  status: 'ORDERED' | 'COLLECTED';
+  status: 'ORDERED' | 'COLLECTED' | 'CANCELLED';
   requestDate: string;
   requestedAt: string;
   collectedAt?: string;

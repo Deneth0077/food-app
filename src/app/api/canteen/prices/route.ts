@@ -15,7 +15,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (user.role !== 'CANTEEN' && user.role !== 'ADMIN' && user.role !== 'EMPLOYEE') {
+    if (user.role !== 'CANTEEN' && user.role !== 'ADMIN' && user.role !== 'SUPERADMIN' && user.role !== 'EMPLOYEE') {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
@@ -44,8 +44,18 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (user.role !== 'ADMIN') {
+    if (user.role !== 'ADMIN' && user.role !== 'SUPERADMIN') {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
+    // Check if feature is deactivated for non-superadmins
+    const SystemSetting = (await import('@/models/SystemSetting')).default;
+    const settings = await SystemSetting.findOne({ key: 'GLOBAL_SETTINGS' });
+    if (settings && settings.mealPricesManagement === false && user.role !== 'SUPERADMIN') {
+      return NextResponse.json(
+        { error: settings.maintenanceMessage || 'This service is temporarily deactivated' },
+        { status: 403 }
+      );
     }
 
     const body = await request.json();

@@ -19,10 +19,10 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Auto-collect all pending (ORDERED) orders for today or the past
+    // Auto-collect all pending (ORDERED) orders for past dates
     const todayStr = format(new Date(), 'yyyy-MM-dd');
     await Order.updateMany(
-      { requestDate: { $lte: todayStr }, status: 'ORDERED' },
+      { requestDate: { $lt: todayStr }, status: 'ORDERED' },
       { $set: { status: 'COLLECTED', collectedAt: new Date() } }
     );
 
@@ -35,11 +35,12 @@ export async function GET(request: Request) {
       return NextResponse.json({ orders });
     }
 
-    // ADMIN or CANTEEN can filter and search all orders
+    // ADMIN, SUPERADMIN, or CANTEEN can filter and search all orders
     const targetUserId = searchParams.get('userId');
     const requestDate = searchParams.get('requestDate') || (targetUserId ? 'all' : todayStr);
     const mealType = searchParams.get('mealType');
     const status = searchParams.get('status');
+    const department = searchParams.get('department');
     const search = searchParams.get('search');
 
     const query: any = {};
@@ -61,11 +62,17 @@ export async function GET(request: Request) {
       query.status = status;
     }
 
+    if (department && department !== 'ALL') {
+      query.department = department;
+    }
+
     if (search) {
       const searchRegex = new RegExp(search, 'i');
       query.$or = [
         { employeeName: searchRegex },
-        { employeeNo: searchRegex }
+        { employeeNo: searchRegex },
+        { phoneNumber: searchRegex },
+        { notes: searchRegex }
       ];
     }
 
@@ -188,6 +195,36 @@ export async function POST(request: Request) {
     });
 
     if (existingOrder) {
+      if (existingOrder.status === 'CANCELLED') {
+        // Re-activate previously cancelled order
+        existingOrder.status = 'ORDERED';
+        existingOrder.mealOption = mealOption;
+        existingOrder.notes = notes ? notes.trim() : undefined;
+        existingOrder.department = department || dbUser.department;
+        existingOrder.requestedAt = new Date();
+        existingOrder.cancelledAt = undefined;
+        existingOrder.cancelledBy = undefined;
+        await existingOrder.save();
+
+        // Create Admin Notification
+        try {
+          await Notification.create({
+            employeeName: dbUser.fullName,
+            employeeNo: dbUser.employeeNo,
+            mealType,
+            mealOption,
+            notes: notes ? notes.trim() : undefined,
+          });
+        } catch (notifErr) {
+          console.error('Notification creation failed:', notifErr);
+        }
+
+        return NextResponse.json(
+          { message: `${mealType.charAt(0) + mealType.slice(1).toLowerCase()} requested successfully`, order: existingOrder },
+          { status: 201 }
+        );
+      }
+
       return NextResponse.json(
         { error: `You have already requested ${mealType.toLowerCase()} for ${displayDay}. You cannot place duplicate requests for the same mealtime.` },
         { status: 400 }
@@ -241,7 +278,7 @@ export async function PATCH(request: Request) {
     }
 
     const body = await request.json();
-    const { orderId, orderIds } = body;
+    const { orderId, orderIds, status: targetStatus } = body;
 
     if (!orderId && (!orderIds || !Array.isArray(orderIds) || orderIds.length === 0)) {
       return NextResponse.json({ error: 'Order ID or Order IDs are required' }, { status: 400 });
@@ -262,17 +299,26 @@ export async function PATCH(request: Request) {
       });
     }
 
-    if (authUser.role !== 'CANTEEN' && authUser.role !== 'ADMIN') {
+    if (authUser.role !== 'CANTEEN' && authUser.role !== 'ADMIN' && authUser.role !== 'SUPERADMIN') {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
+    const updateDoc: any = {};
+    if (targetStatus === 'ORDERED') {
+      updateDoc.status = 'ORDERED';
+      updateDoc.$unset = { collectedAt: 1 };
+    } else {
+      updateDoc.status = 'COLLECTED';
+      updateDoc.collectedAt = new Date();
+    }
+
     const result = await Order.updateMany(
-      { _id: { $in: targetIds }, status: 'ORDERED' },
-      { $set: { status: 'COLLECTED', collectedAt: new Date() } }
+      { _id: { $in: targetIds } },
+      updateDoc
     );
 
     return NextResponse.json({
-      message: `${result.modifiedCount} order(s) successfully marked as collected.`,
+      message: `${result.modifiedCount} order(s) successfully updated.`,
       modifiedCount: result.modifiedCount
     });
   } catch (error: any) {
@@ -433,11 +479,29 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { searchParams } = new URL(request.url);
+
+    // Admin or Superadmin cancellation
+    if (authUser.role === 'ADMIN' || authUser.role === 'SUPERADMIN') {
+      const orderId = searchParams.get('orderId');
+      if (!orderId) {
+        return NextResponse.json({ error: 'Order ID is required' }, { status: 400 });
+      }
+      const order = await Order.findById(orderId);
+      if (!order) {
+        return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+      }
+      order.status = 'CANCELLED';
+      order.cancelledAt = new Date();
+      order.cancelledBy = 'ADMIN';
+      await order.save();
+      return NextResponse.json({ message: 'Order cancelled by Admin successfully', order });
+    }
+
     if (authUser.role !== 'EMPLOYEE') {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    const { searchParams } = new URL(request.url);
     const mealType = searchParams.get('mealType');
     const requestDate = searchParams.get('requestDate');
 
@@ -504,7 +568,8 @@ export async function DELETE(request: Request) {
     const order = await Order.findOne({
       userId: authUser.userId,
       requestDate: targetDateStr,
-      mealType
+      mealType,
+      status: { $ne: 'CANCELLED' }
     });
 
     if (!order) {
@@ -528,8 +593,11 @@ export async function DELETE(request: Request) {
       );
     }
 
-    // Delete the order
-    await Order.deleteOne({ _id: order._id });
+    // Mark order as CANCELLED for full audit tracking
+    order.status = 'CANCELLED';
+    order.cancelledAt = new Date();
+    order.cancelledBy = 'EMPLOYEE';
+    await order.save();
 
     // Also delete today's matching notification
     try {
@@ -548,7 +616,7 @@ export async function DELETE(request: Request) {
       console.error('Failed to delete associated notification:', notifErr);
     }
 
-    return NextResponse.json({ message: 'Order cancelled successfully.' });
+    return NextResponse.json({ message: 'Order cancelled successfully.', order });
   } catch (error: any) {
     console.error('Cancel Order Error:', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });

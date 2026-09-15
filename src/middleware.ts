@@ -12,6 +12,7 @@ export async function middleware(request: NextRequest) {
   const isEmployeeRoute = path.startsWith('/employee');
   const isCanteenRoute = path.startsWith('/canteen');
   const isAdminRoute = path.startsWith('/admin');
+  const isSuperAdminRoute = path.startsWith('/superadmin');
   const isRootRoute = path === '/';
 
   // If root route is hit
@@ -28,7 +29,7 @@ export async function middleware(request: NextRequest) {
       return response;
     }
 
-    if (payload.role === 'ADMIN') {
+    if (payload.role === 'SUPERADMIN' || payload.role === 'ADMIN') {
       return NextResponse.redirect(new URL('/admin/dashboard', request.url));
     } else if (payload.role === 'CANTEEN') {
       return NextResponse.redirect(new URL('/canteen/dashboard', request.url));
@@ -43,7 +44,7 @@ export async function middleware(request: NextRequest) {
       const jwtSecret = process.env.JWT_SECRET || 'fallback-jwt-secret-string-do-not-use-in-prod';
       const payload = await verifyJWT(token, jwtSecret);
       if (payload) {
-        if (payload.role === 'ADMIN') {
+        if (payload.role === 'SUPERADMIN' || payload.role === 'ADMIN') {
           return NextResponse.redirect(new URL('/admin/dashboard', request.url));
         } else if (payload.role === 'CANTEEN') {
           return NextResponse.redirect(new URL('/canteen/dashboard', request.url));
@@ -56,7 +57,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Handle protected dashboards
-  if (isEmployeeRoute || isCanteenRoute || isAdminRoute) {
+  if (isEmployeeRoute || isCanteenRoute || isAdminRoute || isSuperAdminRoute) {
     if (!token) {
       return NextResponse.redirect(new URL('/auth/login', request.url));
     }
@@ -71,15 +72,19 @@ export async function middleware(request: NextRequest) {
     }
 
     // Role verification
+    if (isSuperAdminRoute && payload.role !== 'SUPERADMIN') {
+      return redirectBasedOnRole(payload.role, request);
+    }
+
+    if (isAdminRoute && payload.role !== 'ADMIN' && payload.role !== 'SUPERADMIN') {
+      return redirectBasedOnRole(payload.role, request);
+    }
+
     if (isEmployeeRoute && payload.role !== 'EMPLOYEE') {
       return redirectBasedOnRole(payload.role, request);
     }
 
     if (isCanteenRoute && payload.role !== 'CANTEEN') {
-      return redirectBasedOnRole(payload.role, request);
-    }
-
-    if (isAdminRoute && payload.role !== 'ADMIN') {
       return redirectBasedOnRole(payload.role, request);
     }
   }
@@ -88,7 +93,7 @@ export async function middleware(request: NextRequest) {
 }
 
 function redirectBasedOnRole(role: string, request: NextRequest) {
-  if (role === 'ADMIN') {
+  if (role === 'SUPERADMIN' || role === 'ADMIN') {
     return NextResponse.redirect(new URL('/admin/dashboard', request.url));
   } else if (role === 'CANTEEN') {
     return NextResponse.redirect(new URL('/canteen/dashboard', request.url));

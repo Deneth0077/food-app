@@ -38,10 +38,12 @@ interface Order {
   _id: string;
   mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER';
   mealOption?: 'VEGETARIAN' | 'MEAT';
-  status: 'ORDERED' | 'COLLECTED';
+  status: 'ORDERED' | 'COLLECTED' | 'CANCELLED';
   requestDate: string;
   requestedAt: string;
   collectedAt?: string;
+  cancelledAt?: string;
+  cancelledBy?: string;
   notes?: string;
   department?: 'CWIT' | 'ECT' | 'SAGT' | 'CICT';
 }
@@ -475,11 +477,11 @@ export default function EmployeeDashboard() {
   const handleCardClick = (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER') => {
     let existingOrder;
     if (mealType === 'BREAKFAST') {
-      existingOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === 'BREAKFAST');
+      existingOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === 'BREAKFAST' && o.status !== 'CANCELLED');
     } else if (mealType === 'LUNCH') {
-      existingOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === 'LUNCH');
+      existingOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === 'LUNCH' && o.status !== 'CANCELLED');
     } else {
-      existingOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === 'DINNER');
+      existingOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === 'DINNER' && o.status !== 'CANCELLED');
     }
 
     if (getMealLockedStatus(mealType)) {
@@ -537,9 +539,9 @@ export default function EmployeeDashboard() {
     );
   }
 
-  const activeBreakfastOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === 'BREAKFAST');
-  const activeLunchOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === 'LUNCH');
-  const activeDinnerOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === 'DINNER');
+  const activeBreakfastOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === 'BREAKFAST' && o.status !== 'CANCELLED');
+  const activeLunchOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === 'LUNCH' && o.status !== 'CANCELLED');
+  const activeDinnerOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === 'DINNER' && o.status !== 'CANCELLED');
 
   const getMealStatus = (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER') => {
     let order;
@@ -728,7 +730,7 @@ export default function EmployeeDashboard() {
                       : 'bg-white border-slate-100 hover:border-blue-300'
                     }`}
                 >
-                  <div className="flex items-start sm:items-center gap-2.5 sm:gap-3.5 flex-1 min-w-0">
+                  <div className="flex items-center gap-3 sm:gap-3.5 flex-1 min-w-0">
                     <div className={`h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center shrink-0 ${isBreakfastLocked && !activeBreakfastOrder ? 'bg-slate-200 text-slate-400' : 'bg-amber-50 text-amber-500'
                       }`}>
                       <Coffee className="h-5 w-5 stroke-[2.25]" />
@@ -819,7 +821,7 @@ export default function EmployeeDashboard() {
                       : 'bg-white border-slate-100 hover:border-blue-300'
                     }`}
                 >
-                  <div className="flex items-start sm:items-center gap-2.5 sm:gap-3.5 flex-1 min-w-0">
+                  <div className="flex items-center gap-3 sm:gap-3.5 flex-1 min-w-0">
                     <div className={`h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center shrink-0 ${isLunchLocked && !activeLunchOrder ? 'bg-slate-200 text-slate-400' : 'bg-blue-50 text-blue-600'
                       }`}>
                       <Utensils className="h-5 w-5 stroke-[2.25]" />
@@ -910,7 +912,7 @@ export default function EmployeeDashboard() {
                       : 'bg-white border-slate-100 hover:border-blue-300'
                     }`}
                 >
-                  <div className="flex items-start sm:items-center gap-2.5 sm:gap-3.5 flex-1 min-w-0">
+                  <div className="flex items-center gap-3 sm:gap-3.5 flex-1 min-w-0">
                     <div className={`h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center shrink-0 ${isDinnerLocked && !activeDinnerOrder ? 'bg-slate-200 text-slate-400' : 'bg-indigo-50 text-indigo-500'
                       }`}>
                       <Moon className="h-5 w-5 stroke-[2.25]" />
@@ -1007,7 +1009,7 @@ export default function EmployeeDashboard() {
               <div className="divide-y divide-slate-100">
                 {/* Breakfast Status */}
                 <div className="py-3 flex flex-col gap-1.5 text-xs">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-1.5 font-semibold text-slate-650">
                       <span className="flex items-center gap-1.5 text-slate-800">
                         <Coffee className="h-4 w-4 text-amber-500 shrink-0" /> Breakfast <span className="text-[11px] font-normal text-slate-500">({selectedBookingDate === tomorrowStr ? 'Tomorrow' : 'Today'})</span>
@@ -1039,7 +1041,7 @@ export default function EmployeeDashboard() {
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0 self-start sm:self-auto">
+                    <div className="flex items-center gap-1.5 shrink-0">
                       <span className={`px-2 py-0.5 font-bold rounded-full text-[10px] ${breakfastStatus === 'Collected'
                           ? 'bg-green-100 text-green-700'
                           : breakfastStatus === 'Pending'
@@ -1107,7 +1109,7 @@ export default function EmployeeDashboard() {
 
                 {/* Lunch Status */}
                 <div className="py-3 flex flex-col gap-1.5 text-xs">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-1.5 font-semibold text-slate-650">
                       <span className="flex items-center gap-1.5 text-slate-800">
                         <Utensils className="h-4 w-4 text-blue-500 shrink-0" /> Lunch <span className="text-[11px] font-normal text-slate-500">({selectedBookingDate === todayStr ? 'Today' : format(selectedDateObj, 'MMM dd')})</span>
@@ -1139,7 +1141,7 @@ export default function EmployeeDashboard() {
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0 self-start sm:self-auto">
+                    <div className="flex items-center gap-1.5 shrink-0">
                       <span className={`px-2 py-0.5 font-bold rounded-full text-[10px] ${lunchStatus === 'Collected'
                           ? 'bg-green-100 text-green-700'
                           : lunchStatus === 'Pending'
@@ -1207,7 +1209,7 @@ export default function EmployeeDashboard() {
 
                 {/* Dinner Status */}
                 <div className="py-3 flex flex-col gap-1.5 text-xs">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-1.5 font-semibold text-slate-650">
                       <span className="flex items-center gap-1.5 text-slate-800">
                         <Moon className="h-4 w-4 text-indigo-500 shrink-0" /> Dinner <span className="text-[11px] font-normal text-slate-500">({selectedBookingDate === todayStr ? 'Today' : format(selectedDateObj, 'MMM dd')})</span>
@@ -1239,7 +1241,7 @@ export default function EmployeeDashboard() {
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0 self-start sm:self-auto">
+                    <div className="flex items-center gap-1.5 shrink-0">
                       <span className={`px-2 py-0.5 font-bold rounded-full text-[10px] ${dinnerStatus === 'Collected'
                           ? 'bg-green-100 text-green-700'
                           : dinnerStatus === 'Pending'
@@ -1534,7 +1536,7 @@ export default function EmployeeDashboard() {
           <div className="absolute inset-0" onClick={() => { setActiveMealSelection(null); setSelectedOption(null); setOrderNotes(''); setSelectedOrderDepartment(null); setMealModalStep('PREFERENCE'); }}></div>
 
           {mealModalStep === 'PREFERENCE' ? (
-            <div className="relative bg-white w-full max-w-sm max-h-[90vh] overflow-y-auto rounded-3xl p-4.5 sm:p-6 shadow-2xl border border-slate-100 transition-all duration-300 ease-out transform animate-in zoom-in-95">
+            <div className="relative bg-white w-full max-w-sm max-h-[90vh] overflow-y-auto rounded-3xl p-6 shadow-2xl border border-slate-100 transition-all duration-300 ease-out transform animate-in zoom-in-95">
               <h3 className="text-base sm:text-lg font-bold text-slate-800 tracking-tight">
                 {isUpdatingNotesOnly ? `Update ${activeMealSelection.toLowerCase()} Request` : `Select ${activeMealSelection.toLowerCase()} Preference`}
               </h3>
@@ -1716,7 +1718,7 @@ export default function EmployeeDashboard() {
             </div>
           ) : (
             /* Step 2: Work Site Card Popup */
-            <div className="relative bg-white w-full max-w-sm max-h-[90vh] overflow-y-auto rounded-3xl p-4.5 sm:p-6 shadow-2xl border border-slate-100 text-center animate-in zoom-in-95">
+            <div className="relative bg-white w-full max-w-sm max-h-[90vh] overflow-y-auto rounded-3xl p-6 shadow-2xl border border-slate-100 text-center animate-in zoom-in-95">
               <h3 className="text-base sm:text-lg font-bold text-slate-800 tracking-tight">Select Your Work Site</h3>
               <p className="text-[11px] sm:text-xs text-slate-500 mt-1.5 font-semibold">
                 Please choose your current work site (CWIT, ECT, SAGT, or CICT) to proceed.
@@ -1777,7 +1779,7 @@ export default function EmployeeDashboard() {
             onClick={() => setActiveSiteChangeMeal(null)}
           />
 
-          <div className="relative bg-white w-full max-w-sm max-h-[90vh] overflow-y-auto rounded-3xl p-4.5 sm:p-6 shadow-2xl border border-slate-100 transition-all duration-300 ease-out transform animate-in zoom-in-95">
+          <div className="relative bg-white w-full max-w-sm max-h-[90vh] overflow-y-auto rounded-3xl p-6 shadow-2xl border border-slate-100 transition-all duration-300 ease-out transform animate-in zoom-in-95">
             <h3 className="text-base sm:text-lg font-bold text-slate-800 tracking-tight">
               Change Work Site
             </h3>

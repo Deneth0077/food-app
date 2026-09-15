@@ -35,7 +35,7 @@ export function ConfirmDialog({
       <div 
         role="dialog"
         aria-modal="true"
-        className="relative bg-white w-full max-w-sm max-h-[90vh] overflow-y-auto rounded-3xl p-4.5 sm:p-6 shadow-2xl border border-slate-100 transition-all duration-200 ease-out transform animate-in zoom-in-95 space-y-4 sm:space-y-5"
+        className="relative bg-white w-full max-w-sm max-h-[90vh] overflow-y-auto rounded-3xl p-6 shadow-2xl border border-slate-100 transition-all duration-200 ease-out transform animate-in zoom-in-95 space-y-4 sm:space-y-5"
       >
         <button
           onClick={onCancel}

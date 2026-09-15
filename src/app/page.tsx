@@ -15,7 +15,7 @@ export default function RootPage() {
           const data = await res.json();
           if (data.user) {
             let redirectUrl = '/employee/dashboard';
-            if (data.user.role === 'ADMIN') {
+            if (data.user.role === 'SUPERADMIN' || data.user.role === 'ADMIN') {
               redirectUrl = '/admin/dashboard';
             } else if (data.user.role === 'CANTEEN') {
               redirectUrl = '/canteen/dashboard';

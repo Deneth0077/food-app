@@ -5,7 +5,7 @@ export interface IUser extends Document {
   employeeNo: string;
   phoneNumber: string;
   password?: string;
-  role: 'ADMIN' | 'EMPLOYEE' | 'CANTEEN';
+  role: 'SUPERADMIN' | 'ADMIN' | 'EMPLOYEE' | 'CANTEEN';
   isActive: boolean;
   department?: 'CWIT' | 'ECT' | 'SAGT' | 'CICT';
   deptChangeCount: number;
@@ -21,7 +21,7 @@ const UserSchema: Schema = new Schema(
     password: { type: String, required: true },
     role: { 
       type: String, 
-      enum: ['ADMIN', 'EMPLOYEE', 'CANTEEN'], 
+      enum: ['SUPERADMIN', 'ADMIN', 'EMPLOYEE', 'CANTEEN'], 
       default: 'EMPLOYEE' 
     },
     isActive: { type: Boolean, default: true },
@@ -37,5 +37,10 @@ const UserSchema: Schema = new Schema(
   },
   { timestamps: true }
 );
+
+// Clear cached model in development to support hot-reloading schema enum updates
+if (process.env.NODE_ENV !== 'production' && mongoose.models.User) {
+  delete mongoose.models.User;
+}
 
 export default mongoose.models.User || mongoose.model<IUser>('User', UserSchema);
