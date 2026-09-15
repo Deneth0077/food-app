@@ -48,7 +48,7 @@ export function BottomNav() {
     : employeeNavItems;
 
   return (
-    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] h-16 bg-white border-t border-slate-200 shadow-[0_-4px_12px_rgba(0,0,0,0.03)] flex items-center justify-around px-4 z-40">
+    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] h-16 bg-white border-t border-slate-200 shadow-[0_-4px_12px_rgba(0,0,0,0.03)] flex items-center justify-around px-2 sm:px-4 z-40">
       {navItems.map((item) => {
         // Active if exact match or path starts with href (and is not dashboard base path matching other subpaths)
         const isActive = pathname === item.href || (item.href.endsWith('/dashboard') ? pathname === item.href : pathname.startsWith(item.href));
@@ -58,12 +58,12 @@ export function BottomNav() {
             key={item.name}
             href={item.href}
             className={cn(
-              "flex flex-col items-center justify-center w-20 h-full space-y-1 transition-all duration-200 active:scale-95",
+              "flex flex-col items-center justify-center flex-1 max-w-[80px] min-w-0 h-full space-y-1 transition-all duration-200 active:scale-95 px-0.5",
               isActive ? "text-blue-600 scale-105" : "text-slate-400 hover:text-slate-600"
             )}
           >
-            <item.icon className={cn("h-5.5 w-5.5 stroke-[2.25]", isActive ? "stroke-blue-600" : "stroke-slate-400")} />
-            <span className={cn("text-[10px] font-semibold tracking-wide", isActive ? "text-blue-600 font-bold" : "text-slate-400")}>
+            <item.icon className={cn("h-5 w-5 sm:h-5.5 sm:w-5.5 stroke-[2.25] shrink-0", isActive ? "stroke-blue-600" : "stroke-slate-400")} />
+            <span className={cn("text-[9px] sm:text-[10px] font-semibold tracking-wide truncate max-w-full text-center leading-none", isActive ? "text-blue-600 font-bold" : "text-slate-400")}>
               {item.name}
             </span>
           </Link>
