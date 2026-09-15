@@ -5,14 +5,14 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { format, subDays } from 'date-fns';
-import { 
-  Coffee, 
-  Utensils, 
-  Moon, 
-  Plus, 
-  Check, 
-  RefreshCw, 
-  Bell, 
+import {
+  Coffee,
+  Utensils,
+  Moon,
+  Plus,
+  Check,
+  RefreshCw,
+  Bell,
   User as UserIcon,
   CircleAlert,
   ChevronRight,
@@ -22,6 +22,7 @@ import {
   Calendar
 } from 'lucide-react';
 import InstallAppButton from '@/components/InstallAppButton';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 interface UserProfile {
   _id: string;
@@ -67,7 +68,7 @@ interface DailyMenu {
 export default function EmployeeDashboard() {
   const router = useRouter();
   const { toast } = useToast();
-  
+
   const [user, setUser] = useState<UserProfile | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [dailyMenu, setDailyMenu] = useState<DailyMenu | null>(null);
@@ -82,6 +83,20 @@ export default function EmployeeDashboard() {
   const [isUpdatingNotesOnly, setIsUpdatingNotesOnly] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [activeSiteChangeMeal, setActiveSiteChangeMeal] = useState<'BREAKFAST' | 'LUNCH' | 'DINNER' | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmText?: string;
+    cancelText?: string;
+    variant?: 'danger' | 'warning' | 'primary';
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    onConfirm: () => {},
+  });
 
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const tomorrow = new Date();
@@ -97,7 +112,7 @@ export default function EmployeeDashboard() {
   const isMealLocked = useCallback((mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER', bookingDateStr: string) => {
     const now = new Date();
     const targetDate = new Date(bookingDateStr + 'T00:00:00');
-    
+
     let lockTime: Date;
     if (mealType === 'BREAKFAST') {
       const dayBefore = new Date(targetDate.getTime());
@@ -113,7 +128,7 @@ export default function EmployeeDashboard() {
       dayOf.setHours(17, 0, 0, 0); // 5:00 PM
       lockTime = dayOf;
     }
-    
+
     return now.getTime() >= lockTime.getTime();
   }, []);
 
@@ -242,7 +257,7 @@ export default function EmployeeDashboard() {
     try {
       const res = await fetch('/api/auth/logout', { method: 'POST' });
       if (!res.ok) throw new Error('Logout failed');
-      
+
       toast({
         title: 'Logged Out',
         description: 'You have been logged out successfully.',
@@ -292,18 +307,18 @@ export default function EmployeeDashboard() {
   const handleQuickUpdateSite = async (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER', site: 'CWIT' | 'ECT' | 'SAGT' | 'CICT') => {
     const existingOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === mealType);
     if (!existingOrder) return;
-    
+
     try {
       const targetDateStr = selectedBookingDate;
       const res = await fetch('/api/orders', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          mealType, 
-          mealOption: existingOrder.mealOption, 
-          notes: existingOrder.notes || '', 
-          requestDate: targetDateStr, 
-          department: site 
+        body: JSON.stringify({
+          mealType,
+          mealOption: existingOrder.mealOption,
+          notes: existingOrder.notes || '',
+          requestDate: targetDateStr,
+          department: site
         }),
       });
 
@@ -329,8 +344,7 @@ export default function EmployeeDashboard() {
     }
   };
 
-  const handleCancelOrder = async (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER') => {
-    if (!confirm(`Are you sure you want to cancel your ${mealType.toLowerCase()} order?`)) return;
+  const executeCancelOrder = async (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER') => {
     try {
       const targetDateStr = selectedBookingDate;
       const res = await fetch(`/api/orders?mealType=${mealType}&requestDate=${targetDateStr}`, {
@@ -356,8 +370,22 @@ export default function EmployeeDashboard() {
     }
   };
 
-  const handleSkipTimer = async (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER') => {
-    if (!confirm(`Are you sure you want to skip the cancellation grace period and finalize your ${mealType.toLowerCase()} order? It cannot be cancelled after this.`)) return;
+  const handleCancelOrder = (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER') => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Cancel Meal Order?',
+      description: `Are you sure you want to cancel your ${mealType.toLowerCase()} order? This will remove your booking for this meal.`,
+      confirmText: 'Yes, Cancel Order',
+      cancelText: 'Keep Order',
+      variant: 'danger',
+      onConfirm: () => {
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        executeCancelOrder(mealType);
+      },
+    });
+  };
+
+  const executeSkipTimer = async (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER') => {
     try {
       const targetDateStr = selectedBookingDate;
       const res = await fetch('/api/orders', {
@@ -385,8 +413,22 @@ export default function EmployeeDashboard() {
     }
   };
 
-  const handleMarkAsCollectedSelf = async (orderId: string) => {
-    if (!confirm('Are you sure you want to mark this meal as collected?')) return;
+  const handleSkipTimer = (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER') => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Finalize Order Now?',
+      description: `Are you sure you want to skip the 5-minute grace period and finalize your ${mealType.toLowerCase()} order? It cannot be cancelled after this.`,
+      confirmText: 'Finalize Now',
+      cancelText: 'Wait',
+      variant: 'warning',
+      onConfirm: () => {
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        executeSkipTimer(mealType);
+      },
+    });
+  };
+
+  const executeMarkAsCollectedSelf = async (orderId: string) => {
     try {
       const res = await fetch('/api/orders', {
         method: 'PATCH',
@@ -413,6 +455,21 @@ export default function EmployeeDashboard() {
     }
   };
 
+  const handleMarkAsCollectedSelf = (orderId: string) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Confirm Meal Collection?',
+      description: 'Are you sure you want to mark this meal as collected? Please ensure you have received your meal plate.',
+      confirmText: 'Mark Collected',
+      cancelText: 'Cancel',
+      variant: 'primary',
+      onConfirm: () => {
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        executeMarkAsCollectedSelf(orderId);
+      },
+    });
+  };
+
   // isMealLocked is now defined dynamically above
 
   const handleCardClick = (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER') => {
@@ -433,8 +490,8 @@ export default function EmployeeDashboard() {
         });
       } else {
         const targetDateText = selectedBookingDate === todayStr ? 'today\'s' : 'tomorrow\'s';
-        const displayTime = mealType === 'BREAKFAST' 
-          ? `8:00 PM on ${format(subDays(new Date(selectedBookingDate + 'T00:00:00'), 1), 'yyyy-MM-dd')}` 
+        const displayTime = mealType === 'BREAKFAST'
+          ? `8:00 PM on ${format(subDays(new Date(selectedBookingDate + 'T00:00:00'), 1), 'yyyy-MM-dd')}`
           : mealType === 'LUNCH' ? `9:00 AM on ${selectedBookingDate}` : `5:00 PM on ${selectedBookingDate}`;
         toast({
           variant: 'destructive',
@@ -483,7 +540,7 @@ export default function EmployeeDashboard() {
   const activeBreakfastOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === 'BREAKFAST');
   const activeLunchOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === 'LUNCH');
   const activeDinnerOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === 'DINNER');
-  
+
   const getMealStatus = (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER') => {
     let order;
     if (mealType === 'BREAKFAST') {
@@ -529,7 +586,7 @@ export default function EmployeeDashboard() {
             <Bell className="h-5.5 w-5.5 text-slate-600" />
             <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
           </div>
-          <div 
+          <div
             onClick={() => setShowProfileDropdown(!showProfileDropdown)}
             className="h-9 w-9 rounded-full bg-blue-600 hover:bg-blue-700 active:scale-95 text-white flex items-center justify-center font-bold text-sm shadow-sm select-none cursor-pointer transition-all"
           >
@@ -537,9 +594,9 @@ export default function EmployeeDashboard() {
           </div>
           {showProfileDropdown && (
             <>
-              <div 
-                className="fixed inset-0 z-40" 
-                onClick={() => setShowProfileDropdown(false)} 
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setShowProfileDropdown(false)}
               />
               <div className="absolute right-0 top-12 w-44 bg-white border border-slate-200 rounded-xl shadow-lg py-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                 <div className="px-3 py-1.5 border-b border-slate-100">
@@ -600,22 +657,20 @@ export default function EmployeeDashboard() {
           <button
             type="button"
             onClick={() => setActiveTab('ORDER')}
-            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
-              activeTab === 'ORDER' 
-                ? 'bg-blue-600 text-white shadow-sm' 
+            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'ORDER'
+                ? 'bg-blue-600 text-white shadow-sm'
                 : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-            }`}
+              }`}
           >
             Order Meals
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('HISTORY')}
-            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
-              activeTab === 'HISTORY' 
-                ? 'bg-blue-600 text-white shadow-sm' 
+            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'HISTORY'
+                ? 'bg-blue-600 text-white shadow-sm'
                 : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-            }`}
+              }`}
           >
             Collection History
           </button>
@@ -624,819 +679,656 @@ export default function EmployeeDashboard() {
         {activeTab === 'ORDER' ? (
           <>
             {/* Date Selector Toolbar */}
-        <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
-              <Calendar className="h-4.5 w-4.5 text-blue-600" />
-              Select Booking Date
-            </h3>
-            <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md">
-              Selected: {format(selectedDateObj, 'EEE, MMM dd')}
-            </span>
-          </div>
-          <div className="grid grid-cols-2 gap-2.5">
-            <button
-              type="button"
-              onClick={() => setSelectedBookingDate(todayStr)}
-              className={`py-2 text-xs font-bold rounded-xl transition-all duration-200 ${
-                selectedBookingDate === todayStr
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-100/50'
-                  : 'bg-slate-50 text-slate-650 hover:bg-slate-100 hover:text-slate-800 border border-slate-100'
-              }`}
-            >
-              Today
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedBookingDate(tomorrowStr)}
-              className={`py-2 text-xs font-bold rounded-xl transition-all duration-200 ${
-                selectedBookingDate === tomorrowStr
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-100/50'
-                  : 'bg-slate-50 text-slate-650 hover:bg-slate-100 hover:text-slate-800 border border-slate-100'
-              }`}
-            >
-              Tomorrow
-            </button>
-          </div>
-        </div>
-
-        {/* Request Meals Section */}
-        <div className="space-y-3">
-          <h3 className="text-base font-bold text-slate-800 tracking-tight flex items-center gap-1.5">
-            Request Meals
-          </h3>
-          
-          <div className="space-y-3">
-            {/* Breakfast Request Card */}
-            <div 
-              onClick={() => handleCardClick('BREAKFAST')}
-              className={`p-4 rounded-2xl border flex items-center justify-between transition-all duration-300 transform cursor-pointer hover:shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 active:scale-[0.99] ${
-                isBreakfastLocked && !activeBreakfastOrder
-                  ? 'bg-slate-100/50 border-slate-200 opacity-60' 
-                  : 'bg-white border-slate-100 hover:border-blue-300'
-              }`}
-            >
-              <div className="flex items-center gap-3.5">
-                <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${
-                  isBreakfastLocked && !activeBreakfastOrder ? 'bg-slate-200 text-slate-400' : 'bg-amber-50 text-amber-500'
-                }`}>
-                  <Coffee className="h-5.5 w-5.5 stroke-[2.25]" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h4 className="text-sm font-bold text-slate-855">Breakfast <span className="text-xs font-normal text-slate-500">(Rs. {prices.breakfast})</span></h4>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700">
-                      {selectedBookingDate === tomorrowStr 
-                        ? `For Tomorrow (${format(selectedDateObj, 'MMM dd')})` 
-                        : `For Today (${format(selectedDateObj, 'MMM dd')})`
-                      }
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-slate-400 font-semibold mt-1">
-                    {isBreakfastLocked && !activeBreakfastOrder ? (
-                      <span className="text-red-500 font-bold">Booking Closed</span>
-                    ) : (
-                      `Book before 8:00 PM on ${format(subDays(selectedDateObj, 1), 'MMM dd')}`
-                    )}
-                  </p>
-                  {activeBreakfastOrder?.department && (
-                    <div className="mt-1.5 flex flex-wrap gap-1.5">
-                      <span 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (getMealLockedStatus('BREAKFAST')) {
-                            toast({
-                              title: 'Booking Closed',
-                              description: 'Booking is closed. You cannot change the work site.',
-                            });
-                            return;
-                          }
-                          setActiveSiteChangeMeal('BREAKFAST');
-                        }}
-                        className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-100 cursor-pointer active:scale-95 transition-all"
-                      >
-                        Site: {activeBreakfastOrder.department}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Daily Menu items preview on Card */}
-                  {dailyMenu?.breakfast?.items && dailyMenu.breakfast.items.length > 0 && (
-                    <div className="mt-2 pt-1.5 border-t border-slate-100 flex flex-wrap items-center gap-1">
-                      <span className="text-[9px] font-extrabold text-amber-700 uppercase tracking-wide">
-                        Menu:
-                      </span>
-                      {dailyMenu.breakfast.title && (
-                        <span className="text-[9.5px] font-bold text-slate-700 mr-0.5">
-                          {dailyMenu.breakfast.title} •
-                        </span>
-                      )}
-                      {dailyMenu.breakfast.items.slice(0, 3).map((item, idx) => (
-                        <span key={idx} className="text-[9px] font-semibold bg-amber-50 text-amber-900 border border-amber-200/60 px-1.5 py-0.2 rounded">
-                          {item.name}
-                        </span>
-                      ))}
-                      {dailyMenu.breakfast.items.length > 3 && (
-                        <span className="text-[8.5px] font-bold text-blue-600">
-                          +{dailyMenu.breakfast.items.length - 3} more
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div>
-                {breakfastStatus !== 'Not Requested' ? (
-                  <div className="h-9 w-9 rounded-full flex items-center justify-center bg-green-50 text-green-600 border border-green-100">
-                    <Check className="h-4.5 w-4.5 stroke-[2.5]" />
-                  </div>
-                ) : submittingMeal === 'BREAKFAST' ? (
-                  <div className="h-9 w-9 rounded-full flex items-center justify-center bg-slate-100 text-slate-500">
-                    <RefreshCw className="h-4.5 w-4.5 animate-spin" />
-                  </div>
-                ) : isBreakfastLocked ? (
-                  <span className="text-xs font-bold text-slate-400">Locked</span>
-                ) : null}
-              </div>
-            </div>
-
-            {/* Lunch Request Card */}
-            <div 
-              onClick={() => handleCardClick('LUNCH')}
-              className={`p-4 rounded-2xl border flex items-center justify-between transition-all duration-300 transform cursor-pointer hover:shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 active:scale-[0.99] ${
-                isLunchLocked && !activeLunchOrder
-                  ? 'bg-slate-100/50 border-slate-200 opacity-60' 
-                  : 'bg-white border-slate-100 hover:border-blue-300'
-              }`}
-            >
-              <div className="flex items-center gap-3.5">
-                <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${
-                  isLunchLocked && !activeLunchOrder ? 'bg-slate-200 text-slate-400' : 'bg-blue-50 text-blue-600'
-                }`}>
-                  <Utensils className="h-5.5 w-5.5 stroke-[2.25]" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h4 className="text-sm font-bold text-slate-855">Lunch <span className="text-xs font-normal text-slate-500">(Rs. {prices.lunch})</span></h4>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700">
-                      {selectedBookingDate === todayStr 
-                        ? `For Today (${format(selectedDateObj, 'MMM dd')})` 
-                        : `For ${format(selectedDateObj, 'EEE, MMM dd')}`
-                      }
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-slate-400 font-semibold mt-1">
-                    {isLunchLocked && !activeLunchOrder ? (
-                      <span className="text-red-500 font-bold">Booking Closed</span>
-                    ) : (
-                      `Book before 9:00 AM on ${format(selectedDateObj, 'MMM dd')}`
-                    )}
-                  </p>
-                  {activeLunchOrder?.department && (
-                    <div className="mt-1.5 flex flex-wrap gap-1.5">
-                      <span 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (getMealLockedStatus('LUNCH')) {
-                            toast({
-                              title: 'Booking Closed',
-                              description: 'Booking is closed. You cannot change the work site.',
-                            });
-                            return;
-                          }
-                          setActiveSiteChangeMeal('LUNCH');
-                        }}
-                        className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-100 cursor-pointer active:scale-95 transition-all"
-                      >
-                        Site: {activeLunchOrder.department}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Daily Menu items preview on Card */}
-                  {dailyMenu?.lunch?.items && dailyMenu.lunch.items.length > 0 && (
-                    <div className="mt-2 pt-1.5 border-t border-slate-100 flex flex-wrap items-center gap-1">
-                      <span className="text-[9px] font-extrabold text-blue-700 uppercase tracking-wide">
-                        Menu:
-                      </span>
-                      {dailyMenu.lunch.title && (
-                        <span className="text-[9.5px] font-bold text-slate-700 mr-0.5">
-                          {dailyMenu.lunch.title} •
-                        </span>
-                      )}
-                      {dailyMenu.lunch.items.slice(0, 3).map((item, idx) => (
-                        <span key={idx} className="text-[9px] font-semibold bg-blue-50 text-blue-900 border border-blue-200/60 px-1.5 py-0.2 rounded">
-                          {item.name}
-                        </span>
-                      ))}
-                      {dailyMenu.lunch.items.length > 3 && (
-                        <span className="text-[8.5px] font-bold text-blue-600">
-                          +{dailyMenu.lunch.items.length - 3} more
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div>
-                {lunchStatus !== 'Not Requested' ? (
-                  <div className="h-9 w-9 rounded-full flex items-center justify-center bg-green-50 text-green-600 border border-green-100">
-                    <Check className="h-4.5 w-4.5 stroke-[2.5]" />
-                  </div>
-                ) : submittingMeal === 'LUNCH' ? (
-                  <div className="h-9 w-9 rounded-full flex items-center justify-center bg-slate-100 text-slate-500">
-                    <RefreshCw className="h-4.5 w-4.5 animate-spin" />
-                  </div>
-                ) : isLunchLocked ? (
-                  <span className="text-xs font-bold text-slate-400">Locked</span>
-                ) : null}
-              </div>
-            </div>
-
-            {/* Dinner Request Card */}
-            <div 
-              onClick={() => handleCardClick('DINNER')}
-              className={`p-4 rounded-2xl border flex items-center justify-between transition-all duration-300 transform cursor-pointer hover:shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 active:scale-[0.99] ${
-                isDinnerLocked && !activeDinnerOrder
-                  ? 'bg-slate-100/50 border-slate-200 opacity-60' 
-                  : 'bg-white border-slate-100 hover:border-blue-300'
-              }`}
-            >
-              <div className="flex items-center gap-3.5">
-                <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${
-                  isDinnerLocked && !activeDinnerOrder ? 'bg-slate-200 text-slate-400' : 'bg-indigo-50 text-indigo-500'
-                }`}>
-                  <Moon className="h-5.5 w-5.5 stroke-[2.25]" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h4 className="text-sm font-bold text-slate-855">Dinner <span className="text-xs font-normal text-slate-500">(Rs. {prices.dinner})</span></h4>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700">
-                      {selectedBookingDate === todayStr 
-                        ? `For Today (${format(selectedDateObj, 'MMM dd')})` 
-                        : `For ${format(selectedDateObj, 'EEE, MMM dd')}`
-                      }
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-slate-400 font-semibold mt-1">
-                    {isDinnerLocked && !activeDinnerOrder ? (
-                      <span className="text-red-500 font-bold">Booking Closed</span>
-                    ) : (
-                      `Book before 5:00 PM on ${format(selectedDateObj, 'MMM dd')}`
-                    )}
-                  </p>
-                  {activeDinnerOrder?.department && (
-                    <div className="mt-1.5 flex flex-wrap gap-1.5">
-                      <span 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (getMealLockedStatus('DINNER')) {
-                            toast({
-                              title: 'Booking Closed',
-                              description: 'Booking is closed. You cannot change the work site.',
-                            });
-                            return;
-                          }
-                          setActiveSiteChangeMeal('DINNER');
-                        }}
-                        className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-100 cursor-pointer active:scale-95 transition-all"
-                      >
-                        Site: {activeDinnerOrder.department}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Daily Menu items preview on Card */}
-                  {dailyMenu?.dinner?.items && dailyMenu.dinner.items.length > 0 && (
-                    <div className="mt-2 pt-1.5 border-t border-slate-100 flex flex-wrap items-center gap-1">
-                      <span className="text-[9px] font-extrabold text-indigo-700 uppercase tracking-wide">
-                        Menu:
-                      </span>
-                      {dailyMenu.dinner.title && (
-                        <span className="text-[9.5px] font-bold text-slate-700 mr-0.5">
-                          {dailyMenu.dinner.title} •
-                        </span>
-                      )}
-                      {dailyMenu.dinner.items.slice(0, 3).map((item, idx) => (
-                        <span key={idx} className="text-[9px] font-semibold bg-indigo-50 text-indigo-900 border border-indigo-200/60 px-1.5 py-0.2 rounded">
-                          {item.name}
-                        </span>
-                      ))}
-                      {dailyMenu.dinner.items.length > 3 && (
-                        <span className="text-[8.5px] font-bold text-blue-600">
-                          +{dailyMenu.dinner.items.length - 3} more
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div>
-                {dinnerStatus !== 'Not Requested' ? (
-                  <div className="h-9 w-9 rounded-full flex items-center justify-center bg-green-50 text-green-600 border border-green-100">
-                    <Check className="h-4.5 w-4.5 stroke-[2.5]" />
-                  </div>
-                ) : submittingMeal === 'DINNER' ? (
-                  <div className="h-9 w-9 rounded-full flex items-center justify-center bg-slate-100 text-slate-500">
-                    <RefreshCw className="h-4.5 w-4.5 animate-spin" />
-                  </div>
-                ) : isDinnerLocked ? (
-                  <span className="text-xs font-bold text-slate-400">Locked</span>
-                ) : null}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Today's Status Widget */}
-        <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-slate-800">My Active Orders</h3>
-            <button onClick={fetchData} className="p-1 rounded hover:bg-slate-50 text-slate-400 hover:text-slate-600">
-              <RefreshCw className="h-3.5 w-3.5" />
-            </button>
-          </div>
-
-          <div className="divide-y divide-slate-100">
-            {/* Breakfast Status */}
-            <div className="py-3 flex flex-col gap-1 text-xs">
+            <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] space-y-3">
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-650 flex items-center gap-2">
-                  <Coffee className="h-4 w-4 text-amber-500" /> Breakfast ({selectedBookingDate === tomorrowStr ? 'For Tomorrow' : `For Today (${format(selectedDateObj, 'MMM dd')})`})
-                  {activeBreakfastOrder?.mealOption && (
-                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                      activeBreakfastOrder.mealOption === 'VEGETARIAN' 
-                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
-                        : 'bg-rose-50 text-rose-700 border border-rose-100'
-                    }`}>
-                      {activeBreakfastOrder.mealOption === 'VEGETARIAN' ? 'Veg' : 'Non-Veg'}
-                    </span>
-                  )}
-                  {activeBreakfastOrder?.department && (
-                    <span 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (getMealLockedStatus('BREAKFAST')) {
-                          toast({
-                            title: 'Booking Closed',
-                            description: 'Booking is closed. You cannot change the work site.',
-                          });
-                          return;
-                        }
-                        setActiveSiteChangeMeal('BREAKFAST');
-                      }}
-                      className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-100 cursor-pointer active:scale-95 transition-all"
-                    >
-                      {activeBreakfastOrder.department}
-                    </span>
-                  )}
+                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                  <Calendar className="h-4.5 w-4.5 text-blue-600" />
+                  Select Booking Date
+                </h3>
+                <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md">
+                  Selected: {format(selectedDateObj, 'EEE, MMM dd')}
                 </span>
-                <div className="flex items-center gap-1.5">
-                  <span className={`px-2 py-0.5 font-bold rounded-full text-[10px] ${
-                    breakfastStatus === 'Collected'
-                      ? 'bg-green-100 text-green-700'
-                      : breakfastStatus === 'Pending'
-                      ? 'bg-orange-100 text-orange-700'
-                      : 'bg-slate-100 text-slate-500'
-                  }`}>
-                    {breakfastStatus}
-                  </span>
-                  {breakfastStatus === 'Pending' && activeBreakfastOrder && (
-                    <button
-                      type="button"
-                      onClick={() => handleMarkAsCollectedSelf(activeBreakfastOrder._id)}
-                      className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded font-bold text-[9px] transition-all active:scale-95 flex items-center gap-0.5"
-                    >
-                      <Check className="h-2.5 w-2.5 stroke-[2.5]" />
-                      Self Collect
-                    </button>
-                  )}
-                </div>
               </div>
-              {activeBreakfastOrder?.notes && (
-                <div className="text-[10px] bg-slate-50 border border-slate-100 text-slate-500 rounded-lg p-2 font-medium">
-                  <span className="font-bold text-slate-700 block text-[9px] uppercase tracking-wider mb-0.5">Special Request</span>
-                  &ldquo;{activeBreakfastOrder.notes}&rdquo;
-                </div>
-              )}
-              {(() => {
-                const order = activeBreakfastOrder;
-                if (order && order.status === 'ORDERED' && !isBreakfastLocked) {
-                  const msRemaining = (new Date(order.requestedAt).getTime() + 10 * 60 * 1000) - currentTime.getTime();
-                  if (msRemaining > 0) {
-                    const mins = Math.floor(msRemaining / (1000 * 60));
-                    const secs = Math.floor((msRemaining % (1000 * 60)) / 1000);
-                    const formattedTime = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-                    
-                    return (
-                      <div className="mt-2 flex items-center justify-between bg-red-50/40 border border-red-100/50 rounded-xl p-2.5 animate-in fade-in duration-200">
-                        <span className="text-[10px] font-bold text-red-650 flex items-center gap-1">
-                          <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-ping shrink-0" />
-                          Cancel available: {formattedTime}
-                        </span>
-                        <div className="flex gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => handleSkipTimer('BREAKFAST')}
-                            className="px-2.5 py-1 text-[9px] font-bold text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg active:scale-95 transition-all shadow-sm"
-                          >
-                            Skip Time
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleCancelOrder('BREAKFAST')}
-                            className="px-2.5 py-1 text-[9px] font-bold text-red-700 bg-red-100 hover:bg-red-200 rounded-lg active:scale-95 transition-all shadow-sm"
-                          >
-                            Cancel Order
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  }
-                }
-                return null;
-              })()}
-            </div>
-
-            {/* Lunch Status */}
-            <div className="py-3 flex flex-col gap-1 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-650 flex items-center gap-2">
-                  <Utensils className="h-4 w-4 text-blue-500" /> Lunch ({selectedBookingDate === todayStr ? 'For Today' : `For ${format(selectedDateObj, 'MMM dd')}`})
-                  {activeLunchOrder?.mealOption && (
-                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                      activeLunchOrder.mealOption === 'VEGETARIAN' 
-                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
-                        : 'bg-rose-50 text-rose-700 border border-rose-100'
-                    }`}>
-                      {activeLunchOrder.mealOption === 'VEGETARIAN' ? 'Veg' : 'Non-Veg'}
-                    </span>
-                  )}
-                  {activeLunchOrder?.department && (
-                    <span 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (getMealLockedStatus('LUNCH')) {
-                          toast({
-                            title: 'Booking Closed',
-                            description: 'Booking is closed. You cannot change the work site.',
-                          });
-                          return;
-                        }
-                        setActiveSiteChangeMeal('LUNCH');
-                      }}
-                      className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-100 cursor-pointer active:scale-95 transition-all"
-                    >
-                      {activeLunchOrder.department}
-                    </span>
-                  )}
-                </span>
-                <div className="flex items-center gap-1.5">
-                  <span className={`px-2 py-0.5 font-bold rounded-full text-[10px] ${
-                    lunchStatus === 'Collected'
-                      ? 'bg-green-100 text-green-700'
-                      : lunchStatus === 'Pending'
-                      ? 'bg-orange-100 text-orange-700'
-                      : 'bg-slate-100 text-slate-500'
-                  }`}>
-                    {lunchStatus}
-                  </span>
-                  {lunchStatus === 'Pending' && activeLunchOrder && (
-                    <button
-                      type="button"
-                      onClick={() => handleMarkAsCollectedSelf(activeLunchOrder._id)}
-                      className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded font-bold text-[9px] transition-all active:scale-95 flex items-center gap-0.5"
-                    >
-                      <Check className="h-2.5 w-2.5 stroke-[2.5]" />
-                      Self Collect
-                    </button>
-                  )}
-                </div>
-              </div>
-              {activeLunchOrder?.notes && (
-                <div className="text-[10px] bg-slate-50 border border-slate-100 text-slate-500 rounded-lg p-2 font-medium">
-                  <span className="font-bold text-slate-700 block text-[9px] uppercase tracking-wider mb-0.5">Special Request</span>
-                  &ldquo;{activeLunchOrder.notes}&rdquo;
-                </div>
-              )}
-              {(() => {
-                const order = activeLunchOrder;
-                if (order && order.status === 'ORDERED' && !isLunchLocked) {
-                  const msRemaining = (new Date(order.requestedAt).getTime() + 10 * 60 * 1000) - currentTime.getTime();
-                  if (msRemaining > 0) {
-                    const mins = Math.floor(msRemaining / (1000 * 60));
-                    const secs = Math.floor((msRemaining % (1000 * 60)) / 1000);
-                    const formattedTime = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-                    
-                    return (
-                      <div className="mt-2 flex items-center justify-between bg-red-50/40 border border-red-100/50 rounded-xl p-2.5 animate-in fade-in duration-200">
-                        <span className="text-[10px] font-bold text-red-650 flex items-center gap-1">
-                          <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-ping shrink-0" />
-                          Cancel available: {formattedTime}
-                        </span>
-                        <div className="flex gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => handleSkipTimer('LUNCH')}
-                            className="px-2.5 py-1 text-[9px] font-bold text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg active:scale-95 transition-all shadow-sm"
-                          >
-                            Skip Time
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleCancelOrder('LUNCH')}
-                            className="px-2.5 py-1 text-[9px] font-bold text-red-700 bg-red-100 hover:bg-red-200 rounded-lg active:scale-95 transition-all shadow-sm"
-                          >
-                            Cancel Order
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  }
-                }
-                return null;
-              })()}
-            </div>
-
-            {/* Dinner Status */}
-            <div className="py-3 flex flex-col gap-1 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-650 flex items-center gap-2">
-                  <Moon className="h-4 w-4 text-indigo-500" /> Dinner ({selectedBookingDate === todayStr ? 'For Today' : `For ${format(selectedDateObj, 'MMM dd')}`})
-                  {activeDinnerOrder?.mealOption && (
-                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                      activeDinnerOrder.mealOption === 'VEGETARIAN' 
-                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
-                        : 'bg-rose-50 text-rose-700 border border-rose-100'
-                    }`}>
-                      {activeDinnerOrder.mealOption === 'VEGETARIAN' ? 'Veg' : 'Non-Veg'}
-                    </span>
-                  )}
-                  {activeDinnerOrder?.department && (
-                    <span 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (getMealLockedStatus('DINNER')) {
-                          toast({
-                            title: 'Booking Closed',
-                            description: 'Booking is closed. You cannot change the work site.',
-                          });
-                          return;
-                        }
-                        setActiveSiteChangeMeal('DINNER');
-                      }}
-                      className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-100 cursor-pointer active:scale-95 transition-all"
-                    >
-                      {activeDinnerOrder.department}
-                    </span>
-                  )}
-                </span>
-                <div className="flex items-center gap-1.5">
-                  <span className={`px-2 py-0.5 font-bold rounded-full text-[10px] ${
-                    dinnerStatus === 'Collected'
-                      ? 'bg-green-100 text-green-700'
-                      : dinnerStatus === 'Pending'
-                      ? 'bg-orange-100 text-orange-700'
-                      : 'bg-slate-100 text-slate-500'
-                  }`}>
-                    {dinnerStatus}
-                  </span>
-                  {dinnerStatus === 'Pending' && activeDinnerOrder && (
-                    <button
-                      type="button"
-                      onClick={() => handleMarkAsCollectedSelf(activeDinnerOrder._id)}
-                      className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded font-bold text-[9px] transition-all active:scale-95 flex items-center gap-0.5"
-                    >
-                      <Check className="h-2.5 w-2.5 stroke-[2.5]" />
-                      Self Collect
-                    </button>
-                  )}
-                </div>
-              </div>
-              {activeDinnerOrder?.notes && (
-                <div className="text-[10px] bg-slate-50 border border-slate-100 text-slate-500 rounded-lg p-2 font-medium">
-                  <span className="font-bold text-slate-700 block text-[9px] uppercase tracking-wider mb-0.5">Special Request</span>
-                  &ldquo;{activeDinnerOrder.notes}&rdquo;
-                </div>
-              )}
-              {(() => {
-                const order = activeDinnerOrder;
-                if (order && order.status === 'ORDERED' && !isDinnerLocked) {
-                  const msRemaining = (new Date(order.requestedAt).getTime() + 10 * 60 * 1000) - currentTime.getTime();
-                  if (msRemaining > 0) {
-                    const mins = Math.floor(msRemaining / (1000 * 60));
-                    const secs = Math.floor((msRemaining % (1000 * 60)) / 1000);
-                    const formattedTime = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-                    
-                    return (
-                      <div className="mt-2 flex items-center justify-between bg-red-50/40 border border-red-100/50 rounded-xl p-2.5 animate-in fade-in duration-200">
-                        <span className="text-[10px] font-bold text-red-650 flex items-center gap-1">
-                          <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-ping shrink-0" />
-                          Cancel available: {formattedTime}
-                        </span>
-                        <div className="flex gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => handleSkipTimer('DINNER')}
-                            className="px-2.5 py-1 text-[9px] font-bold text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg active:scale-95 transition-all shadow-sm"
-                          >
-                            Skip Time
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleCancelOrder('DINNER')}
-                            className="px-2.5 py-1 text-[9px] font-bold text-red-700 bg-red-100 hover:bg-red-200 rounded-lg active:scale-95 transition-all shadow-sm"
-                          >
-                            Cancel Order
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  }
-                }
-                return null;
-              })()}
-            </div>
-          </div>
-        </div>
-
-        {/* Recent History */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-slate-800">Recent Requests</h3>
-            <Link href="/employee/history" className="text-xs font-bold text-blue-600 hover:underline flex items-center">
-              View All <ChevronRight className="h-3 w-3" />
-            </Link>
-          </div>
-
-          <div className="space-y-2.5">
-            {recentHistory.length === 0 ? (
-              <div className="bg-white rounded-2xl p-6 text-center border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-                <CircleAlert className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-                <p className="text-xs text-slate-400 font-semibold">No recent meal requests found.</p>
-              </div>
-            ) : (
-              recentHistory.map((item) => (
-                <div 
-                  key={item._id} 
-                  className="bg-white rounded-xl p-3.5 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex items-center justify-between"
+              <div className="grid grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setSelectedBookingDate(todayStr)}
+                  className={`py-2 text-xs font-bold rounded-xl transition-all duration-200 ${selectedBookingDate === todayStr
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-100/50'
+                      : 'bg-slate-50 text-slate-650 hover:bg-slate-100 hover:text-slate-800 border border-slate-100'
+                    }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${
-                      item.mealType === 'BREAKFAST' 
-                        ? 'bg-amber-50 text-amber-500'
-                        : item.mealType === 'LUNCH'
-                        ? 'bg-blue-50 text-blue-600'
-                        : 'bg-indigo-50 text-indigo-500'
-                    }`}>
-                      {item.mealType === 'BREAKFAST' ? (
-                        <Coffee className="h-4 w-4" />
-                      ) : item.mealType === 'LUNCH' ? (
-                        <Utensils className="h-4 w-4" />
-                      ) : (
-                        <Moon className="h-4 w-4" />
-                      )}
+                  Today
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedBookingDate(tomorrowStr)}
+                  className={`py-2 text-xs font-bold rounded-xl transition-all duration-200 ${selectedBookingDate === tomorrowStr
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-100/50'
+                      : 'bg-slate-50 text-slate-650 hover:bg-slate-100 hover:text-slate-800 border border-slate-100'
+                    }`}
+                >
+                  Tomorrow
+                </button>
+              </div>
+            </div>
+
+            {/* Request Meals Section */}
+            <div className="space-y-3">
+              <h3 className="text-base font-bold text-slate-800 tracking-tight flex items-center gap-1.5">
+                Request Meals
+              </h3>
+
+              <div className="space-y-3">
+                {/* Breakfast Request Card */}
+                <div
+                  onClick={() => handleCardClick('BREAKFAST')}
+                  className={`p-4 rounded-2xl border flex items-center justify-between transition-all duration-300 transform cursor-pointer hover:shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 active:scale-[0.99] ${isBreakfastLocked && !activeBreakfastOrder
+                      ? 'bg-slate-100/50 border-slate-200 opacity-60'
+                      : 'bg-white border-slate-100 hover:border-blue-300'
+                    }`}
+                >
+                  <div className="flex items-center gap-3.5">
+                    <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${isBreakfastLocked && !activeBreakfastOrder ? 'bg-slate-200 text-slate-400' : 'bg-amber-50 text-amber-500'
+                      }`}>
+                      <Coffee className="h-5.5 w-5.5 stroke-[2.25]" />
                     </div>
                     <div>
-                      <h4 className="text-xs font-bold text-slate-800 capitalize">
-                        {item.mealType.toLowerCase()}
-                      </h4>
-                      <p className="text-[10px] text-slate-405 font-semibold mt-0.5">
-                        {(() => {
-                          const dateObj = new Date(item.requestedAt);
-                          const todayStr = format(new Date(), 'yyyy-MM-dd');
-                          if (item.requestDate === todayStr) {
-                            return `Today ${item.mealType.charAt(0) + item.mealType.slice(1).toLowerCase()} at ${format(dateObj, 'h:mm a')}`;
-                          } else {
-                            return `${format(dateObj, 'MMM dd, yyyy')} at ${format(dateObj, 'h:mm a')}`;
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-slate-855">Breakfast <span className="text-xs font-normal text-slate-500">(Rs. {prices.breakfast})</span></h4>
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700">
+                          {selectedBookingDate === tomorrowStr
+                            ? `For Tomorrow (${format(selectedDateObj, 'MMM dd')})`
+                            : `For Today (${format(selectedDateObj, 'MMM dd')})`
                           }
-                        })()}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 font-semibold mt-1">
+                        {isBreakfastLocked && !activeBreakfastOrder ? (
+                          <span className="text-red-500 font-bold">Booking Closed</span>
+                        ) : (
+                          `Book before 8:00 PM on ${format(subDays(selectedDateObj, 1), 'MMM dd')}`
+                        )}
                       </p>
+                      {activeBreakfastOrder?.department && (
+                        <div className="mt-1.5 flex flex-wrap gap-1.5">
+                          <span
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (getMealLockedStatus('BREAKFAST')) {
+                                toast({
+                                  title: 'Booking Closed',
+                                  description: 'Booking is closed. You cannot change the work site.',
+                                });
+                                return;
+                              }
+                              setActiveSiteChangeMeal('BREAKFAST');
+                            }}
+                            className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-100 cursor-pointer active:scale-95 transition-all"
+                          >
+                            Site: {activeBreakfastOrder.department}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Daily Menu items preview on Card */}
+                      {dailyMenu?.breakfast?.items && dailyMenu.breakfast.items.length > 0 && (
+                        <div className="mt-2 pt-1.5 border-t border-slate-100 flex flex-wrap items-center gap-1">
+                          <span className="text-[9px] font-extrabold text-amber-700 uppercase tracking-wide">
+                            Menu:
+                          </span>
+                          {dailyMenu.breakfast.title && (
+                            <span className="text-[9.5px] font-bold text-slate-700 mr-0.5">
+                              {dailyMenu.breakfast.title} •
+                            </span>
+                          )}
+                          {dailyMenu.breakfast.items.slice(0, 3).map((item, idx) => (
+                            <span key={idx} className="text-[9px] font-semibold bg-amber-50 text-amber-900 border border-amber-200/60 px-1.5 py-0.2 rounded">
+                              {item.name}
+                            </span>
+                          ))}
+                          {dailyMenu.breakfast.items.length > 3 && (
+                            <span className="text-[8.5px] font-bold text-blue-600">
+                              +{dailyMenu.breakfast.items.length - 3} more
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
-
-                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1 ${
-                    item.status === 'COLLECTED'
-                      ? 'bg-green-50 text-green-700'
-                      : 'bg-orange-50 text-orange-700'
-                  }`}>
-                    {item.status === 'COLLECTED' ? (
-                      <>
-                        <TrendingUp className="h-3 w-3 stroke-[2.5]" />
-                        Collected
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="h-3 w-3 animate-spin stroke-[2.5]" />
-                        Ordered
-                      </>
-                    )}
-                  </span>
+                  <div>
+                    {breakfastStatus !== 'Not Requested' ? (
+                      <div className="h-9 w-9 rounded-full flex items-center justify-center bg-green-50 text-green-600 border border-green-100">
+                        <Check className="h-4.5 w-4.5 stroke-[2.5]" />
+                      </div>
+                    ) : submittingMeal === 'BREAKFAST' ? (
+                      <div className="h-9 w-9 rounded-full flex items-center justify-center bg-slate-100 text-slate-500">
+                        <RefreshCw className="h-4.5 w-4.5 animate-spin" />
+                      </div>
+                    ) : isBreakfastLocked ? (
+                      <span className="text-xs font-bold text-slate-400">Locked</span>
+                    ) : null}
+                  </div>
                 </div>
-              ))
-            )}
-          </div>
-        </div>
-      </>
-    ) : (
-      <div className="space-y-4 animate-in fade-in duration-300">
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-2 gap-3.5">
-          {/* Total Collected Card */}
-          <div className="bg-gradient-to-br from-emerald-600 to-emerald-500 rounded-2xl p-4 text-white shadow-md relative overflow-hidden">
-            <div className="absolute right-[-10px] bottom-[-10px] opacity-15">
-              <Check className="h-24 w-24 stroke-[3]" />
-            </div>
-            <p className="text-[10px] font-bold text-emerald-100 uppercase tracking-widest">
-              Total Collected
-            </p>
-            <h3 className="text-3xl font-extrabold mt-1 tracking-tight">
-              {orders.filter(o => o.status === 'COLLECTED').length}
-            </h3>
-            <p className="text-[9px] text-emerald-50/80 mt-1.5 font-semibold leading-none">
-              Meals successfully taken
-            </p>
-          </div>
 
-          {/* Collection Days Card */}
-          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] relative overflow-hidden">
-            <div className="absolute right-[-10px] bottom-[-10px] opacity-5 text-slate-900">
-              <Calendar className="h-24 w-24 stroke-[2]" />
-            </div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-              Collection Days
-            </p>
-            <h3 className="text-3xl font-extrabold mt-1 tracking-tight text-slate-800">
-              {new Set(orders.filter(o => o.status === 'COLLECTED').map(o => o.requestDate)).size}
-            </h3>
-            <p className="text-[9px] text-slate-400 mt-1.5 font-semibold leading-none">
-              Unique days with meals
-            </p>
-          </div>
-        </div>
+                {/* Lunch Request Card */}
+                <div
+                  onClick={() => handleCardClick('LUNCH')}
+                  className={`p-4 rounded-2xl border flex items-center justify-between transition-all duration-300 transform cursor-pointer hover:shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 active:scale-[0.99] ${isLunchLocked && !activeLunchOrder
+                      ? 'bg-slate-100/50 border-slate-200 opacity-60'
+                      : 'bg-white border-slate-100 hover:border-blue-300'
+                    }`}
+                >
+                  <div className="flex items-center gap-3.5">
+                    <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${isLunchLocked && !activeLunchOrder ? 'bg-slate-200 text-slate-400' : 'bg-blue-50 text-blue-600'
+                      }`}>
+                      <Utensils className="h-5.5 w-5.5 stroke-[2.25]" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-slate-855">Lunch <span className="text-xs font-normal text-slate-500">(Rs. {prices.lunch})</span></h4>
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700">
+                          {selectedBookingDate === todayStr
+                            ? `For Today (${format(selectedDateObj, 'MMM dd')})`
+                            : `For ${format(selectedDateObj, 'EEE, MMM dd')}`
+                          }
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 font-semibold mt-1">
+                        {isLunchLocked && !activeLunchOrder ? (
+                          <span className="text-red-500 font-bold">Booking Closed</span>
+                        ) : (
+                          `Book before 9:00 AM on ${format(selectedDateObj, 'MMM dd')}`
+                        )}
+                      </p>
+                      {activeLunchOrder?.department && (
+                        <div className="mt-1.5 flex flex-wrap gap-1.5">
+                          <span
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (getMealLockedStatus('LUNCH')) {
+                                toast({
+                                  title: 'Booking Closed',
+                                  description: 'Booking is closed. You cannot change the work site.',
+                                });
+                                return;
+                              }
+                              setActiveSiteChangeMeal('LUNCH');
+                            }}
+                            className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-100 cursor-pointer active:scale-95 transition-all"
+                          >
+                            Site: {activeLunchOrder.department}
+                          </span>
+                        </div>
+                      )}
 
-        {/* Meal Breakdown Grid */}
-        <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] space-y-3">
-          <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-            Meal Breakdown
-          </h3>
-          <div className="grid grid-cols-3 gap-2">
-            {/* Breakfast Breakdown */}
-            <div className="bg-amber-50/60 rounded-xl p-3 border border-amber-100/40 text-center">
-              <Coffee className="h-4.5 w-4.5 text-amber-500 mx-auto mb-1 stroke-[2.25]" />
-              <p className="text-[10px] font-bold text-slate-500">Breakfast</p>
-              <h4 className="text-lg font-black text-slate-800 mt-0.5">
-                {orders.filter(o => o.status === 'COLLECTED' && o.mealType === 'BREAKFAST').length}
-              </h4>
-            </div>
+                      {/* Daily Menu items preview on Card */}
+                      {dailyMenu?.lunch?.items && dailyMenu.lunch.items.length > 0 && (
+                        <div className="mt-2 pt-1.5 border-t border-slate-100 flex flex-wrap items-center gap-1">
+                          <span className="text-[9px] font-extrabold text-blue-700 uppercase tracking-wide">
+                            Menu:
+                          </span>
+                          {dailyMenu.lunch.title && (
+                            <span className="text-[9.5px] font-bold text-slate-700 mr-0.5">
+                              {dailyMenu.lunch.title} •
+                            </span>
+                          )}
+                          {dailyMenu.lunch.items.slice(0, 3).map((item, idx) => (
+                            <span key={idx} className="text-[9px] font-semibold bg-blue-50 text-blue-900 border border-blue-200/60 px-1.5 py-0.2 rounded">
+                              {item.name}
+                            </span>
+                          ))}
+                          {dailyMenu.lunch.items.length > 3 && (
+                            <span className="text-[8.5px] font-bold text-blue-600">
+                              +{dailyMenu.lunch.items.length - 3} more
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    {lunchStatus !== 'Not Requested' ? (
+                      <div className="h-9 w-9 rounded-full flex items-center justify-center bg-green-50 text-green-600 border border-green-100">
+                        <Check className="h-4.5 w-4.5 stroke-[2.5]" />
+                      </div>
+                    ) : submittingMeal === 'LUNCH' ? (
+                      <div className="h-9 w-9 rounded-full flex items-center justify-center bg-slate-100 text-slate-500">
+                        <RefreshCw className="h-4.5 w-4.5 animate-spin" />
+                      </div>
+                    ) : isLunchLocked ? (
+                      <span className="text-xs font-bold text-slate-400">Locked</span>
+                    ) : null}
+                  </div>
+                </div>
 
-            {/* Lunch Breakdown */}
-            <div className="bg-blue-50/60 rounded-xl p-3 border border-blue-100/40 text-center">
-              <Utensils className="h-4.5 w-4.5 text-blue-500 mx-auto mb-1 stroke-[2.25]" />
-              <p className="text-[10px] font-bold text-slate-500">Lunch</p>
-              <h4 className="text-lg font-black text-slate-800 mt-0.5">
-                {orders.filter(o => o.status === 'COLLECTED' && o.mealType === 'LUNCH').length}
-              </h4>
-            </div>
+                {/* Dinner Request Card */}
+                <div
+                  onClick={() => handleCardClick('DINNER')}
+                  className={`p-4 rounded-2xl border flex items-center justify-between transition-all duration-300 transform cursor-pointer hover:shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 active:scale-[0.99] ${isDinnerLocked && !activeDinnerOrder
+                      ? 'bg-slate-100/50 border-slate-200 opacity-60'
+                      : 'bg-white border-slate-100 hover:border-blue-300'
+                    }`}
+                >
+                  <div className="flex items-center gap-3.5">
+                    <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${isDinnerLocked && !activeDinnerOrder ? 'bg-slate-200 text-slate-400' : 'bg-indigo-50 text-indigo-500'
+                      }`}>
+                      <Moon className="h-5.5 w-5.5 stroke-[2.25]" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-slate-855">Dinner <span className="text-xs font-normal text-slate-500">(Rs. {prices.dinner})</span></h4>
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700">
+                          {selectedBookingDate === todayStr
+                            ? `For Today (${format(selectedDateObj, 'MMM dd')})`
+                            : `For ${format(selectedDateObj, 'EEE, MMM dd')}`
+                          }
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 font-semibold mt-1">
+                        {isDinnerLocked && !activeDinnerOrder ? (
+                          <span className="text-red-500 font-bold">Booking Closed</span>
+                        ) : (
+                          `Book before 5:00 PM on ${format(selectedDateObj, 'MMM dd')}`
+                        )}
+                      </p>
+                      {activeDinnerOrder?.department && (
+                        <div className="mt-1.5 flex flex-wrap gap-1.5">
+                          <span
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (getMealLockedStatus('DINNER')) {
+                                toast({
+                                  title: 'Booking Closed',
+                                  description: 'Booking is closed. You cannot change the work site.',
+                                });
+                                return;
+                              }
+                              setActiveSiteChangeMeal('DINNER');
+                            }}
+                            className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-100 cursor-pointer active:scale-95 transition-all"
+                          >
+                            Site: {activeDinnerOrder.department}
+                          </span>
+                        </div>
+                      )}
 
-            {/* Dinner Breakdown */}
-            <div className="bg-indigo-50/60 rounded-xl p-3 border border-indigo-100/40 text-center">
-              <Moon className="h-4.5 w-4.5 text-indigo-500 mx-auto mb-1 stroke-[2.25]" />
-              <p className="text-[10px] font-bold text-slate-500">Dinner</p>
-              <h4 className="text-lg font-black text-slate-800 mt-0.5">
-                {orders.filter(o => o.status === 'COLLECTED' && o.mealType === 'DINNER').length}
-              </h4>
-            </div>
-          </div>
-        </div>
-
-        {/* Detailed Collection Log */}
-        <div className="space-y-3">
-          <h3 className="text-sm font-bold text-slate-800">Collection Logs</h3>
-          <div className="space-y-2.5">
-            {orders.filter(o => o.status === 'COLLECTED').length === 0 ? (
-              <div className="bg-white rounded-2xl p-6 text-center border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-                <CircleAlert className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-                <p className="text-xs text-slate-400 font-semibold">No collected meals history found.</p>
+                      {/* Daily Menu items preview on Card */}
+                      {dailyMenu?.dinner?.items && dailyMenu.dinner.items.length > 0 && (
+                        <div className="mt-2 pt-1.5 border-t border-slate-100 flex flex-wrap items-center gap-1">
+                          <span className="text-[9px] font-extrabold text-indigo-700 uppercase tracking-wide">
+                            Menu:
+                          </span>
+                          {dailyMenu.dinner.title && (
+                            <span className="text-[9.5px] font-bold text-slate-700 mr-0.5">
+                              {dailyMenu.dinner.title} •
+                            </span>
+                          )}
+                          {dailyMenu.dinner.items.slice(0, 3).map((item, idx) => (
+                            <span key={idx} className="text-[9px] font-semibold bg-indigo-50 text-indigo-900 border border-indigo-200/60 px-1.5 py-0.2 rounded">
+                              {item.name}
+                            </span>
+                          ))}
+                          {dailyMenu.dinner.items.length > 3 && (
+                            <span className="text-[8.5px] font-bold text-blue-600">
+                              +{dailyMenu.dinner.items.length - 3} more
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    {dinnerStatus !== 'Not Requested' ? (
+                      <div className="h-9 w-9 rounded-full flex items-center justify-center bg-green-50 text-green-600 border border-green-100">
+                        <Check className="h-4.5 w-4.5 stroke-[2.5]" />
+                      </div>
+                    ) : submittingMeal === 'DINNER' ? (
+                      <div className="h-9 w-9 rounded-full flex items-center justify-center bg-slate-100 text-slate-500">
+                        <RefreshCw className="h-4.5 w-4.5 animate-spin" />
+                      </div>
+                    ) : isDinnerLocked ? (
+                      <span className="text-xs font-bold text-slate-400">Locked</span>
+                    ) : null}
+                  </div>
+                </div>
               </div>
-            ) : (
-              orders
-                .filter(o => o.status === 'COLLECTED')
-                .sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime())
-                .map((item) => (
-                  <div 
-                    key={item._id} 
-                    className="bg-white rounded-xl p-3.5 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col gap-2"
-                  >
-                    <div className="flex items-center justify-between">
+            </div>
+
+            {/* Today's Status Widget */}
+            <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-800">My Active Orders</h3>
+                <button onClick={fetchData} className="p-1 rounded hover:bg-slate-50 text-slate-400 hover:text-slate-600">
+                  <RefreshCw className="h-3.5 w-3.5" />
+                </button>
+              </div>
+
+              <div className="divide-y divide-slate-100">
+                {/* Breakfast Status */}
+                <div className="py-3 flex flex-col gap-1 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-slate-650 flex items-center gap-2">
+                      <Coffee className="h-4 w-4 text-amber-500" /> Breakfast ({selectedBookingDate === tomorrowStr ? 'For Tomorrow' : `For Today (${format(selectedDateObj, 'MMM dd')})`})
+                      {activeBreakfastOrder?.mealOption && (
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${activeBreakfastOrder.mealOption === 'VEGETARIAN'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                            : 'bg-rose-50 text-rose-700 border border-rose-100'
+                          }`}>
+                          {activeBreakfastOrder.mealOption === 'VEGETARIAN' ? 'Veg' : 'Non-Veg'}
+                        </span>
+                      )}
+                      {activeBreakfastOrder?.department && (
+                        <span
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (getMealLockedStatus('BREAKFAST')) {
+                              toast({
+                                title: 'Booking Closed',
+                                description: 'Booking is closed. You cannot change the work site.',
+                              });
+                              return;
+                            }
+                            setActiveSiteChangeMeal('BREAKFAST');
+                          }}
+                          className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-100 cursor-pointer active:scale-95 transition-all"
+                        >
+                          {activeBreakfastOrder.department}
+                        </span>
+                      )}
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`px-2 py-0.5 font-bold rounded-full text-[10px] ${breakfastStatus === 'Collected'
+                          ? 'bg-green-100 text-green-700'
+                          : breakfastStatus === 'Pending'
+                            ? 'bg-orange-100 text-orange-700'
+                            : 'bg-slate-100 text-slate-500'
+                        }`}>
+                        {breakfastStatus}
+                      </span>
+                      {breakfastStatus === 'Pending' && activeBreakfastOrder && (
+                        <button
+                          type="button"
+                          onClick={() => handleMarkAsCollectedSelf(activeBreakfastOrder._id)}
+                          className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded font-bold text-[9px] transition-all active:scale-95 flex items-center gap-0.5"
+                        >
+                          <Check className="h-2.5 w-2.5 stroke-[2.5]" />
+                          Self Collect
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {activeBreakfastOrder?.notes && (
+                    <div className="text-[10px] bg-slate-50 border border-slate-100 text-slate-500 rounded-lg p-2 font-medium">
+                      <span className="font-bold text-slate-700 block text-[9px] uppercase tracking-wider mb-0.5">Special Request</span>
+                      &ldquo;{activeBreakfastOrder.notes}&rdquo;
+                    </div>
+                  )}
+                  {(() => {
+                    const order = activeBreakfastOrder;
+                    if (order && order.status === 'ORDERED' && !isBreakfastLocked) {
+                      const msRemaining = (new Date(order.requestedAt).getTime() + 10 * 60 * 1000) - currentTime.getTime();
+                      if (msRemaining > 0) {
+                        const mins = Math.floor(msRemaining / (1000 * 60));
+                        const secs = Math.floor((msRemaining % (1000 * 60)) / 1000);
+                        const formattedTime = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+                        return (
+                          <div className="mt-2 flex items-center justify-between bg-red-50/40 border border-red-100/50 rounded-xl p-2.5 animate-in fade-in duration-200">
+                            <span className="text-[10px] font-bold text-red-650 flex items-center gap-1">
+                              <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-ping shrink-0" />
+                              Cancel available: {formattedTime}
+                            </span>
+                            <div className="flex gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleSkipTimer('BREAKFAST')}
+                                className="px-2.5 py-1 text-[9px] font-bold text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg active:scale-95 transition-all shadow-sm"
+                              >
+                                Skip Time
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleCancelOrder('BREAKFAST')}
+                                className="px-2.5 py-1 text-[9px] font-bold text-red-700 bg-red-100 hover:bg-red-200 rounded-lg active:scale-95 transition-all shadow-sm"
+                              >
+                                Cancel Order
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      }
+                    }
+                    return null;
+                  })()}
+                </div>
+
+                {/* Lunch Status */}
+                <div className="py-3 flex flex-col gap-1 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-slate-650 flex items-center gap-2">
+                      <Utensils className="h-4 w-4 text-blue-500" /> Lunch ({selectedBookingDate === todayStr ? 'For Today' : `For ${format(selectedDateObj, 'MMM dd')}`})
+                      {activeLunchOrder?.mealOption && (
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${activeLunchOrder.mealOption === 'VEGETARIAN'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                            : 'bg-rose-50 text-rose-700 border border-rose-100'
+                          }`}>
+                          {activeLunchOrder.mealOption === 'VEGETARIAN' ? 'Veg' : 'Non-Veg'}
+                        </span>
+                      )}
+                      {activeLunchOrder?.department && (
+                        <span
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (getMealLockedStatus('LUNCH')) {
+                              toast({
+                                title: 'Booking Closed',
+                                description: 'Booking is closed. You cannot change the work site.',
+                              });
+                              return;
+                            }
+                            setActiveSiteChangeMeal('LUNCH');
+                          }}
+                          className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-100 cursor-pointer active:scale-95 transition-all"
+                        >
+                          {activeLunchOrder.department}
+                        </span>
+                      )}
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`px-2 py-0.5 font-bold rounded-full text-[10px] ${lunchStatus === 'Collected'
+                          ? 'bg-green-100 text-green-700'
+                          : lunchStatus === 'Pending'
+                            ? 'bg-orange-100 text-orange-700'
+                            : 'bg-slate-100 text-slate-500'
+                        }`}>
+                        {lunchStatus}
+                      </span>
+                      {lunchStatus === 'Pending' && activeLunchOrder && (
+                        <button
+                          type="button"
+                          onClick={() => handleMarkAsCollectedSelf(activeLunchOrder._id)}
+                          className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded font-bold text-[9px] transition-all active:scale-95 flex items-center gap-0.5"
+                        >
+                          <Check className="h-2.5 w-2.5 stroke-[2.5]" />
+                          Self Collect
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {activeLunchOrder?.notes && (
+                    <div className="text-[10px] bg-slate-50 border border-slate-100 text-slate-500 rounded-lg p-2 font-medium">
+                      <span className="font-bold text-slate-700 block text-[9px] uppercase tracking-wider mb-0.5">Special Request</span>
+                      &ldquo;{activeLunchOrder.notes}&rdquo;
+                    </div>
+                  )}
+                  {(() => {
+                    const order = activeLunchOrder;
+                    if (order && order.status === 'ORDERED' && !isLunchLocked) {
+                      const msRemaining = (new Date(order.requestedAt).getTime() + 10 * 60 * 1000) - currentTime.getTime();
+                      if (msRemaining > 0) {
+                        const mins = Math.floor(msRemaining / (1000 * 60));
+                        const secs = Math.floor((msRemaining % (1000 * 60)) / 1000);
+                        const formattedTime = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+                        return (
+                          <div className="mt-2 flex items-center justify-between bg-red-50/40 border border-red-100/50 rounded-xl p-2.5 animate-in fade-in duration-200">
+                            <span className="text-[10px] font-bold text-red-650 flex items-center gap-1">
+                              <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-ping shrink-0" />
+                              Cancel available: {formattedTime}
+                            </span>
+                            <div className="flex gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleSkipTimer('LUNCH')}
+                                className="px-2.5 py-1 text-[9px] font-bold text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg active:scale-95 transition-all shadow-sm"
+                              >
+                                Skip Time
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleCancelOrder('LUNCH')}
+                                className="px-2.5 py-1 text-[9px] font-bold text-red-700 bg-red-100 hover:bg-red-200 rounded-lg active:scale-95 transition-all shadow-sm"
+                              >
+                                Cancel Order
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      }
+                    }
+                    return null;
+                  })()}
+                </div>
+
+                {/* Dinner Status */}
+                <div className="py-3 flex flex-col gap-1 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-slate-650 flex items-center gap-2">
+                      <Moon className="h-4 w-4 text-indigo-500" /> Dinner ({selectedBookingDate === todayStr ? 'For Today' : `For ${format(selectedDateObj, 'MMM dd')}`})
+                      {activeDinnerOrder?.mealOption && (
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${activeDinnerOrder.mealOption === 'VEGETARIAN'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                            : 'bg-rose-50 text-rose-700 border border-rose-100'
+                          }`}>
+                          {activeDinnerOrder.mealOption === 'VEGETARIAN' ? 'Veg' : 'Non-Veg'}
+                        </span>
+                      )}
+                      {activeDinnerOrder?.department && (
+                        <span
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (getMealLockedStatus('DINNER')) {
+                              toast({
+                                title: 'Booking Closed',
+                                description: 'Booking is closed. You cannot change the work site.',
+                              });
+                              return;
+                            }
+                            setActiveSiteChangeMeal('DINNER');
+                          }}
+                          className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-100 cursor-pointer active:scale-95 transition-all"
+                        >
+                          {activeDinnerOrder.department}
+                        </span>
+                      )}
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`px-2 py-0.5 font-bold rounded-full text-[10px] ${dinnerStatus === 'Collected'
+                          ? 'bg-green-100 text-green-700'
+                          : dinnerStatus === 'Pending'
+                            ? 'bg-orange-100 text-orange-700'
+                            : 'bg-slate-100 text-slate-500'
+                        }`}>
+                        {dinnerStatus}
+                      </span>
+                      {dinnerStatus === 'Pending' && activeDinnerOrder && (
+                        <button
+                          type="button"
+                          onClick={() => handleMarkAsCollectedSelf(activeDinnerOrder._id)}
+                          className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded font-bold text-[9px] transition-all active:scale-95 flex items-center gap-0.5"
+                        >
+                          <Check className="h-2.5 w-2.5 stroke-[2.5]" />
+                          Self Collect
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {activeDinnerOrder?.notes && (
+                    <div className="text-[10px] bg-slate-50 border border-slate-100 text-slate-500 rounded-lg p-2 font-medium">
+                      <span className="font-bold text-slate-700 block text-[9px] uppercase tracking-wider mb-0.5">Special Request</span>
+                      &ldquo;{activeDinnerOrder.notes}&rdquo;
+                    </div>
+                  )}
+                  {(() => {
+                    const order = activeDinnerOrder;
+                    if (order && order.status === 'ORDERED' && !isDinnerLocked) {
+                      const msRemaining = (new Date(order.requestedAt).getTime() + 10 * 60 * 1000) - currentTime.getTime();
+                      if (msRemaining > 0) {
+                        const mins = Math.floor(msRemaining / (1000 * 60));
+                        const secs = Math.floor((msRemaining % (1000 * 60)) / 1000);
+                        const formattedTime = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+                        return (
+                          <div className="mt-2 flex items-center justify-between bg-red-50/40 border border-red-100/50 rounded-xl p-2.5 animate-in fade-in duration-200">
+                            <span className="text-[10px] font-bold text-red-650 flex items-center gap-1">
+                              <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-ping shrink-0" />
+                              Cancel available: {formattedTime}
+                            </span>
+                            <div className="flex gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleSkipTimer('DINNER')}
+                                className="px-2.5 py-1 text-[9px] font-bold text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg active:scale-95 transition-all shadow-sm"
+                              >
+                                Skip Time
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleCancelOrder('DINNER')}
+                                className="px-2.5 py-1 text-[9px] font-bold text-red-700 bg-red-100 hover:bg-red-200 rounded-lg active:scale-95 transition-all shadow-sm"
+                              >
+                                Cancel Order
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      }
+                    }
+                    return null;
+                  })()}
+                </div>
+              </div>
+            </div>
+
+            {/* Recent History */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-800">Recent Requests</h3>
+                <Link href="/employee/history" className="text-xs font-bold text-blue-600 hover:underline flex items-center">
+                  View All <ChevronRight className="h-3 w-3" />
+                </Link>
+              </div>
+
+              <div className="space-y-2.5">
+                {recentHistory.length === 0 ? (
+                  <div className="bg-white rounded-2xl p-6 text-center border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+                    <CircleAlert className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+                    <p className="text-xs text-slate-400 font-semibold">No recent meal requests found.</p>
+                  </div>
+                ) : (
+                  recentHistory.map((item) => (
+                    <div
+                      key={item._id}
+                      className="bg-white rounded-xl p-3.5 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex items-center justify-between"
+                    >
                       <div className="flex items-center gap-3">
-                        <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${
-                          item.mealType === 'BREAKFAST' 
+                        <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${item.mealType === 'BREAKFAST'
                             ? 'bg-amber-50 text-amber-500'
                             : item.mealType === 'LUNCH'
-                            ? 'bg-blue-50 text-blue-600'
-                            : 'bg-indigo-50 text-indigo-500'
-                        }`}>
+                              ? 'bg-blue-50 text-blue-600'
+                              : 'bg-indigo-50 text-indigo-500'
+                          }`}>
                           {item.mealType === 'BREAKFAST' ? (
                             <Coffee className="h-4 w-4" />
                           ) : item.mealType === 'LUNCH' ? (
@@ -1449,47 +1341,192 @@ export default function EmployeeDashboard() {
                           <h4 className="text-xs font-bold text-slate-800 capitalize">
                             {item.mealType.toLowerCase()}
                           </h4>
-                          <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
-                            For Date: {format(new Date(item.requestDate + 'T00:00:00'), 'EEE, MMM dd, yyyy')}
+                          <p className="text-[10px] text-slate-405 font-semibold mt-0.5">
+                            {(() => {
+                              const dateObj = new Date(item.requestedAt);
+                              const todayStr = format(new Date(), 'yyyy-MM-dd');
+                              if (item.requestDate === todayStr) {
+                                return `Today ${item.mealType.charAt(0) + item.mealType.slice(1).toLowerCase()} at ${format(dateObj, 'h:mm a')}`;
+                              } else {
+                                return `${format(dateObj, 'MMM dd, yyyy')} at ${format(dateObj, 'h:mm a')}`;
+                              }
+                            })()}
                           </p>
                         </div>
                       </div>
-                      
-                      <div className="flex flex-col items-end gap-1">
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-green-50 text-green-700 border border-green-100 flex items-center gap-0.5">
-                          <Check className="h-2.5 w-2.5 stroke-[3]" /> Collected
-                        </span>
-                        {item.mealOption && (
-                          <span className={`text-[8px] font-extrabold px-1.5 py-0.5 rounded ${
-                            item.mealOption === 'VEGETARIAN' 
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
-                              : 'bg-rose-50 text-rose-700 border border-rose-100'
-                          }`}>
-                            {item.mealOption === 'VEGETARIAN' ? 'Veg' : 'Non-Veg'}
-                          </span>
+
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1 ${item.status === 'COLLECTED'
+                          ? 'bg-green-50 text-green-700'
+                          : 'bg-orange-50 text-orange-700'
+                        }`}>
+                        {item.status === 'COLLECTED' ? (
+                          <>
+                            <TrendingUp className="h-3 w-3 stroke-[2.5]" />
+                            Collected
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="h-3 w-3 animate-spin stroke-[2.5]" />
+                            Ordered
+                          </>
+                        )}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="space-y-4 animate-in fade-in duration-300">
+            {/* Statistics Cards */}
+            <div className="grid grid-cols-2 gap-3.5">
+              {/* Total Collected Card */}
+              <div className="bg-gradient-to-br from-emerald-600 to-emerald-500 rounded-2xl p-4 text-white shadow-md relative overflow-hidden">
+                <div className="absolute right-[-10px] bottom-[-10px] opacity-15">
+                  <Check className="h-24 w-24 stroke-[3]" />
+                </div>
+                <p className="text-[10px] font-bold text-emerald-100 uppercase tracking-widest">
+                  Total Collected
+                </p>
+                <h3 className="text-3xl font-extrabold mt-1 tracking-tight">
+                  {orders.filter(o => o.status === 'COLLECTED').length}
+                </h3>
+                <p className="text-[9px] text-emerald-50/80 mt-1.5 font-semibold leading-none">
+                  Meals successfully taken
+                </p>
+              </div>
+
+              {/* Collection Days Card */}
+              <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] relative overflow-hidden">
+                <div className="absolute right-[-10px] bottom-[-10px] opacity-5 text-slate-900">
+                  <Calendar className="h-24 w-24 stroke-[2]" />
+                </div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                  Collection Days
+                </p>
+                <h3 className="text-3xl font-extrabold mt-1 tracking-tight text-slate-800">
+                  {new Set(orders.filter(o => o.status === 'COLLECTED').map(o => o.requestDate)).size}
+                </h3>
+                <p className="text-[9px] text-slate-400 mt-1.5 font-semibold leading-none">
+                  Unique days with meals
+                </p>
+              </div>
+            </div>
+
+            {/* Meal Breakdown Grid */}
+            <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] space-y-3">
+              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                Meal Breakdown
+              </h3>
+              <div className="grid grid-cols-3 gap-2">
+                {/* Breakfast Breakdown */}
+                <div className="bg-amber-50/60 rounded-xl p-3 border border-amber-100/40 text-center">
+                  <Coffee className="h-4.5 w-4.5 text-amber-500 mx-auto mb-1 stroke-[2.25]" />
+                  <p className="text-[10px] font-bold text-slate-500">Breakfast</p>
+                  <h4 className="text-lg font-black text-slate-800 mt-0.5">
+                    {orders.filter(o => o.status === 'COLLECTED' && o.mealType === 'BREAKFAST').length}
+                  </h4>
+                </div>
+
+                {/* Lunch Breakdown */}
+                <div className="bg-blue-50/60 rounded-xl p-3 border border-blue-100/40 text-center">
+                  <Utensils className="h-4.5 w-4.5 text-blue-500 mx-auto mb-1 stroke-[2.25]" />
+                  <p className="text-[10px] font-bold text-slate-500">Lunch</p>
+                  <h4 className="text-lg font-black text-slate-800 mt-0.5">
+                    {orders.filter(o => o.status === 'COLLECTED' && o.mealType === 'LUNCH').length}
+                  </h4>
+                </div>
+
+                {/* Dinner Breakdown */}
+                <div className="bg-indigo-50/60 rounded-xl p-3 border border-indigo-100/40 text-center">
+                  <Moon className="h-4.5 w-4.5 text-indigo-500 mx-auto mb-1 stroke-[2.25]" />
+                  <p className="text-[10px] font-bold text-slate-500">Dinner</p>
+                  <h4 className="text-lg font-black text-slate-800 mt-0.5">
+                    {orders.filter(o => o.status === 'COLLECTED' && o.mealType === 'DINNER').length}
+                  </h4>
+                </div>
+              </div>
+            </div>
+
+            {/* Detailed Collection Log */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold text-slate-800">Collection Logs</h3>
+              <div className="space-y-2.5">
+                {orders.filter(o => o.status === 'COLLECTED').length === 0 ? (
+                  <div className="bg-white rounded-2xl p-6 text-center border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+                    <CircleAlert className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+                    <p className="text-xs text-slate-400 font-semibold">No collected meals history found.</p>
+                  </div>
+                ) : (
+                  orders
+                    .filter(o => o.status === 'COLLECTED')
+                    .sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime())
+                    .map((item) => (
+                      <div
+                        key={item._id}
+                        className="bg-white rounded-xl p-3.5 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col gap-2"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${item.mealType === 'BREAKFAST'
+                                ? 'bg-amber-50 text-amber-500'
+                                : item.mealType === 'LUNCH'
+                                  ? 'bg-blue-50 text-blue-600'
+                                  : 'bg-indigo-50 text-indigo-500'
+                              }`}>
+                              {item.mealType === 'BREAKFAST' ? (
+                                <Coffee className="h-4 w-4" />
+                              ) : item.mealType === 'LUNCH' ? (
+                                <Utensils className="h-4 w-4" />
+                              ) : (
+                                <Moon className="h-4 w-4" />
+                              )}
+                            </div>
+                            <div>
+                              <h4 className="text-xs font-bold text-slate-800 capitalize">
+                                {item.mealType.toLowerCase()}
+                              </h4>
+                              <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
+                                For Date: {format(new Date(item.requestDate + 'T00:00:00'), 'EEE, MMM dd, yyyy')}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col items-end gap-1">
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-green-50 text-green-700 border border-green-100 flex items-center gap-0.5">
+                              <Check className="h-2.5 w-2.5 stroke-[3]" /> Collected
+                            </span>
+                            {item.mealOption && (
+                              <span className={`text-[8px] font-extrabold px-1.5 py-0.5 rounded ${item.mealOption === 'VEGETARIAN'
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                                  : 'bg-rose-50 text-rose-700 border border-rose-100'
+                                }`}>
+                                {item.mealOption === 'VEGETARIAN' ? 'Veg' : 'Non-Veg'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {item.collectedAt && (
+                          <div className="text-[9px] text-slate-400 font-bold bg-slate-50 border border-slate-100/50 rounded-lg p-1.5 flex items-center justify-between">
+                            <span>COLLECTION TIME</span>
+                            <span className="text-slate-650">{format(new Date(item.collectedAt), 'MMM dd, yyyy @ h:mm a')}</span>
+                          </div>
                         )}
                       </div>
-                    </div>
-                    {item.collectedAt && (
-                      <div className="text-[9px] text-slate-400 font-bold bg-slate-50 border border-slate-100/50 rounded-lg p-1.5 flex items-center justify-between">
-                        <span>COLLECTION TIME</span>
-                        <span className="text-slate-650">{format(new Date(item.collectedAt), 'MMM dd, yyyy @ h:mm a')}</span>
-                      </div>
-                    )}
-                  </div>
-                ))
-            )}
+                    ))
+                )}
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </div>
-    )}
-  </div>
 
       {/* Meal Preference Selection Modal */}
       {activeMealSelection && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 ease-out animate-in fade-in">
           <div className="absolute inset-0" onClick={() => { setActiveMealSelection(null); setSelectedOption(null); setOrderNotes(''); setSelectedOrderDepartment(null); setMealModalStep('PREFERENCE'); }}></div>
-          
+
           {mealModalStep === 'PREFERENCE' ? (
             <div className="relative bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl border border-slate-100 transition-all duration-300 ease-out transform animate-in zoom-in-95">
               <h3 className="text-lg font-bold text-slate-800 tracking-tight">
@@ -1535,13 +1572,12 @@ export default function EmployeeDashboard() {
                         {plan.items.map((item, idx) => (
                           <span
                             key={idx}
-                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border flex items-center gap-1 ${
-                              item.dietary === 'VEG'
+                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border flex items-center gap-1 ${item.dietary === 'VEG'
                                 ? 'bg-emerald-50 text-emerald-800 border-emerald-200/80 font-medium'
                                 : item.dietary === 'NON_VEG'
-                                ? 'bg-rose-50 text-rose-800 border-rose-200/80 font-medium'
-                                : 'bg-white text-slate-700 border-slate-200 shadow-2xs'
-                            }`}
+                                  ? 'bg-rose-50 text-rose-800 border-rose-200/80 font-medium'
+                                  : 'bg-white text-slate-700 border-slate-200 shadow-2xs'
+                              }`}
                           >
                             {item.dietary === 'VEG' && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />}
                             {item.dietary === 'NON_VEG' && <span className="h-1.5 w-1.5 rounded-full bg-rose-500 shrink-0" />}
@@ -1553,36 +1589,34 @@ export default function EmployeeDashboard() {
                   </div>
                 );
               })()}
-              
+
               <div className="grid grid-cols-2 gap-4 mt-5">
                 {/* Vegetarian Option Card */}
                 <button
                   type="button"
                   onClick={() => setSelectedOption('VEGETARIAN')}
-                  className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all duration-300 transform shadow-[0_2px_8px_rgba(0,0,0,0.01)] ${
-                    selectedOption === 'VEGETARIAN'
+                  className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all duration-300 transform shadow-[0_2px_8px_rgba(0,0,0,0.01)] ${selectedOption === 'VEGETARIAN'
                       ? 'border-green-500 bg-green-50/45 text-green-700 shadow-green-100/50 shadow-md -translate-y-0.5 scale-[1.02]'
                       : 'border-slate-200 hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] bg-white text-slate-600'
-                  }`}
+                    }`}
                 >
                   <div className={`h-10 w-10 rounded-full flex items-center justify-center mb-2.5 ${selectedOption === 'VEGETARIAN' ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-500'}`}>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 3.5 1 9.8a7 7 0 0 1-9 8.2Z"/><path d="M9 22v-4h-2.5a2.5 2.5 0 0 1 0-5H9m2-5.5v4"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 3.5 1 9.8a7 7 0 0 1-9 8.2Z" /><path d="M9 22v-4h-2.5a2.5 2.5 0 0 1 0-5H9m2-5.5v4" /></svg>
                   </div>
                   <span className="text-xs font-extrabold uppercase tracking-wider">Vegetarian</span>
                 </button>
-   
+
                 {/* Meat Option Card */}
                 <button
                   type="button"
                   onClick={() => setSelectedOption('MEAT')}
-                  className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all duration-300 transform shadow-[0_2px_8px_rgba(0,0,0,0.01)] ${
-                    selectedOption === 'MEAT'
+                  className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all duration-300 transform shadow-[0_2px_8px_rgba(0,0,0,0.01)] ${selectedOption === 'MEAT'
                       ? 'border-blue-500 bg-blue-50/45 text-blue-700 shadow-blue-100/50 shadow-md -translate-y-0.5 scale-[1.02]'
                       : 'border-slate-200 hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] bg-white text-slate-600'
-                  }`}
+                    }`}
                 >
                   <div className={`h-10 w-10 rounded-full flex items-center justify-center mb-2.5 ${selectedOption === 'MEAT' ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-500'}`}>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a5 5 0 1 0 10 0V2Z"/><path d="m15.4 7.6-6.1 6.1m-2.1.3a2.5 2.5 0 1 0-3.5 3.5m4.3-1.4a2.5 2.5 0 1 0 3.5-3.5m-3.5 3.5h0Z"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a5 5 0 1 0 10 0V2Z" /><path d="m15.4 7.6-6.1 6.1m-2.1.3a2.5 2.5 0 1 0-3.5 3.5m4.3-1.4a2.5 2.5 0 1 0 3.5-3.5m-3.5 3.5h0Z" /></svg>
                   </div>
                   <span className="text-xs font-extrabold uppercase tracking-wider">Non vegetarian</span>
                 </button>
@@ -1604,7 +1638,7 @@ export default function EmployeeDashboard() {
                     const mins = Math.floor(msRemaining / (1000 * 60));
                     const secs = Math.floor((msRemaining % (1000 * 60)) / 1000);
                     const formattedTime = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-                    
+
                     return (
                       <div className="mt-4 flex items-center justify-between bg-red-50/40 border border-red-100/50 rounded-xl p-2.5 animate-in fade-in duration-200">
                         <span className="text-[10px] font-bold text-red-600 flex items-center gap-1">
@@ -1647,7 +1681,7 @@ export default function EmployeeDashboard() {
                 }
                 return null;
               })()}
-   
+
               <div className="flex gap-3 mt-6">
                 <button
                   type="button"
@@ -1664,11 +1698,10 @@ export default function EmployeeDashboard() {
                       setMealModalStep('SITE');
                     }
                   }}
-                  className={`flex-1 h-11 font-bold rounded-xl text-xs active:scale-98 transition-all flex items-center justify-center gap-1.5 ${
-                    selectedOption
-                      ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm' 
+                  className={`flex-1 h-11 font-bold rounded-xl text-xs active:scale-98 transition-all flex items-center justify-center gap-1.5 ${selectedOption
+                      ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
                       : 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                  }`}
+                    }`}
                 >
                   Next
                   <ChevronRight className="w-4 h-4 ml-0.5" />
@@ -1682,7 +1715,7 @@ export default function EmployeeDashboard() {
               <p className="text-xs text-slate-500 mt-2 font-semibold">
                 Please choose your current work site (CWIT, ECT, SAGT, or CICT) to proceed.
               </p>
-              
+
               <div className="flex flex-col gap-3 mt-6">
                 {['CWIT', 'ECT', 'SAGT', 'CICT'].map((dept) => (
                   <button
@@ -1695,13 +1728,13 @@ export default function EmployeeDashboard() {
                         const mealOption = selectedOption;
                         const notes = orderNotes;
                         const chosenDept = dept as 'CWIT' | 'ECT' | 'SAGT' | 'CICT';
-                        
+
                         setActiveMealSelection(null);
                         setSelectedOption(null);
                         setOrderNotes('');
                         setSelectedOrderDepartment(null);
                         setMealModalStep('PREFERENCE');
-                        
+
                         if (isUpdatingNotesOnly) {
                           await handleUpdateOrder(mealType, mealOption, notes, chosenDept);
                         } else {
@@ -1733,11 +1766,11 @@ export default function EmployeeDashboard() {
       {/* Quick Work Site Selection Modal */}
       {activeSiteChangeMeal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 ease-out animate-in fade-in">
-          <div 
-            className="absolute inset-0" 
+          <div
+            className="absolute inset-0"
             onClick={() => setActiveSiteChangeMeal(null)}
           />
-          
+
           <div className="relative bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl border border-slate-100 transition-all duration-300 ease-out transform animate-in zoom-in-95">
             <h3 className="text-lg font-bold text-slate-800 tracking-tight">
               Change Work Site
@@ -1745,14 +1778,14 @@ export default function EmployeeDashboard() {
             <p className="text-xs text-slate-500 mt-1 font-semibold">
               Select the work site for your {activeSiteChangeMeal.toLowerCase()} order.
             </p>
-            
+
             <div className="grid grid-cols-2 gap-2.5 mt-6">
               {['CWIT', 'ECT', 'SAGT', 'CICT'].map((dept) => {
                 const existingOrder = orders.find(
                   o => o.requestDate === selectedBookingDate && o.mealType === activeSiteChangeMeal
                 );
                 const isSelected = existingOrder?.department === dept;
-                
+
                 return (
                   <button
                     key={dept}
@@ -1762,18 +1795,17 @@ export default function EmployeeDashboard() {
                       setActiveSiteChangeMeal(null);
                       await handleQuickUpdateSite(mealType, dept as 'CWIT' | 'ECT' | 'SAGT' | 'CICT');
                     }}
-                    className={`py-3 text-xs font-bold rounded-xl border transition-all duration-200 active:scale-95 ${
-                      isSelected
+                    className={`py-3 text-xs font-bold rounded-xl border transition-all duration-200 active:scale-95 ${isSelected
                         ? 'border-blue-500 bg-blue-50/50 text-blue-700 font-extrabold shadow-sm'
                         : 'border-slate-200 bg-white text-slate-650 hover:border-slate-350 hover:bg-slate-50'
-                    }`}
+                      }`}
                   >
                     {dept}
                   </button>
                 );
               })}
             </div>
-            
+
             <div className="mt-5">
               <button
                 type="button"
@@ -1786,6 +1818,18 @@ export default function EmployeeDashboard() {
           </div>
         </div>
       )}
+
+      {/* Styled Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        confirmText={confirmDialog.confirmText}
+        cancelText={confirmDialog.cancelText}
+        variant={confirmDialog.variant}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

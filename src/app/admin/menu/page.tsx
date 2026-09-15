@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format, addDays, subDays } from 'date-fns';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 interface MenuItem {
   name: string;
@@ -76,6 +77,20 @@ export default function AdminMenuPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [copying, setCopying] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmText?: string;
+    cancelText?: string;
+    variant?: 'danger' | 'warning' | 'primary';
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    onConfirm: () => {},
+  });
 
   // New item inputs
   const [newItemName, setNewItemName] = useState('');
@@ -298,11 +313,7 @@ export default function AdminMenuPage() {
   };
 
   // Clear current active meal
-  const handleClearCurrentMeal = async () => {
-    if (!confirm(`Are you sure you want to clear the ${activeMeal} menu for ${selectedDate}?`)) {
-      return;
-    }
-
+  const executeClearCurrentMeal = async () => {
     try {
       setSaving(true);
       const res = await fetch(`/api/menu?date=${selectedDate}&mealType=${activeMeal}`, {
@@ -325,6 +336,21 @@ export default function AdminMenuPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleClearCurrentMeal = () => {
+    setConfirmDialog({
+      isOpen: true,
+      title: `Clear ${activeMeal} Menu?`,
+      description: `Are you sure you want to clear the entire ${activeMeal.toLowerCase()} menu for ${selectedDate}? All items and notes will be removed.`,
+      confirmText: 'Yes, Clear Menu',
+      cancelText: 'Cancel',
+      variant: 'danger',
+      onConfirm: () => {
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        executeClearCurrentMeal();
+      },
+    });
   };
 
   // Copy menu from previous day helper
@@ -1038,6 +1064,18 @@ export default function AdminMenuPage() {
         </div>
 
       </div>
+
+      {/* Styled Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        confirmText={confirmDialog.confirmText}
+        cancelText={confirmDialog.cancelText}
+        variant={confirmDialog.variant}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

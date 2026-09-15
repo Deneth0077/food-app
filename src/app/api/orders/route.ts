@@ -256,7 +256,7 @@ export async function PATCH(request: Request) {
         { $set: { status: 'COLLECTED', collectedAt: new Date() } }
       );
 
-      return NextResponse.json({ 
+      return NextResponse.json({
         message: `${result.modifiedCount} order(s) successfully marked as collected.`,
         modifiedCount: result.modifiedCount
       });
@@ -271,7 +271,7 @@ export async function PATCH(request: Request) {
       { $set: { status: 'COLLECTED', collectedAt: new Date() } }
     );
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: `${result.modifiedCount} order(s) successfully marked as collected.`,
       modifiedCount: result.modifiedCount
     });
