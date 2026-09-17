@@ -1071,37 +1071,20 @@ export default function EmployeeDashboard() {
                   {(() => {
                     const order = activeBreakfastOrder;
                     if (order && order.status === 'ORDERED' && !isBreakfastLocked) {
-                      const msRemaining = (new Date(order.requestedAt).getTime() + 5 * 60 * 1000) - currentTime.getTime();
-                      if (msRemaining > 0) {
-                        const mins = Math.floor(msRemaining / (1000 * 60));
-                        const secs = Math.floor((msRemaining % (1000 * 60)) / 1000);
-                        const formattedTime = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-
-                        return (
-                          <div className="mt-2 flex flex-col xs:flex-row xs:items-center justify-between gap-2 bg-red-50/50 border border-red-100 rounded-xl p-2.5 animate-in fade-in duration-200">
-                            <span className="text-[10px] font-bold text-red-650 flex items-center gap-1.5 shrink-0">
-                              <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse shrink-0" />
-                              Cancel window: {formattedTime}
-                            </span>
-                            <div className="flex items-center gap-1.5 w-full xs:w-auto justify-end">
-                              <button
-                                type="button"
-                                onClick={() => handleSkipTimer('BREAKFAST')}
-                                className="flex-1 xs:flex-none px-2.5 py-1 text-[9.5px] font-bold text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg active:scale-95 transition-all shadow-xs text-center"
-                              >
-                                Skip Time
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleCancelOrder('BREAKFAST')}
-                                className="flex-1 xs:flex-none px-2.5 py-1 text-[9.5px] font-bold text-red-700 bg-red-100 hover:bg-red-200 rounded-lg active:scale-95 transition-all shadow-xs text-center"
-                              >
-                                Cancel Order
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      }
+                      return (
+                        <div className="mt-2 flex items-center justify-between gap-2 bg-red-50/50 border border-red-100 rounded-xl p-2.5 animate-in fade-in duration-200">
+                          <span className="text-[10px] font-bold text-slate-600 flex items-center gap-1.5 shrink-0">
+                            Order Active
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleCancelOrder('BREAKFAST')}
+                            className="px-3 py-1 text-[10px] font-bold text-red-700 bg-red-100 hover:bg-red-200 rounded-lg active:scale-95 transition-all shadow-xs"
+                          >
+                            Cancel Order
+                          </button>
+                        </div>
+                      );
                     }
                     return null;
                   })()}
@@ -1171,37 +1154,20 @@ export default function EmployeeDashboard() {
                   {(() => {
                     const order = activeLunchOrder;
                     if (order && order.status === 'ORDERED' && !isLunchLocked) {
-                      const msRemaining = (new Date(order.requestedAt).getTime() + 5 * 60 * 1000) - currentTime.getTime();
-                      if (msRemaining > 0) {
-                        const mins = Math.floor(msRemaining / (1000 * 60));
-                        const secs = Math.floor((msRemaining % (1000 * 60)) / 1000);
-                        const formattedTime = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-
-                        return (
-                          <div className="mt-2 flex flex-col xs:flex-row xs:items-center justify-between gap-2 bg-red-50/50 border border-red-100 rounded-xl p-2.5 animate-in fade-in duration-200">
-                            <span className="text-[10px] font-bold text-red-650 flex items-center gap-1.5 shrink-0">
-                              <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse shrink-0" />
-                              Cancel window: {formattedTime}
-                            </span>
-                            <div className="flex items-center gap-1.5 w-full xs:w-auto justify-end">
-                              <button
-                                type="button"
-                                onClick={() => handleSkipTimer('LUNCH')}
-                                className="flex-1 xs:flex-none px-2.5 py-1 text-[9.5px] font-bold text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg active:scale-95 transition-all shadow-xs text-center"
-                              >
-                                Skip Time
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleCancelOrder('LUNCH')}
-                                className="flex-1 xs:flex-none px-2.5 py-1 text-[9.5px] font-bold text-red-700 bg-red-100 hover:bg-red-200 rounded-lg active:scale-95 transition-all shadow-xs text-center"
-                              >
-                                Cancel Order
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      }
+                      return (
+                        <div className="mt-2 flex items-center justify-between gap-2 bg-red-50/50 border border-red-100 rounded-xl p-2.5 animate-in fade-in duration-200">
+                          <span className="text-[10px] font-bold text-slate-600 flex items-center gap-1.5 shrink-0">
+                            Order Active
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleCancelOrder('LUNCH')}
+                            className="px-3 py-1 text-[10px] font-bold text-red-700 bg-red-100 hover:bg-red-200 rounded-lg active:scale-95 transition-all shadow-xs"
+                          >
+                            Cancel Order
+                          </button>
+                        </div>
+                      );
                     }
                     return null;
                   })()}
@@ -1271,37 +1237,20 @@ export default function EmployeeDashboard() {
                   {(() => {
                     const order = activeDinnerOrder;
                     if (order && order.status === 'ORDERED' && !isDinnerLocked) {
-                      const msRemaining = (new Date(order.requestedAt).getTime() + 5 * 60 * 1000) - currentTime.getTime();
-                      if (msRemaining > 0) {
-                        const mins = Math.floor(msRemaining / (1000 * 60));
-                        const secs = Math.floor((msRemaining % (1000 * 60)) / 1000);
-                        const formattedTime = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-
-                        return (
-                          <div className="mt-2 flex flex-col xs:flex-row xs:items-center justify-between gap-2 bg-red-50/50 border border-red-100 rounded-xl p-2.5 animate-in fade-in duration-200">
-                            <span className="text-[10px] font-bold text-red-650 flex items-center gap-1.5 shrink-0">
-                              <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse shrink-0" />
-                              Cancel window: {formattedTime}
-                            </span>
-                            <div className="flex items-center gap-1.5 w-full xs:w-auto justify-end">
-                              <button
-                                type="button"
-                                onClick={() => handleSkipTimer('DINNER')}
-                                className="flex-1 xs:flex-none px-2.5 py-1 text-[9.5px] font-bold text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg active:scale-95 transition-all shadow-xs text-center"
-                              >
-                                Skip Time
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleCancelOrder('DINNER')}
-                                className="flex-1 xs:flex-none px-2.5 py-1 text-[9.5px] font-bold text-red-700 bg-red-100 hover:bg-red-200 rounded-lg active:scale-95 transition-all shadow-xs text-center"
-                              >
-                                Cancel Order
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      }
+                      return (
+                        <div className="mt-2 flex items-center justify-between gap-2 bg-red-50/50 border border-red-100 rounded-xl p-2.5 animate-in fade-in duration-200">
+                          <span className="text-[10px] font-bold text-slate-600 flex items-center gap-1.5 shrink-0">
+                            Order Active
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleCancelOrder('DINNER')}
+                            className="px-3 py-1 text-[10px] font-bold text-red-700 bg-red-100 hover:bg-red-200 rounded-lg active:scale-95 transition-all shadow-xs"
+                          >
+                            Cancel Order
+                          </button>
+                        </div>
+                      );
                     }
                     return null;
                   })()}
@@ -1641,51 +1590,27 @@ export default function EmployeeDashboard() {
                   order = activeDinnerOrder;
                 }
                 if (order && order.status === 'ORDERED' && !getMealLockedStatus(activeMealSelection)) {
-                  const msRemaining = (new Date(order.requestedAt).getTime() + 5 * 60 * 1000) - currentTime.getTime();
-                  if (msRemaining > 0) {
-                    const mins = Math.floor(msRemaining / (1000 * 60));
-                    const secs = Math.floor((msRemaining % (1000 * 60)) / 1000);
-                    const formattedTime = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-
-                    return (
-                      <div className="mt-3.5 flex flex-col xs:flex-row xs:items-center justify-between gap-2 bg-red-50/50 border border-red-100 rounded-2xl p-2.5 sm:p-3 animate-in fade-in duration-200">
-                        <span className="text-[10px] sm:text-[11px] font-bold text-red-650 flex items-center gap-1.5 shrink-0">
-                          <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse shrink-0" />
-                          Cancel window: {formattedTime}
-                        </span>
-                        <div className="flex items-center gap-1.5 w-full xs:w-auto justify-end">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleSkipTimer(activeMealSelection);
-                              setActiveMealSelection(null);
-                              setSelectedOption(null);
-                              setOrderNotes('');
-                              setSelectedOrderDepartment(null);
-                              setMealModalStep('PREFERENCE');
-                            }}
-                            className="flex-1 xs:flex-none px-2.5 py-1.5 text-[9.5px] sm:text-[10px] font-bold text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-xl active:scale-95 transition-all shadow-xs text-center"
-                          >
-                            Skip Time
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleCancelOrder(activeMealSelection);
-                              setActiveMealSelection(null);
-                              setSelectedOption(null);
-                              setOrderNotes('');
-                              setSelectedOrderDepartment(null);
-                              setMealModalStep('PREFERENCE');
-                            }}
-                            className="flex-1 xs:flex-none px-2.5 py-1.5 text-[9.5px] sm:text-[10px] font-bold text-red-700 bg-red-100 hover:bg-red-200 rounded-xl active:scale-95 transition-all shadow-xs text-center"
-                          >
-                            Cancel Order
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  }
+                  return (
+                    <div className="mt-3.5 flex items-center justify-between gap-2 bg-red-50/50 border border-red-100 rounded-2xl p-2.5 sm:p-3 animate-in fade-in duration-200">
+                      <span className="text-[10px] sm:text-[11px] font-bold text-slate-600 flex items-center gap-1.5 shrink-0">
+                        Order Active
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleCancelOrder(activeMealSelection);
+                          setActiveMealSelection(null);
+                          setSelectedOption(null);
+                          setOrderNotes('');
+                          setSelectedOrderDepartment(null);
+                          setMealModalStep('PREFERENCE');
+                        }}
+                        className="px-3 py-1.5 text-[9.5px] sm:text-[10px] font-bold text-red-700 bg-red-100 hover:bg-red-200 rounded-xl active:scale-95 transition-all shadow-xs"
+                      >
+                        Cancel Order
+                      </button>
+                    </div>
+                  );
                 }
                 return null;
               })()}

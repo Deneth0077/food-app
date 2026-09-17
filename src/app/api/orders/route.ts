@@ -473,7 +473,7 @@ export async function PUT(request: Request) {
   }
 }
 
-// DELETE: Cancel today's active order within 10 minutes (Employee only)
+// DELETE: Cancel an active order (Employee or Admin)
 export async function DELETE(request: Request) {
   try {
     await dbConnect();
@@ -484,138 +484,93 @@ export async function DELETE(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-
-    // Admin or Superadmin cancellation
-    if (authUser.role === 'ADMIN' || authUser.role === 'SUPERADMIN') {
-      const orderId = searchParams.get('orderId');
-      if (!orderId) {
-        return NextResponse.json({ error: 'Order ID is required' }, { status: 400 });
-      }
-      const order = await Order.findById(orderId);
-      if (!order) {
-        return NextResponse.json({ error: 'Order not found' }, { status: 404 });
-      }
-      order.status = 'CANCELLED';
-      order.cancelledAt = new Date();
-      order.cancelledBy = 'ADMIN';
-      await order.save();
-      return NextResponse.json({ message: 'Order cancelled by Admin successfully', order });
-    }
-
-    if (authUser.role !== 'EMPLOYEE') {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
-
+    const orderId = searchParams.get('orderId');
     const mealType = searchParams.get('mealType');
     const requestDate = searchParams.get('requestDate');
 
-    if (!mealType || !['BREAKFAST', 'LUNCH', 'DINNER'].includes(mealType)) {
-      return NextResponse.json({ error: 'Invalid or missing meal type to cancel.' }, { status: 400 });
+    let order;
+    if (orderId) {
+      order = await Order.findById(orderId);
+    } else if (mealType && ['BREAKFAST', 'LUNCH', 'DINNER'].includes(mealType)) {
+      const now = new Date();
+      const todayStr = format(now, 'yyyy-MM-dd');
+      const targetDateStr = requestDate || todayStr;
+
+      order = await Order.findOne({
+        userId: authUser.userId,
+        requestDate: targetDateStr,
+        mealType,
+        status: { $ne: 'CANCELLED' }
+      });
     }
-
-    const now = new Date();
-    const currentHour = now.getHours();
-    const todayStr = format(now, 'yyyy-MM-dd');
-
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStr = format(tomorrow, 'yyyy-MM-dd');
-
-    const targetDateStr = requestDate || todayStr;
-
-    if (targetDateStr < todayStr) {
-      return NextResponse.json({ error: 'Cannot cancel orders for past dates.' }, { status: 400 });
-    }
-
-    if (targetDateStr !== todayStr && targetDateStr !== tomorrowStr) {
-      return NextResponse.json(
-        { error: `${mealType.charAt(0) + mealType.slice(1).toLowerCase()} can only be ordered for today or tomorrow.` },
-        { status: 400 }
-      );
-    }
-
-    // Unified lock validation
-    const targetDate = new Date(targetDateStr + 'T00:00:00');
-    if (mealType === 'BREAKFAST') {
-      const dayBefore = new Date(targetDate.getTime());
-      dayBefore.setDate(dayBefore.getDate() - 1);
-      dayBefore.setHours(20, 0, 0, 0); // 8:00 PM
-      if (now.getTime() >= dayBefore.getTime()) {
-        return NextResponse.json(
-          { error: `Breakfast orders for ${targetDateStr} closed at 8:00 PM on ${format(dayBefore, 'yyyy-MM-dd')}.` },
-          { status: 400 }
-        );
-      }
-    } else if (mealType === 'LUNCH') {
-      const dayOf = new Date(targetDate.getTime());
-      dayOf.setHours(9, 0, 0, 0); // 9:00 AM
-      if (now.getTime() >= dayOf.getTime()) {
-        return NextResponse.json(
-          { error: `Lunch orders for ${targetDateStr} closed at 9:00 AM on ${targetDateStr}.` },
-          { status: 400 }
-        );
-      }
-    } else if (mealType === 'DINNER') {
-      const dayOf = new Date(targetDate.getTime());
-      dayOf.setHours(17, 0, 0, 0); // 5:00 PM
-      if (now.getTime() >= dayOf.getTime()) {
-        return NextResponse.json(
-          { error: `Dinner orders for ${targetDateStr} closed at 5:00 PM on ${targetDateStr}.` },
-          { status: 400 }
-        );
-      }
-    }
-
-    const displayDay = targetDateStr === todayStr ? 'today' : targetDateStr === tomorrowStr ? 'tomorrow' : targetDateStr;
-
-    // Find the order for this user and specific mealType and targetDateStr
-    const order = await Order.findOne({
-      userId: authUser.userId,
-      requestDate: targetDateStr,
-      mealType,
-      status: { $ne: 'CANCELLED' }
-    });
 
     if (!order) {
-      return NextResponse.json({ error: `No active order found for ${displayDay} to cancel.` }, { status: 404 });
+      return NextResponse.json({ error: 'No active order found to cancel.' }, { status: 404 });
     }
 
     if (order.status === 'COLLECTED') {
       return NextResponse.json({ error: 'Collected meals cannot be cancelled.' }, { status: 400 });
     }
 
-    // Check time difference (10 minutes limit)
-    const orderTime = new Date(order.requestedAt).getTime();
-    const nowTime = new Date().getTime();
-    const diffMs = nowTime - orderTime;
-    const diffMins = diffMs / (1000 * 60);
-
-    if (diffMins > 10) {
-      return NextResponse.json(
-        { error: 'Orders can only be cancelled within 10 minutes of placement.' },
-        { status: 400 }
-      );
+    // Check if non-admin is trying to cancel someone else's order
+    if (authUser.role !== 'ADMIN' && authUser.role !== 'SUPERADMIN' && order.userId.toString() !== authUser.userId) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // Mark order as CANCELLED for full audit tracking
+    // Lock time check (for non-admins)
+    if (authUser.role !== 'ADMIN' && authUser.role !== 'SUPERADMIN') {
+      const now = new Date();
+      const todayStr = format(now, 'yyyy-MM-dd');
+      const targetDateStr = order.requestDate || todayStr;
+      const targetDate = new Date(targetDateStr + 'T00:00:00');
+
+      if (order.mealType === 'BREAKFAST') {
+        const dayBefore = new Date(targetDate.getTime());
+        dayBefore.setDate(dayBefore.getDate() - 1);
+        dayBefore.setHours(20, 0, 0, 0); // 8:00 PM
+        if (now.getTime() >= dayBefore.getTime()) {
+          return NextResponse.json(
+            { error: `Breakfast orders for ${targetDateStr} closed at 8:00 PM on ${format(dayBefore, 'yyyy-MM-dd')}.` },
+            { status: 400 }
+          );
+        }
+      } else if (order.mealType === 'LUNCH') {
+        const dayOf = new Date(targetDate.getTime());
+        dayOf.setHours(9, 0, 0, 0); // 9:00 AM
+        if (now.getTime() >= dayOf.getTime()) {
+          return NextResponse.json(
+            { error: `Lunch orders for ${targetDateStr} closed at 9:00 AM on ${targetDateStr}.` },
+            { status: 400 }
+          );
+        }
+      } else if (order.mealType === 'DINNER') {
+        const dayOf = new Date(targetDate.getTime());
+        dayOf.setHours(17, 0, 0, 0); // 5:00 PM
+        if (now.getTime() >= dayOf.getTime()) {
+          return NextResponse.json(
+            { error: `Dinner orders for ${targetDateStr} closed at 5:00 PM on ${targetDateStr}.` },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
+    // Mark order as CANCELLED directly
     order.status = 'CANCELLED';
     order.cancelledAt = new Date();
-    order.cancelledBy = 'EMPLOYEE';
+    order.cancelledBy = authUser.role === 'ADMIN' || authUser.role === 'SUPERADMIN' ? 'ADMIN' : 'EMPLOYEE';
     await order.save();
 
-    // Also delete today's matching notification
+    // Clean up associated notification if any
     try {
-      const dbUser = await User.findById(authUser.userId);
-      if (dbUser) {
-        await Notification.deleteOne({
-          employeeNo: dbUser.employeeNo,
-          mealType: order.mealType,
-          createdAt: {
-            $gte: new Date(new Date().setHours(0, 0, 0, 0)),
-            $lt: new Date(new Date().setHours(23, 59, 59, 999))
-          }
-        });
-      }
+      await Notification.deleteOne({
+        employeeNo: order.employeeNo,
+        mealType: order.mealType,
+        createdAt: {
+          $gte: new Date(new Date().setHours(0, 0, 0, 0)),
+          $lt: new Date(new Date().setHours(23, 59, 59, 999))
+        }
+      });
     } catch (notifErr) {
       console.error('Failed to delete associated notification:', notifErr);
     }
