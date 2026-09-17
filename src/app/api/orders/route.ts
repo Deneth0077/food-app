@@ -553,6 +553,19 @@ export async function DELETE(request: Request) {
           );
         }
       }
+
+      // Check time difference (10 minutes limit)
+      const orderTime = new Date(order.requestedAt).getTime();
+      const nowTime = new Date().getTime();
+      const diffMs = nowTime - orderTime;
+      const diffMins = diffMs / (1000 * 60);
+
+      if (diffMins > 10) {
+        return NextResponse.json(
+          { error: 'Orders can only be cancelled within 10 minutes of placement.' },
+          { status: 400 }
+        );
+      }
     }
 
     // Mark order as CANCELLED directly
