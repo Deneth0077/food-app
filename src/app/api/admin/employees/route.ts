@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     await dbConnect();
     const user = await getAuthUser(request);
 
-    if (!user || user.role !== 'ADMIN') {
+    if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPERADMIN')) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
@@ -52,7 +52,7 @@ export async function PUT(request: Request) {
     await dbConnect();
     const authUser = await getAuthUser(request);
 
-    if (!authUser || authUser.role !== 'ADMIN') {
+    if (!authUser || (authUser.role !== 'ADMIN' && authUser.role !== 'SUPERADMIN')) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
@@ -71,6 +71,16 @@ export async function PUT(request: Request) {
     // Protect against self-deactivation or self-role change
     if (employeeId === authUser.userId) {
       return NextResponse.json({ error: 'You cannot modify your own admin account settings' }, { status: 400 });
+    }
+
+    // Protect Super Admin from modifications by normal Admins
+    if (employee.role === 'SUPERADMIN' && authUser.role !== 'SUPERADMIN') {
+      return NextResponse.json({ error: 'Normal admins cannot modify a Super Admin account' }, { status: 403 });
+    }
+
+    // Prevent non-superadmin from promoting anyone to SUPERADMIN
+    if (role === 'SUPERADMIN' && authUser.role !== 'SUPERADMIN') {
+      return NextResponse.json({ error: 'Only Super Admin can assign the SUPERADMIN role' }, { status: 403 });
     }
 
     if (typeof isActive === 'boolean') {

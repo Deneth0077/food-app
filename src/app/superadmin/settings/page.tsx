@@ -57,12 +57,12 @@ export default function SuperadminSettingsPage() {
         setLoading(true);
         // 1. Verify Superadmin role
         const meRes = await fetch('/api/auth/me');
-        if (!meRes.ok) {
+        const meData = await meRes.json();
+        if (!meRes.ok || !meData.user) {
           router.push('/auth/login');
           return;
         }
-        const meData = await meRes.json();
-        if (meData.user?.role !== 'SUPERADMIN') {
+        if (meData.user.role !== 'SUPERADMIN') {
           toast({
             variant: 'destructive',
             title: 'Access Restricted',

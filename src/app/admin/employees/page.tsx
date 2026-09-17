@@ -31,6 +31,7 @@ export default function AdminEmployeesPage() {
   const { toast } = useToast();
   
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [currentUserRole, setCurrentUserRole] = useState<string>('ADMIN');
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<'ALL' | 'ADMIN' | 'EMPLOYEE' | 'CANTEEN'>('ALL');
@@ -40,6 +41,14 @@ export default function AdminEmployeesPage() {
   const fetchEmployees = useCallback(async () => {
     try {
       setLoading(true);
+      const meRes = await fetch('/api/auth/me');
+      if (meRes.ok) {
+        const meData = await meRes.json();
+        if (meData.user?.role) {
+          setCurrentUserRole(meData.user.role);
+        }
+      }
+
       const res = await fetch('/api/admin/employees');
       if (!res.ok) {
         if (res.status === 401 || res.status === 403) {
@@ -65,8 +74,17 @@ export default function AdminEmployeesPage() {
     fetchEmployees();
   }, [fetchEmployees]);
 
-  const handleToggleActive = async (e: React.MouseEvent, employeeId: string, currentStatus: boolean) => {
+  const handleToggleActive = async (e: React.MouseEvent, employeeId: string, currentStatus: boolean, isSuperAdmin: boolean) => {
     e.stopPropagation(); // Avoid triggering list row redirect
+    if (isSuperAdmin && currentUserRole !== 'SUPERADMIN') {
+      toast({
+        variant: 'destructive',
+        title: 'Action Denied',
+        description: 'Normal admins cannot modify a Super Admin account.',
+      });
+      return;
+    }
+
     setTogglingId(employeeId);
     try {
       const res = await fetch('/api/admin/employees', {
@@ -202,62 +220,89 @@ export default function AdminEmployeesPage() {
               </p>
             </div>
           ) : (
-            filteredEmployees.map((emp) => (
-              <div 
-                key={emp._id}
-                onClick={() => router.push(`/admin/employees/${emp._id}`)}
-                className={`bg-white rounded-2xl border border-slate-100 p-4 shadow-sm flex items-center justify-between transition-all hover:bg-slate-50 active:scale-[0.99] cursor-pointer`}
-              >
-                <div className="flex items-center gap-3.5">
-                  {/* Avatar or Icon */}
-                  <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-xs text-slate-500 relative">
-                    {(emp.fullName || 'Employee').split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase()}
-                    {/* Status dot */}
-                    <span className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border border-white ${
-                      emp.isActive ? 'bg-green-500' : 'bg-slate-300'
-                    }`}></span>
-                  </div>
+            filteredEmployees.map((emp) => {
+              const isSuperAdminAccount = emp.role === ('SUPERADMIN' as any);
+              const isProtectedFromUser = isSuperAdminAccount && currentUserRole !== 'SUPERADMIN';
 
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-800 tracking-tight flex items-center gap-1.5">
-                      {emp.fullName || 'No Name'}
-                    </h4>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">
-                      {emp.employeeNo || 'N/A'} • {emp.phoneNumber || 'N/A'}
-                    </p>
-                    <span className="inline-block mt-1 bg-slate-50 border border-slate-200/50 rounded px-1.5 py-0.5 text-[8px] font-bold text-slate-500 mr-1.5">
-                      {emp.role}
-                    </span>
-                    {emp.department && (
-                      <span className="inline-block mt-1 bg-blue-50 border border-blue-200/50 rounded px-1.5 py-0.5 text-[8px] font-bold text-blue-700">
-                        {emp.department}
+              return (
+                <div 
+                  key={emp._id}
+                  onClick={() => {
+                    if (isProtectedFromUser) {
+                      toast({
+                        variant: 'destructive',
+                        title: 'Access Restricted',
+                        description: 'Normal admins cannot view or modify a Super Admin profile.',
+                      });
+                      return;
+                    }
+                    router.push(`/admin/employees/${emp._id}`);
+                  }}
+                  className={`bg-white rounded-2xl border border-slate-100 p-4 shadow-sm flex items-center justify-between transition-all hover:bg-slate-50 active:scale-[0.99] ${
+                    isProtectedFromUser ? 'opacity-90 cursor-not-allowed' : 'cursor-pointer'
+                  }`}
+                >
+                  <div className="flex items-center gap-3.5">
+                    {/* Avatar or Icon */}
+                    <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-xs text-slate-500 relative">
+                      {(emp.fullName || 'Employee').split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase()}
+                      {/* Status dot */}
+                      <span className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border border-white ${
+                        emp.isActive ? 'bg-green-500' : 'bg-slate-300'
+                      }`}></span>
+                    </div>
+
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-800 tracking-tight flex items-center gap-1.5">
+                        {emp.fullName || 'No Name'}
+                      </h4>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">
+                        {emp.employeeNo || 'N/A'} • {emp.phoneNumber || 'N/A'}
+                      </p>
+                      <span className={`inline-block mt-1 border rounded px-1.5 py-0.5 text-[8px] font-bold mr-1.5 ${
+                        isSuperAdminAccount 
+                          ? 'bg-purple-50 text-purple-800 border-purple-200 font-extrabold'
+                          : 'bg-slate-50 text-slate-500 border-slate-200/50'
+                      }`}>
+                        {emp.role}
                       </span>
+                      {emp.department && (
+                        <span className="inline-block mt-1 bg-blue-50 border border-blue-200/50 rounded px-1.5 py-0.5 text-[8px] font-bold text-blue-700">
+                          {emp.department}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {isProtectedFromUser ? (
+                      <span className="px-2.5 py-1 rounded-xl text-[9px] font-black uppercase bg-purple-50 text-purple-700 border border-purple-200">
+                        Super Admin (Protected)
+                      </span>
+                    ) : (
+                      <button
+                        onClick={(e) => handleToggleActive(e, emp._id, emp.isActive, isSuperAdminAccount)}
+                        disabled={togglingId === emp._id}
+                        className={`px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all ${
+                          emp.isActive
+                            ? 'bg-red-50 text-red-600 hover:bg-red-100/50 border border-red-100'
+                            : 'bg-green-50 text-green-700 hover:bg-green-100/50 border border-green-100'
+                        }`}
+                      >
+                        {togglingId === emp._id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : emp.isActive ? (
+                          'Deactivate'
+                        ) : (
+                          'Activate'
+                        )}
+                      </button>
                     )}
+                    <ChevronRight className="h-4 w-4 text-slate-300" />
                   </div>
                 </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={(e) => handleToggleActive(e, emp._id, emp.isActive)}
-                    disabled={togglingId === emp._id}
-                    className={`px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all ${
-                      emp.isActive
-                        ? 'bg-red-50 text-red-600 hover:bg-red-100/50 border border-red-100'
-                        : 'bg-green-50 text-green-700 hover:bg-green-100/50 border border-green-100'
-                    }`}
-                  >
-                    {togglingId === emp._id ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : emp.isActive ? (
-                      'Deactivate'
-                    ) : (
-                      'Activate'
-                    )}
-                  </button>
-                  <ChevronRight className="h-4 w-4 text-slate-300" />
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>

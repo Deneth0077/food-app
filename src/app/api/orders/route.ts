@@ -206,17 +206,19 @@ export async function POST(request: Request) {
         existingOrder.cancelledBy = undefined;
         await existingOrder.save();
 
-        // Create Admin Notification
-        try {
-          await Notification.create({
-            employeeName: dbUser.fullName,
-            employeeNo: dbUser.employeeNo,
-            mealType,
-            mealOption,
-            notes: notes ? notes.trim() : undefined,
-          });
-        } catch (notifErr) {
-          console.error('Notification creation failed:', notifErr);
+        // Create Admin Notification (Skip for Superadmin)
+        if (dbUser.role !== 'SUPERADMIN') {
+          try {
+            await Notification.create({
+              employeeName: dbUser.fullName,
+              employeeNo: dbUser.employeeNo,
+              mealType,
+              mealOption,
+              notes: notes ? notes.trim() : undefined,
+            });
+          } catch (notifErr) {
+            console.error('Notification creation failed:', notifErr);
+          }
         }
 
         return NextResponse.json(
@@ -246,18 +248,20 @@ export async function POST(request: Request) {
       department: department || dbUser.department,
     });
 
-    // Create Admin Notification
-    try {
-      await Notification.create({
-        employeeName: dbUser.fullName,
-        employeeNo: dbUser.employeeNo,
-        mealType,
-        mealOption,
-        notes: notes ? notes.trim() : undefined,
-      });
-    } catch (notifError) {
-      // Log notification error but don't fail the order submission
-      console.error('Failed to create notification:', notifError);
+    // Create Admin Notification (Skip for Superadmin)
+    if (dbUser.role !== 'SUPERADMIN') {
+      try {
+        await Notification.create({
+          employeeName: dbUser.fullName,
+          employeeNo: dbUser.employeeNo,
+          mealType,
+          mealOption,
+          notes: notes ? notes.trim() : undefined,
+        });
+      } catch (notifError) {
+        // Log notification error but don't fail the order submission
+        console.error('Failed to create notification:', notifError);
+      }
     }
 
     return NextResponse.json({ message: 'Request submitted successfully', order: newOrder }, { status: 201 });

@@ -44,11 +44,11 @@ export default function EmployeeProfilePage() {
     const fetchProfile = async () => {
       try {
         const res = await fetch('/api/auth/me');
-        if (!res.ok) {
+        const data = await res.json();
+        if (!res.ok || !data.user) {
           router.push('/auth/login');
           return;
         }
-        const data = await res.json();
         setUser(data.user);
         setEditName(data.user.fullName);
         setEditDept(data.user.department || '');

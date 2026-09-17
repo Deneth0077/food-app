@@ -15,42 +15,31 @@ export async function GET(request: Request) {
     const token = cookies().get('token')?.value;
 
     if (!token) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ user: null }, { status: 200 });
     }
 
     const jwtSecret = process.env.JWT_SECRET || 'fallback-jwt-secret-string-do-not-use-in-prod';
-    const payload = await verifyJWT(token, jwtSecret);
+    let payload;
+    try {
+      payload = await verifyJWT(token, jwtSecret);
+    } catch {
+      return NextResponse.json({ user: null }, { status: 200 });
+    }
 
     if (!payload || !payload.userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ user: null }, { status: 200 });
     }
 
     const user = await User.findById(payload.userId).select('-password');
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
-
-    if (!user.isActive) {
-      return NextResponse.json(
-        { error: 'Account is deactivated' },
-        { status: 403 }
-      );
+    if (!user || !user.isActive) {
+      return NextResponse.json({ user: null }, { status: 200 });
     }
 
     return NextResponse.json({ user });
   } catch (error: any) {
     console.error('Me Auth Error:', error);
     return NextResponse.json(
-      { error: 'Internal Server Error' },
+      { error: 'Internal Server Error', user: null },
       { status: 500 }
     );
   }

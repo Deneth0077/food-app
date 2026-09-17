@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Notification from '@/models/Notification';
+import User from '@/models/User';
 import { getAuthUser } from '@/lib/jwt';
 
 export const dynamic = 'force-dynamic';
@@ -11,7 +12,7 @@ export async function GET(request: Request) {
     await dbConnect();
     const user = await getAuthUser(request);
 
-    if (!user || user.role !== 'ADMIN') {
+    if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPERADMIN')) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
@@ -19,7 +20,14 @@ export async function GET(request: Request) {
     const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
     await Notification.deleteMany({ createdAt: { $lt: twoDaysAgo } });
 
-    const notifications = await Notification.find({ createdAt: { $gte: twoDaysAgo } })
+    // Exclude Super Admin notifications completely
+    const superAdmins = await User.find({ role: 'SUPERADMIN' }).select('employeeNo');
+    const superAdminEmployeeNos = superAdmins.map(sa => sa.employeeNo).filter(Boolean);
+
+    const notifications = await Notification.find({ 
+      createdAt: { $gte: twoDaysAgo },
+      employeeNo: { $nin: superAdminEmployeeNos }
+    })
       .sort({ createdAt: -1 })
       .limit(50);
 
@@ -36,7 +44,7 @@ export async function PATCH(request: Request) {
     await dbConnect();
     const user = await getAuthUser(request);
 
-    if (!user || user.role !== 'ADMIN') {
+    if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPERADMIN')) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
@@ -73,7 +81,7 @@ export async function DELETE(request: Request) {
     await dbConnect();
     const user = await getAuthUser(request);
 
-    if (!user || user.role !== 'ADMIN') {
+    if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPERADMIN')) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 

@@ -14,7 +14,7 @@ export async function GET(
     await dbConnect();
     const user = await getAuthUser(request);
 
-    if (!user || user.role !== 'ADMIN') {
+    if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPERADMIN')) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 

@@ -26,6 +26,9 @@ export const metadata: Metadata = {
     statusBarStyle: 'default',
     title: 'ZPMC Food',
   },
+  other: {
+    'mobile-web-app-capable': 'yes',
+  },
   formatDetection: {
     telephone: false,
   },

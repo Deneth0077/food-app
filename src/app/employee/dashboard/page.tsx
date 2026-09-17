@@ -149,11 +149,11 @@ export default function EmployeeDashboard() {
       setLoading(true);
       // Fetch user profile
       const userRes = await fetch('/api/auth/me');
-      if (!userRes.ok) {
+      const userData = await userRes.json();
+      if (!userRes.ok || !userData.user) {
         router.push('/auth/login');
         return;
       }
-      const userData = await userRes.json();
       setUser(userData.user);
 
       // Fetch employee orders
@@ -737,7 +737,7 @@ export default function EmployeeDashboard() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <h4 className="text-xs sm:text-sm font-bold text-slate-855">Breakfast <span className="text-[11px] sm:text-xs font-normal text-slate-500">(Rs. {prices.breakfast})</span></h4>
+                        <h4 className="text-xs sm:text-sm font-bold text-slate-855">Breakfast</h4>
                         <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700">
                           {selectedBookingDate === tomorrowStr
                             ? `For Tomorrow (${format(selectedDateObj, 'MMM dd')})`
@@ -828,7 +828,7 @@ export default function EmployeeDashboard() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <h4 className="text-xs sm:text-sm font-bold text-slate-855">Lunch <span className="text-[11px] sm:text-xs font-normal text-slate-500">(Rs. {prices.lunch})</span></h4>
+                        <h4 className="text-xs sm:text-sm font-bold text-slate-855">Lunch</h4>
                         <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700">
                           {selectedBookingDate === todayStr
                             ? `For Today (${format(selectedDateObj, 'MMM dd')})`
@@ -919,7 +919,7 @@ export default function EmployeeDashboard() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <h4 className="text-xs sm:text-sm font-bold text-slate-855">Dinner <span className="text-[11px] sm:text-xs font-normal text-slate-500">(Rs. {prices.dinner})</span></h4>
+                        <h4 className="text-xs sm:text-sm font-bold text-slate-855">Dinner</h4>
                         <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700">
                           {selectedBookingDate === todayStr
                             ? `For Today (${format(selectedDateObj, 'MMM dd')})`

@@ -43,6 +43,7 @@ export default function EmployeeDetailsPage() {
   const { toast } = useToast();
   
   const [employee, setEmployee] = useState<Employee | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<string>('ADMIN');
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [historyLoading, setHistoryLoading] = useState(true);
@@ -51,6 +52,14 @@ export default function EmployeeDetailsPage() {
   const fetchEmployeeDetails = useCallback(async () => {
     try {
       setLoading(true);
+      const meRes = await fetch('/api/auth/me');
+      if (meRes.ok) {
+        const meData = await meRes.json();
+        if (meData.user?.role) {
+          setCurrentUserRole(meData.user.role);
+        }
+      }
+
       const res = await fetch(`/api/admin/employees/${id}`);
       if (!res.ok) {
         throw new Error('Employee profile not found');
@@ -91,6 +100,14 @@ export default function EmployeeDetailsPage() {
 
   const handleToggleStatus = async () => {
     if (!employee) return;
+    if (employee.role === ('SUPERADMIN' as any) && currentUserRole !== 'SUPERADMIN') {
+      toast({
+        variant: 'destructive',
+        title: 'Action Denied',
+        description: 'Normal admins cannot modify a Super Admin account.',
+      });
+      return;
+    }
     setToggling(true);
     try {
       const res = await fetch('/api/admin/employees', {
@@ -130,6 +147,9 @@ export default function EmployeeDetailsPage() {
     );
   }
 
+  const isSuperAdminAccount = employee?.role === ('SUPERADMIN' as any);
+  const isProtectedFromUser = isSuperAdminAccount && currentUserRole !== 'SUPERADMIN';
+
   return (
     <div className="flex flex-col min-h-screen bg-slate-50">
       {/* Sticky Header */}
@@ -157,7 +177,11 @@ export default function EmployeeDetailsPage() {
               </div>
               <div className="flex-1">
                 <h3 className="text-base font-bold text-slate-800 tracking-tight">{employee.fullName || 'No Name'}</h3>
-                <span className="inline-block bg-slate-100 text-slate-500 rounded px-2 py-0.5 text-[9px] font-bold border border-slate-200 mt-1 uppercase">
+                <span className={`inline-block rounded px-2 py-0.5 text-[9px] font-bold border mt-1 uppercase ${
+                  isSuperAdminAccount
+                    ? 'bg-purple-50 text-purple-800 border-purple-200 font-extrabold'
+                    : 'bg-slate-100 text-slate-500 border-slate-200'
+                }`}>
                   {employee.role}
                 </span>
               </div>
@@ -187,9 +211,9 @@ export default function EmployeeDetailsPage() {
                   {['CWIT', 'ECT', 'SAGT', 'CICT'].map((dept) => (
                     <button
                       key={dept}
-                      disabled={toggling}
+                      disabled={toggling || isProtectedFromUser}
                       onClick={async () => {
-                        if (!employee) return;
+                        if (!employee || isProtectedFromUser) return;
                         setToggling(true);
                         try {
                           const res = await fetch('/api/admin/employees', {
@@ -214,11 +238,11 @@ export default function EmployeeDetailsPage() {
                           setToggling(false);
                         }
                       }}
-                      className={`px-4 py-1.5 rounded-xl text-xs font-bold border transition-all active:scale-95 ${
+                      className={`px-4 py-1.5 rounded-xl text-xs font-bold border transition-all ${
                         employee.department === dept
                           ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
                           : 'bg-slate-50 border-slate-200 text-slate-650 hover:bg-slate-100'
-                      }`}
+                      } ${isProtectedFromUser ? 'opacity-60 cursor-not-allowed' : 'active:scale-95'}`}
                     >
                       {dept}
                     </button>
@@ -228,23 +252,29 @@ export default function EmployeeDetailsPage() {
             </div>
 
             <div className="pt-2">
-              <button
-                onClick={handleToggleStatus}
-                disabled={toggling}
-                className={`w-full h-11 text-xs font-bold rounded-xl shadow-sm transition-all active:scale-98 flex items-center justify-center gap-1.5 ${
-                  employee.isActive
-                    ? 'bg-red-50 hover:bg-red-100 text-red-655 border border-red-100'
-                    : 'bg-green-50 hover:bg-green-100 text-green-700 border border-green-100'
-                }`}
-              >
-                {toggling ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : employee.isActive ? (
-                  'Deactivate Account'
-                ) : (
-                  'Activate Account'
-                )}
-              </button>
+              {isProtectedFromUser ? (
+                <div className="p-3 bg-purple-50 border border-purple-200 rounded-xl text-xs font-bold text-purple-800 text-center">
+                  Super Admin accounts are protected and cannot be modified by normal admins.
+                </div>
+              ) : (
+                <button
+                  onClick={handleToggleStatus}
+                  disabled={toggling}
+                  className={`w-full h-11 text-xs font-bold rounded-xl shadow-sm transition-all active:scale-98 flex items-center justify-center gap-1.5 ${
+                    employee.isActive
+                      ? 'bg-red-50 hover:bg-red-100 text-red-655 border border-red-100'
+                      : 'bg-green-50 hover:bg-green-100 text-green-700 border border-green-100'
+                  }`}
+                >
+                  {toggling ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : employee.isActive ? (
+                    'Deactivate Account'
+                  ) : (
+                    'Activate Account'
+                  )}
+                </button>
+              )}
             </div>
           </div>
         )}
