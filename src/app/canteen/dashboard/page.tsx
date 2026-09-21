@@ -20,7 +20,8 @@ import {
   Clock,
   Lock,
   Unlock,
-  Calendar
+  Calendar,
+  XCircle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -34,6 +35,7 @@ interface Order {
   mealOption?: 'VEGETARIAN' | 'MEAT';
   status: 'ORDERED' | 'COLLECTED' | 'CANCELLED';
   cancelledAt?: string;
+  cancelledBy?: 'EMPLOYEE' | 'ADMIN';
   requestedAt: string;
   collectedAt?: string;
   requestDate: string;
@@ -71,7 +73,7 @@ export default function CanteenDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMealFilter, setSelectedMealFilter] = useState<'ALL' | 'BREAKFAST' | 'LUNCH' | 'DINNER'>('ALL');
   const [selectedPreferenceFilter, setSelectedPreferenceFilter] = useState<'ALL' | 'VEGETARIAN' | 'MEAT'>('ALL');
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState<'ALL' | 'ORDERED' | 'COLLECTED'>('ORDERED'); // Default to Pending (ORDERED)
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<'ALL' | 'ORDERED' | 'COLLECTED' | 'CANCELLED'>('ORDERED'); // Default to Pending (ORDERED)
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'TABLE' | 'CARDS'>('TABLE');
@@ -83,7 +85,7 @@ export default function CanteenDashboard() {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   const handleDownloadSingleMealPDF = (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER') => {
-    const mealOrders = orders.filter(o => o.mealType === mealType);
+    const mealOrders = orders.filter(o => o.mealType === mealType && o.status !== 'CANCELLED');
     const targetFormattedDate = format(new Date(selectedDate + 'T00:00:00'), 'EEEE, MMMM dd, yyyy');
     const mealKey = mealType.toLowerCase() as 'breakfast' | 'lunch' | 'dinner';
     const menuPlan = (selectedMealDetailsDate === selectedDate ? dailyMenu : tomorrowDailyMenu)?.[mealKey];
@@ -589,9 +591,9 @@ export default function CanteenDashboard() {
     const targetFormattedDate = format(new Date(selectedDate + 'T00:00:00'), 'EEEE, MMMM dd, yyyy');
     
     // Group orders
-    const breakfasts = orders.filter(o => o.mealType === 'BREAKFAST');
-    const lunches = orders.filter(o => o.mealType === 'LUNCH');
-    const dinners = orders.filter(o => o.mealType === 'DINNER');
+    const breakfasts = orders.filter(o => o.mealType === 'BREAKFAST' && o.status !== 'CANCELLED');
+    const lunches = orders.filter(o => o.mealType === 'LUNCH' && o.status !== 'CANCELLED');
+    const dinners = orders.filter(o => o.mealType === 'DINNER' && o.status !== 'CANCELLED');
 
     const renderBreakfast = selectedMealFilter === 'ALL' || selectedMealFilter === 'BREAKFAST';
     const renderLunch = selectedMealFilter === 'ALL' || selectedMealFilter === 'LUNCH';
@@ -1001,7 +1003,7 @@ export default function CanteenDashboard() {
 
   // Expected stats counts for a list of orders
   const getMealProgressForOrders = (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER', ordersList: Order[]) => {
-    const mealOrders = ordersList.filter(o => o.mealType === mealType);
+    const mealOrders = ordersList.filter(o => o.mealType === mealType && o.status !== 'CANCELLED');
     const total = mealOrders.length;
     const collected = mealOrders.filter(o => o.status === 'COLLECTED').length;
     const pct = total > 0 ? Math.round((collected / total) * 100) : 0;
@@ -1757,7 +1759,7 @@ export default function CanteenDashboard() {
                 <div className="space-y-1">
                   <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Collection Status</span>
                   <div className="flex bg-slate-50 p-1 rounded-xl gap-1">
-                    {['ORDERED', 'COLLECTED', 'ALL'].map(status => (
+                    {['ORDERED', 'COLLECTED', 'CANCELLED', 'ALL'].map(status => (
                       <button
                         key={status}
                         type="button"
@@ -1768,7 +1770,7 @@ export default function CanteenDashboard() {
                             : 'text-slate-500 hover:text-slate-800'
                         }`}
                       >
-                        {status === 'ORDERED' ? 'Pending' : status === 'COLLECTED' ? 'Collected' : 'All'}
+                        {status === 'ORDERED' ? 'Pending' : status === 'COLLECTED' ? 'Collected' : status === 'CANCELLED' ? 'Cancelled' : 'All'}
                       </button>
                     ))}
                   </div>
@@ -1842,6 +1844,11 @@ export default function CanteenDashboard() {
                             )}
                             Collect
                           </button>
+                        ) : order.status === 'CANCELLED' ? (
+                          <span className="text-[9px] font-extrabold text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <XCircle className="h-3.5 w-3.5 text-red-500" />
+                            {order.cancelledBy === 'ADMIN' ? 'Cancelled by Admin' : 'Cancelled'}
+                          </span>
                         ) : (
                           <span className="text-[9px] font-bold text-green-600 flex items-center gap-1">
                             <CheckCircle className="h-3.5 w-3.5 fill-green-50 stroke-green-600" />
@@ -1975,6 +1982,16 @@ export default function CanteenDashboard() {
                           )}
                           Mark as Collected
                         </button>
+                      </div>
+                    ) : order.status === 'CANCELLED' ? (
+                      <div className="px-4 py-2.5 bg-red-50/60 border-t border-red-100 flex items-center justify-between text-[10px] font-bold text-red-600">
+                        <span className="flex items-center gap-1.5">
+                          <XCircle className="h-3.5 w-3.5 text-red-500" />
+                          {order.cancelledBy === 'ADMIN' ? 'Cancelled by Admin' : 'Cancelled'}
+                        </span>
+                        <span className="text-red-400">
+                          {order.cancelledAt ? format(new Date(order.cancelledAt), 'h:mm a') : ''}
+                        </span>
                       </div>
                     ) : (
                       <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-[10px] font-bold text-green-600">

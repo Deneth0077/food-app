@@ -21,6 +21,7 @@ interface Order {
   mealOption?: 'VEGETARIAN' | 'MEAT';
   status: 'ORDERED' | 'COLLECTED' | 'CANCELLED';
   cancelledAt?: string;
+  cancelledBy?: 'EMPLOYEE' | 'ADMIN';
   requestDate: string;
   requestedAt: string;
   collectedAt?: string;
@@ -184,9 +185,15 @@ export default function EmployeeHistoryPage() {
                   <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
                     item.status === 'COLLECTED'
                       ? 'bg-green-100 text-green-700'
+                      : item.status === 'CANCELLED'
+                      ? 'bg-red-100 text-red-700 border border-red-200'
                       : 'bg-orange-100 text-orange-700'
                   }`}>
-                    {item.status === 'COLLECTED' ? 'Collected' : 'Ordered'}
+                    {item.status === 'COLLECTED' 
+                      ? 'Collected' 
+                      : item.status === 'CANCELLED' 
+                      ? (item.cancelledBy === 'ADMIN' ? 'Cancelled by Admin' : 'Cancelled')
+                      : 'Ordered'}
                   </span>
                 </div>
 

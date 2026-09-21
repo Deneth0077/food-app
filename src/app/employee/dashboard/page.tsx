@@ -539,20 +539,27 @@ export default function EmployeeDashboard() {
     );
   }
 
-  const activeBreakfastOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === 'BREAKFAST' && o.status !== 'CANCELLED');
-  const activeLunchOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === 'LUNCH' && o.status !== 'CANCELLED');
-  const activeDinnerOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === 'DINNER' && o.status !== 'CANCELLED');
+  const latestBreakfastOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === 'BREAKFAST');
+  const latestLunchOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === 'LUNCH');
+  const latestDinnerOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === 'DINNER');
+
+  const activeBreakfastOrder = latestBreakfastOrder?.status !== 'CANCELLED' ? latestBreakfastOrder : undefined;
+  const activeLunchOrder = latestLunchOrder?.status !== 'CANCELLED' ? latestLunchOrder : undefined;
+  const activeDinnerOrder = latestDinnerOrder?.status !== 'CANCELLED' ? latestDinnerOrder : undefined;
 
   const getMealStatus = (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER') => {
     let order;
     if (mealType === 'BREAKFAST') {
-      order = activeBreakfastOrder;
+      order = latestBreakfastOrder;
     } else if (mealType === 'LUNCH') {
-      order = activeLunchOrder;
+      order = latestLunchOrder;
     } else {
-      order = activeDinnerOrder;
+      order = latestDinnerOrder;
     }
     if (!order) return 'Not Requested';
+    if (order.status === 'CANCELLED') {
+      return order.cancelledBy === 'ADMIN' ? 'Cancelled by Admin' : 'Cancelled';
+    }
     return order.status === 'COLLECTED' ? 'Collected' : 'Pending';
   };
 
@@ -1046,7 +1053,9 @@ export default function EmployeeDashboard() {
                           ? 'bg-green-100 text-green-700'
                           : breakfastStatus === 'Pending'
                             ? 'bg-orange-100 text-orange-700'
-                            : 'bg-slate-100 text-slate-500'
+                            : breakfastStatus.includes('Cancelled')
+                              ? 'bg-red-100 text-red-700 border border-red-200 font-extrabold'
+                              : 'bg-slate-100 text-slate-500'
                         }`}>
                         {breakfastStatus}
                       </span>
@@ -1137,7 +1146,9 @@ export default function EmployeeDashboard() {
                           ? 'bg-green-100 text-green-700'
                           : lunchStatus === 'Pending'
                             ? 'bg-orange-100 text-orange-700'
-                            : 'bg-slate-100 text-slate-500'
+                            : lunchStatus.includes('Cancelled')
+                              ? 'bg-red-100 text-red-700 border border-red-200 font-extrabold'
+                              : 'bg-slate-100 text-slate-500'
                         }`}>
                         {lunchStatus}
                       </span>
@@ -1228,7 +1239,9 @@ export default function EmployeeDashboard() {
                           ? 'bg-green-100 text-green-700'
                           : dinnerStatus === 'Pending'
                             ? 'bg-orange-100 text-orange-700'
-                            : 'bg-slate-100 text-slate-500'
+                            : dinnerStatus.includes('Cancelled')
+                              ? 'bg-red-100 text-red-700 border border-red-200 font-extrabold'
+                              : 'bg-slate-100 text-slate-500'
                         }`}>
                         {dinnerStatus}
                       </span>
