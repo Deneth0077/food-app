@@ -19,7 +19,8 @@ import {
   TrendingUp,
   XCircle,
   LogOut,
-  Calendar
+  Calendar,
+  RotateCcw
 } from 'lucide-react';
 import InstallAppButton from '@/components/InstallAppButton';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -132,6 +133,56 @@ export default function EmployeeDashboard() {
     onConfirm: () => {},
   });
 
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+  const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const res = await fetch('/api/notifications');
+      if (res.ok) {
+        const data = await res.json();
+        const list = data.notifications || [];
+        setNotifications(list);
+        setUnreadNotifCount(list.filter((n: any) => !n.isRead).length);
+      }
+    } catch (err) {
+      console.error('Failed to fetch notifications:', err);
+    }
+  }, []);
+
+  const handleMarkAllNotifsRead = async () => {
+    try {
+      const res = await fetch('/api/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ markAll: true }),
+      });
+      if (res.ok) {
+        setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+        setUnreadNotifCount(0);
+      }
+    } catch (err) {
+      console.error('Failed to mark all read:', err);
+    }
+  };
+
+  const handleMarkNotifRead = async (id: string) => {
+    try {
+      const res = await fetch('/api/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notificationId: id }),
+      });
+      if (res.ok) {
+        setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
+        setUnreadNotifCount(prev => Math.max(0, prev - 1));
+      }
+    } catch (err) {
+      console.error('Failed to mark notification read:', err);
+    }
+  };
+
   // Auto-swipe hero section every 3 seconds (3000ms)
   useEffect(() => {
     const heroTimer = setInterval(() => {
@@ -222,6 +273,9 @@ export default function EmployeeDashboard() {
         const menuData = await menuRes.json();
         setDailyMenu(menuData.menu || null);
       }
+
+      // Fetch employee notifications
+      await fetchNotifications();
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       toast({
@@ -232,7 +286,7 @@ export default function EmployeeDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [router, toast, selectedBookingDate]);
+  }, [router, toast, selectedBookingDate, fetchNotifications]);
 
   useEffect(() => {
     fetchData();
@@ -628,9 +682,132 @@ export default function EmployeeDashboard() {
           </div>
         </div>
         <div className="flex items-center gap-2.5 relative">
-          <div className="relative p-2 rounded-full hover:bg-slate-100 transition-colors cursor-pointer">
-            <Bell className="h-5.5 w-5.5 text-slate-600" />
-            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => {
+                setShowNotifDropdown(!showNotifDropdown);
+                setShowProfileDropdown(false);
+              }}
+              className="relative p-2 rounded-full hover:bg-slate-100 transition-colors cursor-pointer text-slate-600 border border-slate-200/60"
+              title="Notifications"
+            >
+              <Bell className="h-5 w-5 text-slate-600" />
+              {unreadNotifCount > 0 && (
+                <span className="absolute -top-1 -right-1 h-4 min-w-[16px] px-1 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center ring-2 ring-white">
+                  {unreadNotifCount}
+                </span>
+              )}
+            </button>
+
+            {showNotifDropdown && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setShowNotifDropdown(false)}
+                />
+                <div className="absolute right-0 top-12 w-80 sm:w-96 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                  <div className="px-4 py-2 border-b border-slate-100 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Notifications</h3>
+                      {unreadNotifCount > 0 && (
+                        <span className="bg-blue-50 text-blue-700 text-[10px] font-bold px-1.5 py-0.5 rounded-md border border-blue-100">
+                          {unreadNotifCount} New
+                        </span>
+                      )}
+                    </div>
+                    {unreadNotifCount > 0 && (
+                      <button
+                        onClick={handleMarkAllNotifsRead}
+                        className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
+                      >
+                        <Check className="h-3 w-3" /> Mark all read
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
+                    {notifications.length === 0 ? (
+                      <div className="p-6 text-center text-slate-400 text-xs font-semibold">
+                        No notifications yet
+                      </div>
+                    ) : (
+                      notifications.map(notif => (
+                        <div
+                          key={notif._id}
+                          onClick={() => handleMarkNotifRead(notif._id)}
+                          className={`p-3 text-left transition-colors cursor-pointer flex gap-3 ${
+                            notif.isRead ? 'hover:bg-slate-50' : 'bg-blue-50/40 hover:bg-blue-50/70 border-l-[3px] border-l-blue-600 pl-[11px]'
+                          }`}
+                        >
+                          <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${
+                            notif.type === 'ORDER_CANCELLED'
+                              ? 'bg-rose-50 text-rose-600 border border-rose-100'
+                              : notif.type === 'PRICE_CHANGED'
+                              ? 'bg-amber-50 text-amber-600 border border-amber-100'
+                              : 'bg-blue-50 text-blue-600 border border-blue-100'
+                          }`}>
+                            {notif.type === 'ORDER_CANCELLED' ? (
+                              <RotateCcw className="h-4 w-4" />
+                            ) : notif.mealType === 'BREAKFAST' ? (
+                              <Coffee className="h-4 w-4" />
+                            ) : notif.mealType === 'LUNCH' ? (
+                              <Utensils className="h-4 w-4" />
+                            ) : (
+                              <Moon className="h-4 w-4" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            {notif.type === 'ORDER_CANCELLED' ? (
+                              <div>
+                                <p className="text-xs font-bold text-rose-700 leading-snug">
+                                  ❌ Order Cancelled: {notif.mealType}
+                                </p>
+                                <p className="text-[10px] text-slate-500 font-medium mt-0.5">
+                                  {notif.notes || 'Order was cancelled'}
+                                </p>
+                              </div>
+                            ) : notif.type === 'PRICE_CHANGED' ? (
+                              <div>
+                                <p className="text-xs font-bold text-amber-700 leading-snug">
+                                  🚨 Meal Prices Updated
+                                </p>
+                                <p className="text-[10px] text-slate-500 font-medium mt-0.5">
+                                  {notif.notes}
+                                </p>
+                              </div>
+                            ) : (
+                              <div>
+                                <p className="text-xs font-semibold text-slate-800 leading-snug">
+                                  <span className="font-bold">{notif.mealType}</span> Order Registered
+                                  {notif.mealOption && (
+                                    <span className={`ml-1.5 px-1 rounded text-[8.5px] font-bold ${
+                                      notif.mealOption === 'VEGETARIAN'
+                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                                        : 'bg-rose-50 text-rose-700 border border-rose-100'
+                                    }`}>
+                                      {notif.mealOption === 'VEGETARIAN' ? 'VEG' : 'NON-VEG'}
+                                    </span>
+                                  )}
+                                </p>
+                                {notif.notes && (
+                                  <p className="text-[10px] text-slate-500 font-medium italic mt-0.5">
+                                    &ldquo;{notif.notes}&rdquo;
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                            <span className="text-[9.5px] text-slate-400 block mt-1">
+                              {format(new Date(notif.createdAt), 'MMM dd, h:mm a')}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
           <div
             onClick={() => setShowProfileDropdown(!showProfileDropdown)}

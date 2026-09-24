@@ -606,18 +606,18 @@ export async function DELETE(request: Request) {
     order.cancelledBy = authUser.role === 'ADMIN' || authUser.role === 'SUPERADMIN' ? 'ADMIN' : 'EMPLOYEE';
     await order.save();
 
-    // Clean up associated notification if any
+    // Create a cancellation notification for Admin and Employee records
     try {
-      await Notification.deleteOne({
+      await Notification.create({
+        employeeName: order.employeeName,
         employeeNo: order.employeeNo,
         mealType: order.mealType,
-        createdAt: {
-          $gte: new Date(new Date().setHours(0, 0, 0, 0)),
-          $lt: new Date(new Date().setHours(23, 59, 59, 999))
-        }
+        mealOption: order.mealOption,
+        type: 'ORDER_CANCELLED',
+        notes: `Order cancelled by ${order.cancelledBy === 'ADMIN' ? 'Admin' : order.employeeName}`,
       });
     } catch (notifErr) {
-      console.error('Failed to delete associated notification:', notifErr);
+      console.error('Failed to create cancellation notification:', notifErr);
     }
 
     return NextResponse.json({ message: 'Order cancelled successfully.', order });
