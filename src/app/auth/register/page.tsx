@@ -14,7 +14,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Utensils, Loader2 } from 'lucide-react';
 
 const registerSchema = z.object({
-  fullName: z.string().min(2, 'Full name must be at least 2 characters'),
+  fullName: z.string()
+    .min(2, 'Full name must be at least 2 characters')
+    .max(20, 'Full name cannot exceed 20 characters'),
   employeeNo: z.string()
     .min(1, 'Employee number is required')
     .refine((val) => {
@@ -32,7 +34,10 @@ const registerSchema = z.object({
       const num = parseInt(clean, 10);
       return !isNaN(num) && num < 2000 && num >= 1;
     }, { message: 'Wrong Emp ID! Employee number must be a number less than 2000.' }),
-  phoneNumber: z.string().min(9, 'Phone number must be at least 9 digits'),
+  phoneNumber: z.string()
+    .refine((val) => /^\d{10}$/.test(val.trim().replace(/\s+/g, '')), {
+      message: 'Phone number must be exactly 10 digits (e.g. 0771234567)',
+    }),
   password: z.string().regex(/^\d{4}$/, 'PIN must be exactly 4 digits'),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
@@ -115,10 +120,11 @@ export default function RegisterPage() {
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="fullName" className="text-slate-700 font-medium">Full Name</Label>
+              <Label htmlFor="fullName" className="text-slate-700 font-medium">Full Name (Max 20 chars)</Label>
               <Input
                 id="fullName"
                 type="text"
+                maxLength={20}
                 placeholder="Chaminda Silva"
                 className="h-11 border-slate-200 rounded-xl px-4 text-slate-850 focus-visible:ring-blue-600 focus-visible:border-blue-600"
                 disabled={loading}
@@ -148,11 +154,12 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="phoneNumber" className="text-slate-700 font-medium">Phone Number</Label>
+              <Label htmlFor="phoneNumber" className="text-slate-700 font-medium">Phone Number (10 Digits)</Label>
               <Input
                 id="phoneNumber"
                 type="tel"
-                placeholder="+94 77 123 4567"
+                maxLength={10}
+                placeholder="0771234567"
                 className="h-11 border-slate-200 rounded-xl px-4 text-slate-850 focus-visible:ring-blue-600 focus-visible:border-blue-600"
                 disabled={loading}
                 {...register('phoneNumber')}

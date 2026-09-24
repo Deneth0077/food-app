@@ -18,6 +18,23 @@ export async function POST(request: Request) {
       );
     }
 
+    // Full Name max 20 characters validation
+    if (fullName.trim().length > 20) {
+      return NextResponse.json(
+        { error: 'Full name cannot exceed 20 characters' },
+        { status: 400 }
+      );
+    }
+
+    // Phone Number exactly 10 digits validation
+    const cleanPhone = phoneNumber.trim().replace(/\s+/g, '');
+    if (!/^\d{10}$/.test(cleanPhone)) {
+      return NextResponse.json(
+        { error: 'Phone number must be exactly 10 digits (e.g., 0771234567)' },
+        { status: 400 }
+      );
+    }
+
     const isPinValid = /^\d{4}$/.test(password);
     if (!isPinValid) {
       return NextResponse.json(
