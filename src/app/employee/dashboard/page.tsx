@@ -513,7 +513,7 @@ export default function EmployeeDashboard() {
     setConfirmDialog({
       isOpen: true,
       title: 'Finalize Order Now?',
-      description: `Are you sure you want to skip the 5-minute grace period and finalize your ${mealType.toLowerCase()} order? It cannot be cancelled after this.`,
+      description: `Are you sure you want to skip the grace period and finalize your ${mealType.toLowerCase()} order? It cannot be cancelled after this.`,
       confirmText: 'Finalize Now',
       cancelText: 'Wait',
       variant: 'warning',

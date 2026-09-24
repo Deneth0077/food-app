@@ -3,6 +3,7 @@ import dbConnect from '@/lib/mongodb';
 import Order from '@/models/Order';
 import User from '@/models/User';
 import Notification from '@/models/Notification';
+import SystemSetting from '@/models/SystemSetting';
 import { getAuthUser } from '@/lib/jwt';
 import { format } from 'date-fns';
 
@@ -586,15 +587,19 @@ export async function DELETE(request: Request) {
         }
       }
 
-      // Check time difference (60 minutes limit)
+      // Fetch system settings for dynamic cancellation window
+      const sysSettings = await SystemSetting.findOne({ key: 'GLOBAL_SETTINGS' });
+      const cancellationWindowMins = sysSettings?.cancellationWindowMinutes ?? 60;
+
+      // Check time difference against dynamic cancellation window
       const orderTime = new Date(order.requestedAt).getTime();
       const nowTime = new Date().getTime();
       const diffMs = nowTime - orderTime;
       const diffMins = diffMs / (1000 * 60);
 
-      if (diffMins > 60) {
+      if (diffMins > cancellationWindowMins) {
         return NextResponse.json(
-          { error: 'Orders can only be cancelled within 1 hour (60 minutes) of placement.' },
+          { error: `Orders can only be cancelled within ${cancellationWindowMins} minutes of placement.` },
           { status: 400 }
         );
       }

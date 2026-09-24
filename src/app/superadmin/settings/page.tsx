@@ -25,6 +25,7 @@ interface SystemSettingsState {
   mealPricesManagement: boolean;
   menuManagement: boolean;
   orderCancellation: boolean;
+  cancellationWindowMinutes: number;
   mealOrdering: boolean;
   selfCollection: boolean;
   reportsExport: boolean;
@@ -44,6 +45,7 @@ export default function SuperadminSettingsPage() {
     mealPricesManagement: false,
     menuManagement: true,
     orderCancellation: true,
+    cancellationWindowMinutes: 60,
     mealOrdering: true,
     selfCollection: true,
     reportsExport: true,
@@ -83,6 +85,7 @@ export default function SuperadminSettingsPage() {
               mealPricesManagement: sData.settings.mealPricesManagement ?? false,
               menuManagement: sData.settings.menuManagement ?? true,
               orderCancellation: sData.settings.orderCancellation ?? true,
+              cancellationWindowMinutes: sData.settings.cancellationWindowMinutes ?? 60,
               mealOrdering: sData.settings.mealOrdering ?? true,
               selfCollection: sData.settings.selfCollection ?? true,
               reportsExport: sData.settings.reportsExport ?? true,
@@ -172,8 +175,8 @@ export default function SuperadminSettingsPage() {
     },
     {
       key: 'orderCancellation' as keyof SystemSettingsState,
-      title: '5-Minute Order Cancellation',
-      description: 'Enables live countdown and self-service cancellation window for employees after placing orders.',
+      title: `${settings.cancellationWindowMinutes || 60}-Minute Order Cancellation`,
+      description: `Enables live countdown and self-service cancellation window (${settings.cancellationWindowMinutes || 60} minutes) for employees after placing orders.`,
       icon: Clock,
       color: 'rose',
     },
@@ -304,6 +307,47 @@ export default function SuperadminSettingsPage() {
                         <p className="text-[11px] text-slate-500 font-medium mt-1 leading-snug">
                           {feat.description}
                         </p>
+
+                        {/* Interactive Time Selector for Order Cancellation */}
+                        {feat.key === 'orderCancellation' && isEnabled && (
+                          <div className="mt-3 pt-2.5 border-t border-slate-100 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-bold text-slate-700">Cancellation Time Window:</span>
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  min={1}
+                                  max={720}
+                                  value={settings.cancellationWindowMinutes || 60}
+                                  onChange={(e) => {
+                                    const val = Math.max(1, parseInt(e.target.value, 10) || 1);
+                                    setSettings((prev) => ({ ...prev, cancellationWindowMinutes: val }));
+                                  }}
+                                  className="w-16 h-8 text-center text-xs font-bold text-purple-800 bg-purple-50 border border-purple-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-500"
+                                />
+                                <span className="text-xs font-semibold text-slate-500">mins</span>
+                              </div>
+                            </div>
+
+                            {/* Preset Buttons */}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {[5, 10, 15, 30, 60, 120].map((mins) => (
+                                <button
+                                  key={mins}
+                                  type="button"
+                                  onClick={() => setSettings((prev) => ({ ...prev, cancellationWindowMinutes: mins }))}
+                                  className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all border cursor-pointer ${
+                                    settings.cancellationWindowMinutes === mins
+                                      ? 'bg-purple-600 text-white border-purple-600 shadow-2xs'
+                                      : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                                  }`}
+                                >
+                                  {mins >= 60 ? `${mins / 60} hour${mins > 60 ? 's' : ''}` : `${mins} min`}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
 

@@ -5,6 +5,7 @@ export interface ISystemSetting extends Document {
   mealPricesManagement: boolean;
   menuManagement: boolean;
   orderCancellation: boolean;
+  cancellationWindowMinutes: number;
   mealOrdering: boolean;
   selfCollection: boolean;
   reportsExport: boolean;
@@ -22,6 +23,7 @@ const SystemSettingSchema: Schema = new Schema(
     mealPricesManagement: { type: Boolean, default: false },
     menuManagement: { type: Boolean, default: true },
     orderCancellation: { type: Boolean, default: true },
+    cancellationWindowMinutes: { type: Number, default: 60 },
     mealOrdering: { type: Boolean, default: true },
     selfCollection: { type: Boolean, default: true },
     reportsExport: { type: Boolean, default: true },

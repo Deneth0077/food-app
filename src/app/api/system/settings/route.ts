@@ -12,6 +12,7 @@ async function getOrCreateSettings() {
       mealPricesManagement: false, // Deactivated by default as requested
       menuManagement: true,
       orderCancellation: true,
+      cancellationWindowMinutes: 60,
       mealOrdering: true,
       selfCollection: true,
       reportsExport: true,
@@ -34,6 +35,7 @@ export async function GET() {
         mealPricesManagement: settings.mealPricesManagement,
         menuManagement: settings.menuManagement,
         orderCancellation: settings.orderCancellation,
+        cancellationWindowMinutes: settings.cancellationWindowMinutes ?? 60,
         mealOrdering: settings.mealOrdering,
         selfCollection: settings.selfCollection,
         reportsExport: settings.reportsExport,
@@ -75,6 +77,7 @@ export async function PUT(request: Request) {
       'mealPricesManagement',
       'menuManagement',
       'orderCancellation',
+      'cancellationWindowMinutes',
       'mealOrdering',
       'selfCollection',
       'reportsExport',
