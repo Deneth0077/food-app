@@ -26,8 +26,38 @@ export async function POST(request: Request) {
       );
     }
 
+    const cleanEmpNo = employeeNo.trim().toUpperCase();
+
+    // Check role prefixes or numerical employee number validation
+    let role = 'EMPLOYEE';
+    if (cleanEmpNo.startsWith('SUPERADMIN')) {
+      role = 'SUPERADMIN';
+    } else if (cleanEmpNo.startsWith('ADMIN')) {
+      role = 'ADMIN';
+    } else if (cleanEmpNo.startsWith('CANTEEN')) {
+      role = 'CANTEEN';
+    } else if (cleanEmpNo.startsWith('CASHIER')) {
+      role = 'CASHIER';
+    } else {
+      // Validate Employee Number: No english characters, exactly 4 digits zero padded (e.g. 0234, 0023, 0001), < 2000
+      if (!/^\d{4}$/.test(cleanEmpNo)) {
+        return NextResponse.json(
+          { error: 'Employee number must be entered in 4-digit zero-padded format (e.g., 0234, 0023, 0001). English characters are not allowed.' },
+          { status: 400 }
+        );
+      }
+
+      const empVal = parseInt(cleanEmpNo, 10);
+      if (isNaN(empVal) || empVal >= 2000 || empVal < 1) {
+        return NextResponse.json(
+          { error: 'Wrong Emp ID! All employee numbers must be less than 2000 (0001 to 1999).' },
+          { status: 400 }
+        );
+      }
+    }
+
     // Check if employeeNo unique
-    const existingUser = await User.findOne({ employeeNo: employeeNo.trim() });
+    const existingUser = await User.findOne({ employeeNo: cleanEmpNo });
     if (existingUser) {
       return NextResponse.json(
         { error: 'Employee number is already registered' },
@@ -37,18 +67,6 @@ export async function POST(request: Request) {
 
     // Hash Password
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create User (First registered user is ADMIN, others are default EMPLOYEE for easy demo/setup, or default to EMPLOYEE. Wait, let's look at standard - default to EMPLOYEE, but check if we can make a default admin if there are none, or just register normally).
-    // Let's check: we will register with default role 'EMPLOYEE' but if employeeNo is e.g. "ADMIN001" or starts with "ADMIN", make it ADMIN, or canteen if starts with "CANTEEN". This makes setup and demo extremely easy for the user!
-    let role = 'EMPLOYEE';
-    const cleanEmpNo = employeeNo.trim().toUpperCase();
-    if (cleanEmpNo.startsWith('SUPERADMIN')) {
-      role = 'SUPERADMIN';
-    } else if (cleanEmpNo.startsWith('ADMIN')) {
-      role = 'ADMIN';
-    } else if (cleanEmpNo.startsWith('CANTEEN')) {
-      role = 'CANTEEN';
-    }
 
     const newUser = await User.create({
       fullName: fullName.trim(),

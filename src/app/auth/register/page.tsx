@@ -15,7 +15,23 @@ import { Utensils, Loader2 } from 'lucide-react';
 
 const registerSchema = z.object({
   fullName: z.string().min(2, 'Full name must be at least 2 characters'),
-  employeeNo: z.string().min(3, 'Employee number must be at least 3 characters'),
+  employeeNo: z.string()
+    .min(1, 'Employee number is required')
+    .refine((val) => {
+      const clean = val.trim().toUpperCase();
+      if (clean.startsWith('ADMIN') || clean.startsWith('CANTEEN') || clean.startsWith('CASHIER') || clean.startsWith('SUPERADMIN')) {
+        return true;
+      }
+      return /^\d{4}$/.test(clean);
+    }, { message: 'Format must be 4 digits with zero padding (e.g. 0234, 0023, 0001). English characters are not allowed.' })
+    .refine((val) => {
+      const clean = val.trim().toUpperCase();
+      if (clean.startsWith('ADMIN') || clean.startsWith('CANTEEN') || clean.startsWith('CASHIER') || clean.startsWith('SUPERADMIN')) {
+        return true;
+      }
+      const num = parseInt(clean, 10);
+      return !isNaN(num) && num < 2000 && num >= 1;
+    }, { message: 'Wrong Emp ID! Employee number must be a number less than 2000.' }),
   phoneNumber: z.string().min(9, 'Phone number must be at least 9 digits'),
   password: z.string().regex(/^\d{4}$/, 'PIN must be exactly 4 digits'),
   confirmPassword: z.string(),
@@ -118,13 +134,13 @@ export default function RegisterPage() {
               <Input
                 id="employeeNo"
                 type="text"
-                placeholder="EMP-XXXXX"
-                className="h-11 border-slate-200 rounded-xl px-4 text-slate-850 focus-visible:ring-blue-600 focus-visible:border-blue-600"
+                placeholder="0234, 0023, 0001"
+                className="h-11 border-slate-200 rounded-xl px-4 text-slate-850 focus-visible:ring-blue-600 focus-visible:border-blue-600 font-semibold"
                 disabled={loading}
                 {...register('employeeNo')}
               />
-              <p className="text-[10px] text-slate-400 font-medium mt-0.5">
-                Prefix with ADMIN or CANTEEN for test roles (e.g. ADMIN123, CANTEEN456)
+              <p className="text-[10px] text-slate-500 font-medium mt-0.5">
+                Must be 4 digits zero-padded (e.g. 0234, 0023, 0001) less than 2000. (Demo roles: ADMIN01, CASHIER01, CANTEEN01)
               </p>
               {errors.employeeNo && (
                 <p className="text-xs text-red-500 font-medium mt-1">{errors.employeeNo.message}</p>

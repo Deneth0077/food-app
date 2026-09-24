@@ -56,6 +56,8 @@ export default function LoginPage() {
               redirectUrl = '/admin/dashboard';
             } else if (data.user.role === 'CANTEEN') {
               redirectUrl = '/canteen/dashboard';
+            } else if (data.user.role === 'CASHIER') {
+              redirectUrl = '/cashier/dashboard';
             }
             router.replace(redirectUrl);
             return;
@@ -237,7 +239,7 @@ export default function LoginPage() {
               <Input
                 id="employeeNo"
                 type="text"
-                placeholder="EMP-XXXXX"
+                placeholder="e.g. 0234, 0023 or CASHIER01"
                 className="h-12 border-slate-200 rounded-xl px-4 text-slate-850 placeholder:text-slate-400 focus-visible:ring-blue-600 focus-visible:border-blue-600 font-semibold"
                 disabled={loading}
                 {...register('employeeNo')}

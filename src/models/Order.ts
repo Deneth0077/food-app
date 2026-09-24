@@ -9,6 +9,9 @@ export interface IOrder extends Document {
   mealOption?: 'VEGETARIAN' | 'MEAT';
   notes?: string;
   status: 'ORDERED' | 'COLLECTED' | 'CANCELLED';
+  paymentConfirmed?: boolean;
+  paymentConfirmedAt?: Date;
+  confirmedByCashier?: boolean;
   requestDate: string; // YYYY-MM-DD format
   requestedAt: Date;
   collectedAt?: Date;
@@ -44,6 +47,9 @@ const OrderSchema: Schema = new Schema(
       enum: ['ORDERED', 'COLLECTED', 'CANCELLED'], 
       default: 'ORDERED' 
     },
+    paymentConfirmed: { type: Boolean, default: false },
+    paymentConfirmedAt: { type: Date },
+    confirmedByCashier: { type: Boolean, default: false },
     requestDate: { type: String, required: true }, // e.g. "2026-06-11"
     requestedAt: { type: Date, default: Date.now },
     collectedAt: { type: Date },

@@ -39,6 +39,9 @@ interface Order {
   mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER';
   mealOption?: 'VEGETARIAN' | 'MEAT';
   status: 'ORDERED' | 'COLLECTED' | 'CANCELLED';
+  paymentConfirmed?: boolean;
+  paymentConfirmedAt?: string;
+  confirmedByCashier?: boolean;
   requestDate: string;
   requestedAt: string;
   collectedAt?: string;
@@ -67,6 +70,34 @@ interface DailyMenu {
   dinner: MealPlan;
 }
 
+const HERO_SLIDES = [
+  {
+    url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=1200&auto=format&fit=crop&q=80',
+    title: 'Fresh & Delicious Daily Meals',
+    subtitle: 'Nourishing Rice & Curry dishes prepared fresh every morning.'
+  },
+  {
+    url: 'https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=1200&auto=format&fit=crop&q=80',
+    title: 'Authentic Sri Lankan Cuisine',
+    subtitle: 'Spicy chicken, fish, and rich aromatic curries tailored for you.'
+  },
+  {
+    url: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=1200&auto=format&fit=crop&q=80',
+    title: 'Wholesome Vegetarian Delights',
+    subtitle: '100% clean green vegetables and nutritious meal options.'
+  },
+  {
+    url: 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=1200&auto=format&fit=crop&q=80',
+    title: 'Premium Non-Veg Feast',
+    subtitle: 'Juicy roasted meats, savory curries & gourmet side dishes.'
+  },
+  {
+    url: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=1200&auto=format&fit=crop&q=80',
+    title: 'Easy Pre-Ordering & Cashier Collection',
+    subtitle: 'Book before cutoff, collect instantly & enjoy your break.'
+  }
+];
+
 export default function EmployeeDashboard() {
   const router = useRouter();
   const { toast } = useToast();
@@ -84,6 +115,7 @@ export default function EmployeeDashboard() {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [isUpdatingNotesOnly, setIsUpdatingNotesOnly] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [heroSlideIndex, setHeroSlideIndex] = useState(0);
   const [activeSiteChangeMeal, setActiveSiteChangeMeal] = useState<'BREAKFAST' | 'LUNCH' | 'DINNER' | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
@@ -99,6 +131,14 @@ export default function EmployeeDashboard() {
     description: '',
     onConfirm: () => {},
   });
+
+  // Auto-swipe hero section every 3 seconds (3000ms)
+  useEffect(() => {
+    const heroTimer = setInterval(() => {
+      setHeroSlideIndex((prev) => (prev + 1) % HERO_SLIDES.length);
+    }, 3000);
+    return () => clearInterval(heroTimer);
+  }, []);
 
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const tomorrow = new Date();
@@ -123,7 +163,7 @@ export default function EmployeeDashboard() {
       lockTime = dayBefore;
     } else if (mealType === 'LUNCH') {
       const dayOf = new Date(targetDate.getTime());
-      dayOf.setHours(9, 0, 0, 0); // 9:00 AM
+      dayOf.setHours(10, 0, 0, 0); // 10:00 AM
       lockTime = dayOf;
     } else {
       const dayOf = new Date(targetDate.getTime());
@@ -539,13 +579,13 @@ export default function EmployeeDashboard() {
     );
   }
 
-  const latestBreakfastOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === 'BREAKFAST');
-  const latestLunchOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === 'LUNCH');
-  const latestDinnerOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === 'DINNER');
+  const latestBreakfastOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === 'BREAKFAST' && o.status !== 'CANCELLED');
+  const latestLunchOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === 'LUNCH' && o.status !== 'CANCELLED');
+  const latestDinnerOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === 'DINNER' && o.status !== 'CANCELLED');
 
-  const activeBreakfastOrder = latestBreakfastOrder?.status !== 'CANCELLED' ? latestBreakfastOrder : undefined;
-  const activeLunchOrder = latestLunchOrder?.status !== 'CANCELLED' ? latestLunchOrder : undefined;
-  const activeDinnerOrder = latestDinnerOrder?.status !== 'CANCELLED' ? latestDinnerOrder : undefined;
+  const activeBreakfastOrder = latestBreakfastOrder;
+  const activeLunchOrder = latestLunchOrder;
+  const activeDinnerOrder = latestDinnerOrder;
 
   const getMealStatus = (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER') => {
     let order;
@@ -557,9 +597,6 @@ export default function EmployeeDashboard() {
       order = latestDinnerOrder;
     }
     if (!order) return 'Not Requested';
-    if (order.status === 'CANCELLED') {
-      return order.cancelledBy === 'ADMIN' ? 'Cancelled by Admin' : 'Cancelled';
-    }
     return order.status === 'COLLECTED' ? 'Collected' : 'Pending';
   };
 
@@ -576,7 +613,7 @@ export default function EmployeeDashboard() {
     greeting = 'Good Evening';
   }
 
-  const recentHistory = orders.slice(0, 4);
+  const recentHistory = orders.filter(o => o.status !== 'CANCELLED').slice(0, 4);
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-50">
@@ -657,6 +694,43 @@ export default function EmployeeDashboard() {
           <p className="text-xs text-blue-50 mt-1.5 font-medium leading-relaxed max-w-[280px]">
             Manage your daily meal requests and view upcoming collections.
           </p>
+        </div>
+
+        {/* Hero Section Auto-Swiping Carousel (3-second auto swipe to the right) */}
+        <div className="relative w-full h-44 sm:h-52 rounded-2xl overflow-hidden shadow-lg border border-slate-200 group">
+          <div
+            className="flex w-full h-full transition-transform duration-700 ease-in-out"
+            style={{ transform: `translateX(-${heroSlideIndex * 100}%)` }}
+          >
+            {HERO_SLIDES.map((slide, idx) => (
+              <div key={idx} className="w-full h-full shrink-0 relative">
+                <img
+                  src={slide.url}
+                  alt={slide.title}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-900/40 to-transparent flex flex-col justify-end p-4 text-white">
+                  <span className="text-[9.5px] font-extrabold uppercase tracking-widest bg-blue-600/80 backdrop-blur-xs px-2 py-0.5 rounded-md w-fit mb-1 shadow-xs">
+                    Featured Specials
+                  </span>
+                  <h3 className="text-base sm:text-lg font-black tracking-tight drop-shadow-sm">{slide.title}</h3>
+                  <p className="text-[11px] text-slate-200 font-medium line-clamp-1 drop-shadow-xs">{slide.subtitle}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Dots Indicator */}
+          <div className="absolute bottom-3 right-3 z-10 flex items-center gap-1.5 bg-slate-900/60 backdrop-blur-sm px-2.5 py-1 rounded-full border border-white/20">
+            {HERO_SLIDES.map((_, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => setHeroSlideIndex(idx)}
+                className={`h-2 rounded-full transition-all duration-300 ${heroSlideIndex === idx ? 'w-5 bg-blue-500' : 'w-2 bg-white/60 hover:bg-white'}`}
+              />
+            ))}
+          </div>
         </div>
 
 
@@ -1049,17 +1123,24 @@ export default function EmployeeDashboard() {
                       )}
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <span className={`px-2 py-0.5 font-bold rounded-full text-[10px] ${breakfastStatus === 'Collected'
-                          ? 'bg-green-100 text-green-700'
-                          : breakfastStatus === 'Pending'
-                            ? 'bg-orange-100 text-orange-700'
-                            : breakfastStatus.includes('Cancelled')
-                              ? 'bg-red-100 text-red-700 border border-red-200 font-extrabold'
-                              : 'bg-slate-100 text-slate-500'
-                        }`}>
-                        {breakfastStatus}
-                      </span>
-                      {breakfastStatus === 'Pending' && activeBreakfastOrder && (
+                      {activeBreakfastOrder?.paymentConfirmed || activeBreakfastOrder?.confirmedByCashier ? (
+                        <span className="px-2 py-0.5 font-extrabold rounded-full text-[9.5px] bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+                          <Check className="h-3 w-3 text-emerald-600 stroke-[3]" />
+                          Your payment and order confirmed
+                        </span>
+                      ) : (
+                        <span className={`px-2 py-0.5 font-bold rounded-full text-[10px] ${breakfastStatus === 'Collected'
+                            ? 'bg-green-100 text-green-700'
+                            : breakfastStatus === 'Pending'
+                              ? 'bg-orange-100 text-orange-700'
+                              : breakfastStatus.includes('Cancelled')
+                                ? 'bg-red-100 text-red-700 border border-red-200 font-extrabold'
+                                : 'bg-slate-100 text-slate-500'
+                          }`}>
+                          {breakfastStatus}
+                        </span>
+                      )}
+                      {breakfastStatus === 'Pending' && activeBreakfastOrder && !activeBreakfastOrder.paymentConfirmed && (
                         <button
                           type="button"
                           onClick={() => handleMarkAsCollectedSelf(activeBreakfastOrder._id)}
@@ -1080,7 +1161,7 @@ export default function EmployeeDashboard() {
                   {(() => {
                     const order = activeBreakfastOrder;
                     if (order && order.status === 'ORDERED' && !isBreakfastLocked) {
-                      const msRemaining = (new Date(order.requestedAt).getTime() + 10 * 60 * 1000) - currentTime.getTime();
+                      const msRemaining = (new Date(order.requestedAt).getTime() + 60 * 60 * 1000) - currentTime.getTime();
                       if (msRemaining > 0) {
                         const mins = Math.floor(msRemaining / (1000 * 60));
                         const secs = Math.floor((msRemaining % (1000 * 60)) / 1000);
@@ -1090,7 +1171,7 @@ export default function EmployeeDashboard() {
                           <div className="mt-2 flex items-center justify-between gap-2 bg-red-50/50 border border-red-100 rounded-xl p-2.5 animate-in fade-in duration-200">
                             <span className="text-[10px] font-bold text-red-650 flex items-center gap-1.5 shrink-0">
                               <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse shrink-0" />
-                              Cancel window: {formattedTime}
+                              Cancel window (1 hr): {formattedTime}
                             </span>
                             <button
                               type="button"
@@ -1142,17 +1223,24 @@ export default function EmployeeDashboard() {
                       )}
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <span className={`px-2 py-0.5 font-bold rounded-full text-[10px] ${lunchStatus === 'Collected'
-                          ? 'bg-green-100 text-green-700'
-                          : lunchStatus === 'Pending'
-                            ? 'bg-orange-100 text-orange-700'
-                            : lunchStatus.includes('Cancelled')
-                              ? 'bg-red-100 text-red-700 border border-red-200 font-extrabold'
-                              : 'bg-slate-100 text-slate-500'
-                        }`}>
-                        {lunchStatus}
-                      </span>
-                      {lunchStatus === 'Pending' && activeLunchOrder && (
+                      {activeLunchOrder?.paymentConfirmed || activeLunchOrder?.confirmedByCashier ? (
+                        <span className="px-2 py-0.5 font-extrabold rounded-full text-[9.5px] bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+                          <Check className="h-3 w-3 text-emerald-600 stroke-[3]" />
+                          Your payment and order confirmed
+                        </span>
+                      ) : (
+                        <span className={`px-2 py-0.5 font-bold rounded-full text-[10px] ${lunchStatus === 'Collected'
+                            ? 'bg-green-100 text-green-700'
+                            : lunchStatus === 'Pending'
+                              ? 'bg-orange-100 text-orange-700'
+                              : lunchStatus.includes('Cancelled')
+                                ? 'bg-red-100 text-red-700 border border-red-200 font-extrabold'
+                                : 'bg-slate-100 text-slate-500'
+                          }`}>
+                          {lunchStatus}
+                        </span>
+                      )}
+                      {lunchStatus === 'Pending' && activeLunchOrder && !activeLunchOrder.paymentConfirmed && (
                         <button
                           type="button"
                           onClick={() => handleMarkAsCollectedSelf(activeLunchOrder._id)}
@@ -1173,7 +1261,7 @@ export default function EmployeeDashboard() {
                   {(() => {
                     const order = activeLunchOrder;
                     if (order && order.status === 'ORDERED' && !isLunchLocked) {
-                      const msRemaining = (new Date(order.requestedAt).getTime() + 10 * 60 * 1000) - currentTime.getTime();
+                      const msRemaining = (new Date(order.requestedAt).getTime() + 60 * 60 * 1000) - currentTime.getTime();
                       if (msRemaining > 0) {
                         const mins = Math.floor(msRemaining / (1000 * 60));
                         const secs = Math.floor((msRemaining % (1000 * 60)) / 1000);
@@ -1183,7 +1271,7 @@ export default function EmployeeDashboard() {
                           <div className="mt-2 flex items-center justify-between gap-2 bg-red-50/50 border border-red-100 rounded-xl p-2.5 animate-in fade-in duration-200">
                             <span className="text-[10px] font-bold text-red-650 flex items-center gap-1.5 shrink-0">
                               <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse shrink-0" />
-                              Cancel window: {formattedTime}
+                              Cancel window (1 hr): {formattedTime}
                             </span>
                             <button
                               type="button"
@@ -1235,17 +1323,24 @@ export default function EmployeeDashboard() {
                       )}
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <span className={`px-2 py-0.5 font-bold rounded-full text-[10px] ${dinnerStatus === 'Collected'
-                          ? 'bg-green-100 text-green-700'
-                          : dinnerStatus === 'Pending'
-                            ? 'bg-orange-100 text-orange-700'
-                            : dinnerStatus.includes('Cancelled')
-                              ? 'bg-red-100 text-red-700 border border-red-200 font-extrabold'
-                              : 'bg-slate-100 text-slate-500'
-                        }`}>
-                        {dinnerStatus}
-                      </span>
-                      {dinnerStatus === 'Pending' && activeDinnerOrder && (
+                      {activeDinnerOrder?.paymentConfirmed || activeDinnerOrder?.confirmedByCashier ? (
+                        <span className="px-2 py-0.5 font-extrabold rounded-full text-[9.5px] bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+                          <Check className="h-3 w-3 text-emerald-600 stroke-[3]" />
+                          Your payment and order confirmed
+                        </span>
+                      ) : (
+                        <span className={`px-2 py-0.5 font-bold rounded-full text-[10px] ${dinnerStatus === 'Collected'
+                            ? 'bg-green-100 text-green-700'
+                            : dinnerStatus === 'Pending'
+                              ? 'bg-orange-100 text-orange-700'
+                              : dinnerStatus.includes('Cancelled')
+                                ? 'bg-red-100 text-red-700 border border-red-200 font-extrabold'
+                                : 'bg-slate-100 text-slate-500'
+                          }`}>
+                          {dinnerStatus}
+                        </span>
+                      )}
+                      {dinnerStatus === 'Pending' && activeDinnerOrder && !activeDinnerOrder.paymentConfirmed && (
                         <button
                           type="button"
                           onClick={() => handleMarkAsCollectedSelf(activeDinnerOrder._id)}
@@ -1266,7 +1361,7 @@ export default function EmployeeDashboard() {
                   {(() => {
                     const order = activeDinnerOrder;
                     if (order && order.status === 'ORDERED' && !isDinnerLocked) {
-                      const msRemaining = (new Date(order.requestedAt).getTime() + 10 * 60 * 1000) - currentTime.getTime();
+                      const msRemaining = (new Date(order.requestedAt).getTime() + 60 * 60 * 1000) - currentTime.getTime();
                       if (msRemaining > 0) {
                         const mins = Math.floor(msRemaining / (1000 * 60));
                         const secs = Math.floor((msRemaining % (1000 * 60)) / 1000);
@@ -1276,7 +1371,7 @@ export default function EmployeeDashboard() {
                           <div className="mt-2 flex items-center justify-between gap-2 bg-red-50/50 border border-red-100 rounded-xl p-2.5 animate-in fade-in duration-200">
                             <span className="text-[10px] font-bold text-red-650 flex items-center gap-1.5 shrink-0">
                               <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse shrink-0" />
-                              Cancel window: {formattedTime}
+                              Cancel window (1 hr): {formattedTime}
                             </span>
                             <button
                               type="button"
@@ -1585,34 +1680,54 @@ export default function EmployeeDashboard() {
               })()}
 
               <div className="grid grid-cols-2 gap-2.5 sm:gap-4 mt-4 sm:mt-5">
-                {/* Vegetarian Option Card */}
+                {/* Vegetarian Option Card with Image */}
                 <button
                   type="button"
                   onClick={() => setSelectedOption('VEGETARIAN')}
-                  className={`flex flex-col items-center justify-center p-3 sm:p-4 rounded-2xl border-2 transition-all duration-300 transform shadow-[0_2px_8px_rgba(0,0,0,0.01)] text-center ${selectedOption === 'VEGETARIAN'
-                      ? 'border-green-500 bg-green-50/45 text-green-700 shadow-green-100/50 shadow-md -translate-y-0.5 scale-[1.02]'
-                      : 'border-slate-200 hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] bg-white text-slate-600'
+                  className={`flex flex-col items-center justify-between p-3 sm:p-3.5 rounded-2xl border-2 transition-all duration-300 transform shadow-[0_2px_8px_rgba(0,0,0,0.01)] text-center overflow-hidden group ${selectedOption === 'VEGETARIAN'
+                      ? 'border-emerald-500 bg-emerald-50/50 text-emerald-800 shadow-emerald-100/50 shadow-md -translate-y-0.5 scale-[1.02]'
+                      : 'border-slate-200 hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] bg-white text-slate-700'
                     }`}
                 >
-                  <div className={`h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center mb-2 ${selectedOption === 'VEGETARIAN' ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-500'}`}>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 3.5 1 9.8a7 7 0 0 1-9 8.2Z" /><path d="M9 22v-4h-2.5a2.5 2.5 0 0 1 0-5H9m2-5.5v4" /></svg>
+                  <div className="w-full h-24 sm:h-28 rounded-xl overflow-hidden mb-2 relative">
+                    <img
+                      src="https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&auto=format&fit=crop&q=80"
+                      alt="Vegetarian Food"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute top-1.5 left-1.5 bg-emerald-600/90 backdrop-blur-xs text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-md shadow-xs">
+                      100% Veg
+                    </div>
                   </div>
-                  <span className="text-[11px] sm:text-xs font-extrabold uppercase tracking-wider leading-tight">Vegetarian</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+                    <span className="text-[11px] sm:text-xs font-extrabold uppercase tracking-wider leading-tight">Vegetarian</span>
+                  </div>
                 </button>
 
-                {/* Meat Option Card */}
+                {/* Non Vegetarian Option Card with Image */}
                 <button
                   type="button"
                   onClick={() => setSelectedOption('MEAT')}
-                  className={`flex flex-col items-center justify-center p-3 sm:p-4 rounded-2xl border-2 transition-all duration-300 transform shadow-[0_2px_8px_rgba(0,0,0,0.01)] text-center ${selectedOption === 'MEAT'
-                      ? 'border-blue-500 bg-blue-50/45 text-blue-700 shadow-blue-100/50 shadow-md -translate-y-0.5 scale-[1.02]'
-                      : 'border-slate-200 hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] bg-white text-slate-600'
+                  className={`flex flex-col items-center justify-between p-3 sm:p-3.5 rounded-2xl border-2 transition-all duration-300 transform shadow-[0_2px_8px_rgba(0,0,0,0.01)] text-center overflow-hidden group ${selectedOption === 'MEAT'
+                      ? 'border-blue-500 bg-blue-50/50 text-blue-800 shadow-blue-100/50 shadow-md -translate-y-0.5 scale-[1.02]'
+                      : 'border-slate-200 hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] bg-white text-slate-700'
                     }`}
                 >
-                  <div className={`h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center mb-2 ${selectedOption === 'MEAT' ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-500'}`}>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a5 5 0 1 0 10 0V2Z" /><path d="m15.4 7.6-6.1 6.1m-2.1.3a2.5 2.5 0 1 0-3.5 3.5m4.3-1.4a2.5 2.5 0 1 0 3.5-3.5m-3.5 3.5h0Z" /></svg>
+                  <div className="w-full h-24 sm:h-28 rounded-xl overflow-hidden mb-2 relative">
+                    <img
+                      src="https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=600&auto=format&fit=crop&q=80"
+                      alt="Non Vegetarian Food"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute top-1.5 left-1.5 bg-rose-600/90 backdrop-blur-xs text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-md shadow-xs">
+                      Chicken / Fish
+                    </div>
                   </div>
-                  <span className="text-[11px] sm:text-xs font-extrabold uppercase tracking-wider leading-tight">Non vegetarian</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-rose-500 shrink-0" />
+                    <span className="text-[11px] sm:text-xs font-extrabold uppercase tracking-wider leading-tight">Non Vegetarian</span>
+                  </div>
                 </button>
               </div>
 
@@ -1627,7 +1742,7 @@ export default function EmployeeDashboard() {
                   order = activeDinnerOrder;
                 }
                 if (order && order.status === 'ORDERED' && !getMealLockedStatus(activeMealSelection)) {
-                  const msRemaining = (new Date(order.requestedAt).getTime() + 10 * 60 * 1000) - currentTime.getTime();
+                  const msRemaining = (new Date(order.requestedAt).getTime() + 60 * 60 * 1000) - currentTime.getTime();
                   if (msRemaining > 0) {
                     const mins = Math.floor(msRemaining / (1000 * 60));
                     const secs = Math.floor((msRemaining % (1000 * 60)) / 1000);

@@ -40,6 +40,9 @@ interface OrderItem {
   mealOption?: 'VEGETARIAN' | 'MEAT';
   notes?: string;
   status: 'ORDERED' | 'COLLECTED' | 'CANCELLED';
+  paymentConfirmed?: boolean;
+  paymentConfirmedAt?: string;
+  confirmedByCashier?: boolean;
   requestDate: string;
   requestedAt: string;
   collectedAt?: string;
@@ -727,14 +730,20 @@ export default function AdminOrdersPage() {
                         <div className="flex items-center gap-2">
                           <span
                             className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1 border ${
-                              order.status === 'COLLECTED'
+                              order.paymentConfirmed || order.confirmedByCashier
+                                ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                : order.status === 'COLLECTED'
                                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                 : order.status === 'CANCELLED'
                                 ? 'bg-rose-50 text-rose-700 border-rose-200'
                                 : 'bg-amber-50 text-amber-700 border-amber-200'
                             }`}
                           >
-                            {order.status === 'COLLECTED' ? (
+                            {order.paymentConfirmed || order.confirmedByCashier ? (
+                              <>
+                                <CheckCircle2 className="h-3 w-3 text-emerald-600" /> Payment & Order Confirmed
+                              </>
+                            ) : order.status === 'COLLECTED' ? (
                               <>
                                 <CheckCircle2 className="h-3 w-3" /> Collected
                               </>

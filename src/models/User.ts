@@ -5,7 +5,7 @@ export interface IUser extends Document {
   employeeNo: string;
   phoneNumber: string;
   password?: string;
-  role: 'SUPERADMIN' | 'ADMIN' | 'EMPLOYEE' | 'CANTEEN';
+  role: 'SUPERADMIN' | 'ADMIN' | 'EMPLOYEE' | 'CANTEEN' | 'CASHIER';
   isActive: boolean;
   department?: 'CWIT' | 'ECT' | 'SAGT' | 'CICT';
   deptChangeCount: number;
@@ -21,7 +21,7 @@ const UserSchema: Schema = new Schema(
     password: { type: String, required: true },
     role: { 
       type: String, 
-      enum: ['SUPERADMIN', 'ADMIN', 'EMPLOYEE', 'CANTEEN'], 
+      enum: ['SUPERADMIN', 'ADMIN', 'EMPLOYEE', 'CANTEEN', 'CASHIER'], 
       default: 'EMPLOYEE' 
     },
     isActive: { type: Boolean, default: true },

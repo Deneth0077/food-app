@@ -35,7 +35,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ orders });
     }
 
-    // ADMIN, SUPERADMIN, or CANTEEN can filter and search all orders
+    // ADMIN, SUPERADMIN, CANTEEN, or CASHIER can filter and search all orders
     const targetUserId = searchParams.get('userId');
     const requestDate = searchParams.get('requestDate') || (targetUserId ? 'all' : todayStr);
     const mealType = searchParams.get('mealType');
@@ -165,9 +165,9 @@ export async function POST(request: Request) {
       }
     } else if (mealType === 'LUNCH') {
       const dayOf = new Date(targetDate.getTime());
-      dayOf.setHours(9, 0, 0, 0); // 9:00 AM
+      dayOf.setHours(10, 0, 0, 0); // 10:00 AM
       if (now.getTime() >= dayOf.getTime()) {
-        const displayTime = targetDateStr === todayStr ? '9:00 AM today' : `9:00 AM on ${targetDateStr}`;
+        const displayTime = targetDateStr === todayStr ? '10:00 AM today' : `10:00 AM on ${targetDateStr}`;
         return NextResponse.json(
           { error: `Lunch orders for ${targetDateStr} closed at ${displayTime}.` },
           { status: 400 }
@@ -271,7 +271,7 @@ export async function POST(request: Request) {
   }
 }
 
-// PATCH: Mark meal request(s) as collected (Canteen, Admin or Employee self-collect)
+// PATCH: Mark meal request(s) as collected / payment confirmed (Canteen, Cashier, Admin or Employee self-collect)
 export async function PATCH(request: Request) {
   try {
     await dbConnect();
@@ -282,7 +282,7 @@ export async function PATCH(request: Request) {
     }
 
     const body = await request.json();
-    const { orderId, orderIds, status: targetStatus } = body;
+    const { orderId, orderIds, status: targetStatus, confirmPayment, revertPayment } = body;
 
     if (!orderId && (!orderIds || !Array.isArray(orderIds) || orderIds.length === 0)) {
       return NextResponse.json({ error: 'Order ID or Order IDs are required' }, { status: 400 });
@@ -303,26 +303,58 @@ export async function PATCH(request: Request) {
       });
     }
 
-    if (authUser.role !== 'CANTEEN' && authUser.role !== 'ADMIN' && authUser.role !== 'SUPERADMIN') {
+    if (authUser.role !== 'CANTEEN' && authUser.role !== 'CASHIER' && authUser.role !== 'ADMIN' && authUser.role !== 'SUPERADMIN') {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    const updateDoc: any = {};
-    if (targetStatus === 'ORDERED') {
-      updateDoc.status = 'ORDERED';
-      updateDoc.$unset = { collectedAt: 1 };
-    } else {
-      updateDoc.status = 'COLLECTED';
-      updateDoc.collectedAt = new Date();
+    // Handle revert/undo payment confirmation request
+    if (revertPayment || targetStatus === 'ORDERED') {
+      // Check if any target order was confirmed > 10 minutes ago
+      const existingOrders = await Order.find({ _id: { $in: targetIds } });
+      const now = new Date();
+
+      for (const ord of existingOrders) {
+        if (ord.paymentConfirmedAt && authUser.role !== 'ADMIN' && authUser.role !== 'SUPERADMIN') {
+          const diffMins = (now.getTime() - new Date(ord.paymentConfirmedAt).getTime()) / (1000 * 60);
+          if (diffMins > 10) {
+            return NextResponse.json(
+              { error: `Confirmation for ${ord.employeeName} (${ord.employeeNo}) cannot be undone. The 10-minute grace window has expired.` },
+              { status: 400 }
+            );
+          }
+        }
+      }
+
+      const result = await Order.updateMany(
+        { _id: { $in: targetIds } },
+        {
+          $set: { status: 'ORDERED', paymentConfirmed: false, confirmedByCashier: false },
+          $unset: { collectedAt: 1, paymentConfirmedAt: 1 }
+        }
+      );
+
+      return NextResponse.json({
+        message: `${result.modifiedCount} order(s) successfully reverted to pending.`,
+        modifiedCount: result.modifiedCount
+      });
     }
 
+    // Confirm Payment & Hand Over
     const result = await Order.updateMany(
       { _id: { $in: targetIds } },
-      updateDoc
+      {
+        $set: {
+          status: 'COLLECTED',
+          collectedAt: new Date(),
+          paymentConfirmed: true,
+          paymentConfirmedAt: new Date(),
+          confirmedByCashier: true
+        }
+      }
     );
 
     return NextResponse.json({
-      message: `${result.modifiedCount} order(s) successfully updated.`,
+      message: `${result.modifiedCount} order(s) successfully updated as confirmed & paid.`,
       modifiedCount: result.modifiedCount
     });
   } catch (error: any) {
@@ -391,10 +423,10 @@ export async function PUT(request: Request) {
       }
     } else if (mealType === 'LUNCH') {
       const dayOf = new Date(targetDate.getTime());
-      dayOf.setHours(9, 0, 0, 0); // 9:00 AM
+      dayOf.setHours(10, 0, 0, 0); // 10:00 AM
       if (now.getTime() >= dayOf.getTime()) {
         return NextResponse.json(
-          { error: `Lunch orders for ${targetDateStr} closed at 9:00 AM on ${targetDateStr}.` },
+          { error: `Lunch orders for ${targetDateStr} closed at 10:00 AM on ${targetDateStr}.` },
           { status: 400 }
         );
       }
@@ -422,9 +454,9 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: `No active ${mealType.toLowerCase()} order found for ${displayDay} to update.` }, { status: 404 });
     }
 
-    // If skipping cancellation timer, shift requestedAt to 11 minutes ago
+    // If skipping cancellation timer, shift requestedAt to 61 minutes ago
     if (skipTimer) {
-      order.requestedAt = new Date(Date.now() - 11 * 60 * 1000);
+      order.requestedAt = new Date(Date.now() - 61 * 60 * 1000);
       await order.save();
       return NextResponse.json({ message: 'Cancellation window skipped successfully', order });
     }
@@ -536,10 +568,10 @@ export async function DELETE(request: Request) {
         }
       } else if (order.mealType === 'LUNCH') {
         const dayOf = new Date(targetDate.getTime());
-        dayOf.setHours(9, 0, 0, 0); // 9:00 AM
+        dayOf.setHours(10, 0, 0, 0); // 10:00 AM
         if (now.getTime() >= dayOf.getTime()) {
           return NextResponse.json(
-            { error: `Lunch orders for ${targetDateStr} closed at 9:00 AM on ${targetDateStr}.` },
+            { error: `Lunch orders for ${targetDateStr} closed at 10:00 AM on ${targetDateStr}.` },
             { status: 400 }
           );
         }
@@ -554,15 +586,15 @@ export async function DELETE(request: Request) {
         }
       }
 
-      // Check time difference (10 minutes limit)
+      // Check time difference (60 minutes limit)
       const orderTime = new Date(order.requestedAt).getTime();
       const nowTime = new Date().getTime();
       const diffMs = nowTime - orderTime;
       const diffMins = diffMs / (1000 * 60);
 
-      if (diffMins > 10) {
+      if (diffMins > 60) {
         return NextResponse.json(
-          { error: 'Orders can only be cancelled within 10 minutes of placement.' },
+          { error: 'Orders can only be cancelled within 1 hour (60 minutes) of placement.' },
           { status: 400 }
         );
       }

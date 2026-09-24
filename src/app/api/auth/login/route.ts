@@ -17,9 +17,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // Find User (Auto-bootstrap SUPERADMIN01 if requested and not yet created, or ensure PIN is 3338)
+    // Find User (Auto-bootstrap SUPERADMIN01 or CASHIER01 if requested)
     const cleanEmpNo = employeeNo.trim().toUpperCase();
     let user = await User.findOne({ employeeNo: cleanEmpNo });
+
     if (cleanEmpNo === 'SUPERADMIN01') {
       const pin3338Hash = await bcrypt.hash('3338', 10);
       if (!user) {
@@ -36,9 +37,31 @@ export async function POST(request: Request) {
         user.password = pin3338Hash;
         await user.save();
       }
+    } else if (cleanEmpNo === 'CASHIER01' || cleanEmpNo === 'CASHIER') {
+      const cashierPinHash = await bcrypt.hash('1234', 10);
+      if (!user) {
+        user = await User.create({
+          fullName: 'Main Canteen Cashier',
+          employeeNo: 'CASHIER01',
+          phoneNumber: '0771112233',
+          password: cashierPinHash,
+          role: 'CASHIER',
+          isActive: true,
+        });
+      }
     }
 
     if (!user) {
+      // If user typed a numeric emp ID >= 2000, give a specific helpful message
+      if (/^\d+$/.test(cleanEmpNo)) {
+        const val = parseInt(cleanEmpNo, 10);
+        if (val >= 2000) {
+          return NextResponse.json(
+            { error: 'Wrong Emp ID! Employee number must be less than 2000.' },
+            { status: 400 }
+          );
+        }
+      }
       return NextResponse.json(
         { error: 'Invalid Employee Number or PIN' },
         { status: 401 }
@@ -78,6 +101,8 @@ export async function POST(request: Request) {
       redirectUrl = '/admin/dashboard';
     } else if (user.role === 'CANTEEN') {
       redirectUrl = '/canteen/dashboard';
+    } else if (user.role === 'CASHIER') {
+      redirectUrl = '/cashier/dashboard';
     }
 
     // Create response
