@@ -25,7 +25,7 @@ export async function POST(request: Request) {
       const pin3338Hash = await bcrypt.hash('3338', 10);
       if (!user) {
         user = await User.create({
-          fullName: 'System Super Admin',
+          fullName: 'Super Admin Control',
           employeeNo: 'SUPERADMIN01',
           phoneNumber: '0770000000',
           password: pin3338Hash,
@@ -33,17 +33,40 @@ export async function POST(request: Request) {
           isActive: true,
         });
       } else if (password === '3338' || password === 'SuperAdmin@123') {
-        // Ensure stored password matches 3338
         user.password = pin3338Hash;
         await user.save();
+      }
+    } else if (cleanEmpNo === 'ADMIN01' || cleanEmpNo === 'ADMIN') {
+      const pin1234Hash = await bcrypt.hash('1234', 10);
+      if (!user) {
+        user = await User.create({
+          fullName: 'System Admin',
+          employeeNo: 'ADMIN01',
+          phoneNumber: '0771111111',
+          password: pin1234Hash,
+          role: 'ADMIN',
+          isActive: true,
+        });
+      }
+    } else if (cleanEmpNo === 'CANTEEN01' || cleanEmpNo === 'CANTEEN') {
+      const pin1234Hash = await bcrypt.hash('1234', 10);
+      if (!user) {
+        user = await User.create({
+          fullName: 'Canteen Staff Manager',
+          employeeNo: 'CANTEEN01',
+          phoneNumber: '0772222222',
+          password: pin1234Hash,
+          role: 'CANTEEN',
+          isActive: true,
+        });
       }
     } else if (cleanEmpNo === 'CASHIER01' || cleanEmpNo === 'CASHIER') {
       const cashierPinHash = await bcrypt.hash('1234', 10);
       if (!user) {
         user = await User.create({
-          fullName: 'Main Canteen Cashier',
+          fullName: 'Main Cashier Desk',
           employeeNo: 'CASHIER01',
-          phoneNumber: '0771112233',
+          phoneNumber: '0773333333',
           password: cashierPinHash,
           role: 'CASHIER',
           isActive: true,
