@@ -295,15 +295,15 @@ export default function CashierDashboard() {
     if (siteFilter !== 'ALL' && order.department !== siteFilter) return false;
 
     // Status filter (WAITING vs CONFIRMED)
-    if (statusFilter === 'WAITING' && (order.status === 'COLLECTED' || order.paymentConfirmed)) return false;
-    if (statusFilter === 'CONFIRMED' && !(order.paymentConfirmed || order.confirmedByCashier || order.status === 'COLLECTED')) return false;
+    if (statusFilter === 'WAITING' && (order.paymentConfirmed || order.confirmedByCashier)) return false;
+    if (statusFilter === 'CONFIRMED' && !(order.paymentConfirmed || order.confirmedByCashier)) return false;
 
     return true;
   });
 
   const totalOrders = orders.filter(o => o.status !== 'CANCELLED').length;
-  const waitingOrders = orders.filter(o => o.status === 'ORDERED' && !o.paymentConfirmed).length;
-  const confirmedOrders = orders.filter(o => o.status === 'COLLECTED' || o.paymentConfirmed).length;
+  const waitingOrders = orders.filter(o => o.status !== 'CANCELLED' && !(o.paymentConfirmed || o.confirmedByCashier)).length;
+  const confirmedOrders = orders.filter(o => o.status !== 'CANCELLED' && (o.paymentConfirmed || o.confirmedByCashier)).length;
 
   if (loading) {
     return (
@@ -539,7 +539,7 @@ export default function CashierDashboard() {
           ) : (
             <div className="grid grid-cols-1 gap-2.5">
               {filteredOrders.map((order) => {
-                const isConfirmed = order.paymentConfirmed || order.confirmedByCashier || order.status === 'COLLECTED';
+                const isConfirmed = Boolean(order.paymentConfirmed || order.confirmedByCashier);
 
                 // Calculate 10-minute undo window countdown
                 let undoMsRemaining = 0;
@@ -637,7 +637,7 @@ export default function CashierDashboard() {
                         <>
                           <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-700">
                             <Clock className="h-3.5 w-3.5 text-amber-500 animate-spin shrink-0" />
-                            <span>Pending Collection & Hand Over</span>
+                            <span>{order.status === 'COLLECTED' ? 'Food Collected at Canteen (Pending Payment)' : 'Pending Cashier Payment'}</span>
                           </div>
 
                           <button

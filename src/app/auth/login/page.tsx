@@ -188,7 +188,7 @@ export default function LoginPage() {
         title: 'PIN Reset Success',
         description: 'Your new PIN has been saved. Please log in.',
       });
-      
+
       // Close modal and clear states
       setShowForgotPinModal(false);
       setForgotEmployeeNo('');
@@ -239,7 +239,7 @@ export default function LoginPage() {
               <Input
                 id="employeeNo"
                 type="text"
-                placeholder="e.g. 0234, 0023 or CASHIER01"
+                placeholder="e.g. 0234, 0023 "
                 className="h-12 border-slate-200 rounded-xl px-4 text-slate-850 placeholder:text-slate-400 focus-visible:ring-blue-600 focus-visible:border-blue-600 font-semibold"
                 disabled={loading}
                 {...register('employeeNo')}
@@ -248,7 +248,7 @@ export default function LoginPage() {
                 <p className="text-xs text-red-500 font-medium mt-1">{errors.employeeNo.message}</p>
               )}
             </div>
-            
+
             <div className="space-y-2.5">
               <div className="flex justify-between items-center">
                 <Label htmlFor="password" className="text-slate-700 font-medium">4-Digit PIN</Label>
@@ -276,9 +276,9 @@ export default function LoginPage() {
               )}
             </div>
 
-            <Button 
-              type="submit" 
-              className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-base shadow-sm mt-2 transition-all active:scale-98 flex items-center justify-center gap-2" 
+            <Button
+              type="submit"
+              className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-base shadow-sm mt-2 transition-all active:scale-98 flex items-center justify-center gap-2"
               disabled={loading}
             >
               {loading ? (
@@ -311,13 +311,13 @@ export default function LoginPage() {
             setForgotConfirmPin('');
             setIsVerified(false);
           }}></div>
-          
+
           <div className="relative bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl border border-slate-100 transition-all duration-300 ease-out transform animate-in zoom-in-95">
             <h3 className="text-lg font-bold text-slate-800 tracking-tight">Recover 4-Digit PIN</h3>
             <p className="text-xs text-slate-500 mt-1 font-semibold">
               {isVerified ? 'Enter your new 4-digit PIN below.' : 'Verify your employee details to reset your PIN.'}
             </p>
-            
+
             {!isVerified ? (
               <form onSubmit={handleVerifyForgotDetails} className="space-y-4 mt-4 text-left">
                 <div className="space-y-1.5">

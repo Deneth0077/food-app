@@ -21,7 +21,8 @@ import {
   Moon,
   Download,
   ShieldAlert,
-  ClipboardList
+  ClipboardList,
+  UserPlus
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -789,6 +790,28 @@ export default function AdminDashboard() {
                 </div>
               </div>
               <ChevronRight className="h-4 w-4 text-emerald-600" />
+            </Link>
+
+            {/* Manual Order Creation for Admin */}
+            <Link 
+              href="/admin/orders?manualOrder=true" 
+              className="flex items-center justify-between p-3.5 bg-gradient-to-r from-blue-50/90 via-indigo-50/60 to-blue-50/80 rounded-xl hover:from-blue-100/80 hover:to-indigo-100/70 border border-blue-100 text-slate-800 font-bold text-xs transition-all active:scale-[0.99] shadow-xs"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="h-7 w-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
+                  <UserPlus className="h-4 w-4 stroke-[2.25]" />
+                </div>
+                <div>
+                  <div className="font-extrabold text-slate-900 flex items-center gap-1.5">
+                    Manual Employee Order
+                    <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
+                      Admin
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-medium">Add meal order manually if employee forgot to order</div>
+                </div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-blue-600" />
             </Link>
 
             <Link 

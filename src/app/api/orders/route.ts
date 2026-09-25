@@ -85,7 +85,7 @@ export async function GET(request: Request) {
   }
 }
 
-// POST: Submit a meal request (Employee only)
+// POST: Submit a meal request (Employee or Admin on behalf of employee)
 export async function POST(request: Request) {
   try {
     await dbConnect();
@@ -95,12 +95,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (authUser.role !== 'EMPLOYEE') {
-      return NextResponse.json({ error: 'Only employees can request meals' }, { status: 403 });
-    }
-
     const body = await request.json();
-    const { mealType, mealOption, notes, requestDate, department } = body;
+    const { mealType, mealOption, notes, requestDate, department, employeeNo, targetUserId, orderMode } = body;
+
+    const isAdmin = authUser.role === 'ADMIN' || authUser.role === 'SUPERADMIN';
+
+    if (!isAdmin && authUser.role !== 'EMPLOYEE') {
+      return NextResponse.json({ error: 'Only employees or admins can request meals' }, { status: 403 });
+    }
 
     if (!mealType || !['BREAKFAST', 'LUNCH', 'DINNER'].includes(mealType)) {
       return NextResponse.json({ error: 'Invalid meal type requested' }, { status: 400 });
@@ -114,15 +116,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid department/site selected' }, { status: 400 });
     }
 
-    // Fetch full user details to ensure they are active and get phone number
-    const dbUser = await User.findById(authUser.userId);
+    // Determine target user
+    let dbUser;
+    if (isAdmin && (employeeNo || targetUserId)) {
+      if (employeeNo) {
+        dbUser = await User.findOne({ employeeNo: employeeNo.trim().toUpperCase() });
+      } else if (targetUserId) {
+        dbUser = await User.findById(targetUserId);
+      }
+      if (!dbUser) {
+        return NextResponse.json({ error: `Employee not found with Emp ID: ${employeeNo || targetUserId}` }, { status: 404 });
+      }
+    } else {
+      dbUser = await User.findById(authUser.userId);
+    }
+
     if (!dbUser || !dbUser.isActive) {
-      return NextResponse.json({ error: 'User is inactive or not found' }, { status: 403 });
+      return NextResponse.json({ error: 'Target employee is inactive or not found' }, { status: 403 });
     }
 
     const orderDepartment = department || dbUser.department;
     if (!orderDepartment) {
-      return NextResponse.json({ error: 'Please select your work site (CWIT, ECT, SAGT, or CICT) first.' }, { status: 400 });
+      return NextResponse.json({ error: 'Please select work site (CWIT, ECT, SAGT, or CICT) first.' }, { status: 400 });
     }
 
     if (!dbUser.department && department) {
@@ -131,7 +146,6 @@ export async function POST(request: Request) {
     }
 
     const now = new Date();
-    const currentHour = now.getHours();
     const todayStr = format(now, 'yyyy-MM-dd');
 
     const tomorrow = new Date(now);
@@ -140,53 +154,56 @@ export async function POST(request: Request) {
 
     const targetDateStr = requestDate || todayStr;
 
-    if (targetDateStr < todayStr) {
-      return NextResponse.json({ error: 'Cannot place orders for past dates.' }, { status: 400 });
-    }
+    // Time lock checks (Bypassed for Admin manual additions)
+    if (!isAdmin) {
+      if (targetDateStr < todayStr) {
+        return NextResponse.json({ error: 'Cannot place orders for past dates.' }, { status: 400 });
+      }
 
-    if (targetDateStr !== todayStr && targetDateStr !== tomorrowStr) {
-      return NextResponse.json(
-        { error: `${mealType.charAt(0) + mealType.slice(1).toLowerCase()} can only be ordered for today or tomorrow.` },
-        { status: 400 }
-      );
-    }
-
-    // Unified lock validation
-    const targetDate = new Date(targetDateStr + 'T00:00:00');
-    if (mealType === 'BREAKFAST') {
-      const dayBefore = new Date(targetDate.getTime());
-      dayBefore.setDate(dayBefore.getDate() - 1);
-      dayBefore.setHours(20, 0, 0, 0); // 8:00 PM
-      if (now.getTime() >= dayBefore.getTime()) {
-        const displayTime = targetDateStr === tomorrowStr ? '8:00 PM today' : `8:00 PM on ${format(dayBefore, 'yyyy-MM-dd')}`;
+      if (targetDateStr !== todayStr && targetDateStr !== tomorrowStr) {
         return NextResponse.json(
-          { error: `Breakfast orders for ${targetDateStr} closed at ${displayTime}.` },
+          { error: `${mealType.charAt(0) + mealType.slice(1).toLowerCase()} can only be ordered for today or tomorrow.` },
           { status: 400 }
         );
       }
-    } else if (mealType === 'LUNCH') {
-      const dayOf = new Date(targetDate.getTime());
-      dayOf.setHours(10, 0, 0, 0); // 10:00 AM
-      if (now.getTime() >= dayOf.getTime()) {
-        const displayTime = targetDateStr === todayStr ? '10:00 AM today' : `10:00 AM on ${targetDateStr}`;
-        return NextResponse.json(
-          { error: `Lunch orders for ${targetDateStr} closed at ${displayTime}.` },
-          { status: 400 }
-        );
-      }
-    } else if (mealType === 'DINNER') {
-      const dayOf = new Date(targetDate.getTime());
-      dayOf.setHours(17, 0, 0, 0); // 5:00 PM
-      if (now.getTime() >= dayOf.getTime()) {
-        const displayTime = targetDateStr === todayStr ? '5:00 PM today' : `5:00 PM on ${targetDateStr}`;
-        return NextResponse.json(
-          { error: `Dinner orders for ${targetDateStr} closed at ${displayTime}.` },
-          { status: 400 }
-        );
+
+      const targetDate = new Date(targetDateStr + 'T00:00:00');
+      if (mealType === 'BREAKFAST') {
+        const dayBefore = new Date(targetDate.getTime());
+        dayBefore.setDate(dayBefore.getDate() - 1);
+        dayBefore.setHours(20, 0, 0, 0); // 8:00 PM
+        if (now.getTime() >= dayBefore.getTime()) {
+          const displayTime = targetDateStr === tomorrowStr ? '8:00 PM today' : `8:00 PM on ${format(dayBefore, 'yyyy-MM-dd')}`;
+          return NextResponse.json(
+            { error: `Breakfast orders for ${targetDateStr} closed at ${displayTime}.` },
+            { status: 400 }
+          );
+        }
+      } else if (mealType === 'LUNCH') {
+        const dayOf = new Date(targetDate.getTime());
+        dayOf.setHours(10, 0, 0, 0); // 10:00 AM
+        if (now.getTime() >= dayOf.getTime()) {
+          const displayTime = targetDateStr === todayStr ? '10:00 AM today' : `10:00 AM on ${targetDateStr}`;
+          return NextResponse.json(
+            { error: `Lunch orders for ${targetDateStr} closed at ${displayTime}.` },
+            { status: 400 }
+          );
+        }
+      } else if (mealType === 'DINNER') {
+        const dayOf = new Date(targetDate.getTime());
+        dayOf.setHours(17, 0, 0, 0); // 5:00 PM
+        if (now.getTime() >= dayOf.getTime()) {
+          const displayTime = targetDateStr === todayStr ? '5:00 PM today' : `5:00 PM on ${targetDateStr}`;
+          return NextResponse.json(
+            { error: `Dinner orders for ${targetDateStr} closed at ${displayTime}.` },
+            { status: 400 }
+          );
+        }
       }
     }
 
-    const displayDay = targetDateStr === todayStr ? 'today' : targetDateStr === tomorrowStr ? 'tomorrow' : targetDateStr;
+    const isReportOnly = isAdmin && orderMode === 'REPORT_ONLY';
+    const initialStatus = isReportOnly ? 'COLLECTED' : 'ORDERED';
 
     // Prevent duplicates: Check if an order already exists for this user, date, and meal type
     const existingOrder = await Order.findOne({
@@ -198,38 +215,29 @@ export async function POST(request: Request) {
     if (existingOrder) {
       if (existingOrder.status === 'CANCELLED') {
         // Re-activate previously cancelled order
-        existingOrder.status = 'ORDERED';
+        existingOrder.status = initialStatus;
         existingOrder.mealOption = mealOption;
         existingOrder.notes = notes ? notes.trim() : undefined;
         existingOrder.department = department || dbUser.department;
         existingOrder.requestedAt = new Date();
         existingOrder.cancelledAt = undefined;
         existingOrder.cancelledBy = undefined;
+        if (isReportOnly) {
+          existingOrder.paymentConfirmed = true;
+          existingOrder.confirmedByCashier = true;
+          existingOrder.paymentConfirmedAt = new Date();
+          existingOrder.collectedAt = new Date();
+        }
         await existingOrder.save();
 
-        // Create Admin Notification (Skip for Superadmin)
-        if (dbUser.role !== 'SUPERADMIN') {
-          try {
-            await Notification.create({
-              employeeName: dbUser.fullName,
-              employeeNo: dbUser.employeeNo,
-              mealType,
-              mealOption,
-              notes: notes ? notes.trim() : undefined,
-            });
-          } catch (notifErr) {
-            console.error('Notification creation failed:', notifErr);
-          }
-        }
-
         return NextResponse.json(
-          { message: `${mealType.charAt(0) + mealType.slice(1).toLowerCase()} requested successfully`, order: existingOrder },
+          { message: `${mealType.charAt(0) + mealType.slice(1).toLowerCase()} order for ${dbUser.fullName} added successfully.`, order: existingOrder },
           { status: 201 }
         );
       }
 
       return NextResponse.json(
-        { error: `You have already requested ${mealType.toLowerCase()} for ${displayDay}. You cannot place duplicate requests for the same mealtime.` },
+        { error: `${dbUser.fullName} (${dbUser.employeeNo}) already has an active ${mealType.toLowerCase()} order for ${targetDateStr}.` },
         { status: 400 }
       );
     }
@@ -243,14 +251,18 @@ export async function POST(request: Request) {
       mealType,
       mealOption,
       notes: notes ? notes.trim() : undefined,
-      status: 'ORDERED',
+      status: initialStatus,
+      paymentConfirmed: isReportOnly ? true : false,
+      paymentConfirmedAt: isReportOnly ? new Date() : undefined,
+      confirmedByCashier: isReportOnly ? true : false,
+      collectedAt: isReportOnly ? new Date() : undefined,
       requestDate: targetDateStr,
       requestedAt: new Date(),
       department: department || dbUser.department,
     });
 
-    // Create Admin Notification (Skip for Superadmin)
-    if (dbUser.role !== 'SUPERADMIN') {
+    // Create Admin Notification (Skip for Superadmin or Admin manual entry)
+    if (!isAdmin) {
       try {
         await Notification.create({
           employeeName: dbUser.fullName,
@@ -260,12 +272,14 @@ export async function POST(request: Request) {
           notes: notes ? notes.trim() : undefined,
         });
       } catch (notifError) {
-        // Log notification error but don't fail the order submission
         console.error('Failed to create notification:', notifError);
       }
     }
 
-    return NextResponse.json({ message: 'Request submitted successfully', order: newOrder }, { status: 201 });
+    return NextResponse.json({
+      message: `Meal request for ${dbUser.fullName} (${dbUser.employeeNo}) submitted successfully.`,
+      order: newOrder
+    }, { status: 201 });
   } catch (error: any) {
     console.error('Create Order Error:', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
@@ -340,22 +354,40 @@ export async function PATCH(request: Request) {
       });
     }
 
-    // Confirm Payment & Hand Over
+    // Explicit Cashier Payment Confirmation
+    if (confirmPayment) {
+      const result = await Order.updateMany(
+        { _id: { $in: targetIds } },
+        {
+          $set: {
+            status: 'COLLECTED',
+            collectedAt: new Date(),
+            paymentConfirmed: true,
+            paymentConfirmedAt: new Date(),
+            confirmedByCashier: true
+          }
+        }
+      );
+
+      return NextResponse.json({
+        message: `${result.modifiedCount} order(s) successfully updated as confirmed & paid.`,
+        modifiedCount: result.modifiedCount
+      });
+    }
+
+    // Canteen or General Collection (Sets food collected, but does NOT confirm payment for cashier)
     const result = await Order.updateMany(
       { _id: { $in: targetIds } },
       {
         $set: {
           status: 'COLLECTED',
-          collectedAt: new Date(),
-          paymentConfirmed: true,
-          paymentConfirmedAt: new Date(),
-          confirmedByCashier: true
+          collectedAt: new Date()
         }
       }
     );
 
     return NextResponse.json({
-      message: `${result.modifiedCount} order(s) successfully updated as confirmed & paid.`,
+      message: `${result.modifiedCount} order(s) successfully marked as collected.`,
       modifiedCount: result.modifiedCount
     });
   } catch (error: any) {
@@ -390,7 +422,6 @@ export async function PUT(request: Request) {
     }
 
     const now = new Date();
-    const currentHour = now.getHours();
     const todayStr = format(now, 'yyyy-MM-dd');
 
     const tomorrow = new Date(now);
@@ -541,8 +572,9 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'No active order found to cancel.' }, { status: 404 });
     }
 
-    if (order.status === 'COLLECTED') {
-      return NextResponse.json({ error: 'Collected meals cannot be cancelled.' }, { status: 400 });
+    // Allow Admin & SuperAdmin to cancel collected orders; block non-admins from cancelling collected orders
+    if (order.status === 'COLLECTED' && authUser.role !== 'ADMIN' && authUser.role !== 'SUPERADMIN') {
+      return NextResponse.json({ error: 'Collected meals cannot be cancelled by employees.' }, { status: 400 });
     }
 
     // Check if non-admin is trying to cancel someone else's order
@@ -631,3 +663,4 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }
+
