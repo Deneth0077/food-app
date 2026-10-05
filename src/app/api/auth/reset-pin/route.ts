@@ -20,8 +20,10 @@ export async function POST(request: Request) {
     }
 
     // Find the user matching both Employee Number and Phone Number
+    const cleanEmpNo = employeeNo.trim().toUpperCase();
+
     const user = await User.findOne({
-      employeeNo: employeeNo.trim(),
+      employeeNo: cleanEmpNo,
       phoneNumber: phoneNumber.trim(),
     });
 
