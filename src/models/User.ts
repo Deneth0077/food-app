@@ -5,9 +5,10 @@ export interface IUser extends Document {
   employeeNo: string;
   phoneNumber: string;
   password?: string;
-  role: 'SUPERADMIN' | 'ADMIN' | 'EMPLOYEE' | 'CANTEEN' | 'CASHIER';
+  role: 'SUPERADMIN' | 'ADMIN' | 'EMPLOYEE' | 'CANTEEN' | 'CASHIER' | 'LIVE_ADMIN';
   isActive: boolean;
   department?: 'CWIT' | 'ECT' | 'SAGT' | 'CICT';
+  cictTeam?: string;
   deptChangeCount: number;
   createdAt: Date;
   updatedAt: Date;
@@ -21,13 +22,17 @@ const UserSchema: Schema = new Schema(
     password: { type: String, required: true },
     role: { 
       type: String, 
-      enum: ['SUPERADMIN', 'ADMIN', 'EMPLOYEE', 'CANTEEN', 'CASHIER'], 
+      enum: ['SUPERADMIN', 'ADMIN', 'EMPLOYEE', 'CANTEEN', 'CASHIER', 'LIVE_ADMIN'], 
       default: 'EMPLOYEE' 
     },
     isActive: { type: Boolean, default: true },
     department: { 
       type: String, 
       enum: ['CWIT', 'ECT', 'SAGT', 'CICT'], 
+      required: false 
+    },
+    cictTeam: { 
+      type: String, 
       required: false 
     },
     deptChangeCount: { 

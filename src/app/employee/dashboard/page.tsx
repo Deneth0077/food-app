@@ -32,6 +32,7 @@ interface UserProfile {
   phoneNumber: string;
   role: string;
   department?: 'CWIT' | 'ECT' | 'SAGT' | 'CICT';
+  cictTeam?: string;
   deptChangeCount: number;
 }
 
@@ -50,7 +51,25 @@ interface Order {
   cancelledBy?: string;
   notes?: string;
   department?: 'CWIT' | 'ECT' | 'SAGT' | 'CICT';
+  cictTeam?: string;
 }
+
+const CICT_TEAMS = [
+  'Special Team',
+  'Spreader Team',
+  'QC – Electrical Team',
+  'QC – Mechanical Team',
+  'On-Duty Team',
+  'Mobile Team',
+  'RTG – Electrical Team',
+  'RTG – Mechanical Team',
+  'FAC Team',
+  'ECT Team',
+  'CWIT Team',
+  'Stores',
+  'Sgs stores',
+  'General',
+];
 
 interface MenuItem {
   name: string;
@@ -112,7 +131,8 @@ export default function EmployeeDashboard() {
   const [selectedOption, setSelectedOption] = useState<'VEGETARIAN' | 'MEAT' | null>(null);
   const [orderNotes, setOrderNotes] = useState('');
   const [selectedOrderDepartment, setSelectedOrderDepartment] = useState<'CWIT' | 'ECT' | 'SAGT' | 'CICT' | null>(null);
-  const [mealModalStep, setMealModalStep] = useState<'PREFERENCE' | 'SITE'>('PREFERENCE');
+  const [mealModalStep, setMealModalStep] = useState<'PREFERENCE' | 'SITE' | 'CICT_TEAM'>('PREFERENCE');
+  const [selectedCictTeam, setSelectedCictTeam] = useState<string>('');
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [isUpdatingNotesOnly, setIsUpdatingNotesOnly] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -315,14 +335,14 @@ export default function EmployeeDashboard() {
   }, []);
 
   // Handle meal request submission
-  const handleRequestMeal = async (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER', mealOption?: 'VEGETARIAN' | 'MEAT', notes?: string, department?: string) => {
+  const handleRequestMeal = async (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER', mealOption?: 'VEGETARIAN' | 'MEAT', notes?: string, department?: string, cictTeam?: string) => {
     setSubmittingMeal(mealType);
     try {
       const targetDateStr = selectedBookingDate;
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mealType, mealOption, notes, requestDate: targetDateStr, department }),
+        body: JSON.stringify({ mealType, mealOption, notes, requestDate: targetDateStr, department, cictTeam }),
       });
 
       const data = await res.json();
@@ -369,13 +389,13 @@ export default function EmployeeDashboard() {
     }
   };
 
-  const handleUpdateOrder = async (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER', mealOption: 'VEGETARIAN' | 'MEAT', notes: string, department?: string) => {
+  const handleUpdateOrder = async (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER', mealOption: 'VEGETARIAN' | 'MEAT', notes: string, department?: string, cictTeam?: string) => {
     try {
       const targetDateStr = selectedBookingDate;
       const res = await fetch('/api/orders', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mealType, mealOption, notes, requestDate: targetDateStr, department }),
+        body: JSON.stringify({ mealType, mealOption, notes, requestDate: targetDateStr, department, cictTeam }),
       });
 
       const data = await res.json();
@@ -1978,7 +1998,7 @@ export default function EmployeeDashboard() {
                 </button>
               </div>
             </div>
-          ) : (
+          ) : mealModalStep === 'SITE' ? (
             /* Step 2: Work Site Card Popup */
             <div className="relative bg-white w-full max-w-sm max-h-[90vh] overflow-y-auto rounded-3xl p-6 shadow-2xl border border-slate-100 text-center animate-in zoom-in-95">
               <h3 className="text-base sm:text-lg font-bold text-slate-800 tracking-tight">Select Your Work Site</h3>
@@ -1998,6 +2018,12 @@ export default function EmployeeDashboard() {
                         const mealOption = selectedOption;
                         const notes = orderNotes;
                         const chosenDept = dept as 'CWIT' | 'ECT' | 'SAGT' | 'CICT';
+
+                        if (chosenDept === 'CICT') {
+                          setSelectedOrderDepartment('CICT');
+                          setMealModalStep('CICT_TEAM');
+                          return;
+                        }
 
                         setActiveMealSelection(null);
                         setSelectedOption(null);
@@ -2023,6 +2049,58 @@ export default function EmployeeDashboard() {
                 <button
                   type="button"
                   onClick={() => setMealModalStep('PREFERENCE')}
+                  className="w-full h-10 sm:h-11 border border-slate-200 text-slate-500 font-bold rounded-xl text-xs hover:bg-slate-50 active:scale-98 transition-all"
+                >
+                  Back
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* Step 3: CICT Team Selection Popup */
+            <div className="relative bg-white w-full max-w-sm max-h-[90vh] overflow-y-auto rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-100 text-center animate-in zoom-in-95">
+              <h3 className="text-base sm:text-lg font-bold text-slate-800 tracking-tight">Select Your CICT Team</h3>
+              <p className="text-[11px] sm:text-xs text-slate-500 mt-1 font-semibold">
+                Choose your specific team for CICT site meal delivery:
+              </p>
+
+              <div className="grid grid-cols-2 gap-2 mt-4 max-h-[50vh] overflow-y-auto pr-1">
+                {CICT_TEAMS.map((teamName) => (
+                  <button
+                    key={teamName}
+                    type="button"
+                    disabled={submittingMeal === activeMealSelection}
+                    onClick={async () => {
+                      if (activeMealSelection && selectedOption) {
+                        const mealType = activeMealSelection;
+                        const mealOption = selectedOption;
+                        const notes = orderNotes;
+                        const chosenDept = 'CICT';
+
+                        setActiveMealSelection(null);
+                        setSelectedOption(null);
+                        setOrderNotes('');
+                        setSelectedOrderDepartment(null);
+                        setMealModalStep('PREFERENCE');
+
+                        if (isUpdatingNotesOnly) {
+                          await handleUpdateOrder(mealType, mealOption, notes, chosenDept, teamName);
+                        } else {
+                          await handleRequestMeal(mealType, mealOption, notes, chosenDept, teamName);
+                        }
+                      }
+                    }}
+                    className="p-2.5 bg-blue-50/70 hover:bg-blue-600 hover:text-white border border-blue-200 text-blue-900 font-bold rounded-xl text-xs text-left transition-all active:scale-95 leading-tight flex items-center justify-between"
+                  >
+                    <span>{teamName}</span>
+                    <ChevronRight className="w-3.5 h-3.5 shrink-0 opacity-60" />
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={() => setMealModalStep('SITE')}
                   className="w-full h-10 sm:h-11 border border-slate-200 text-slate-500 font-bold rounded-xl text-xs hover:bg-slate-50 active:scale-98 transition-all"
                 >
                   Back

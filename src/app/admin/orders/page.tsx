@@ -57,7 +57,25 @@ interface OrderItem {
   cancelledAt?: string;
   cancelledBy?: 'EMPLOYEE' | 'ADMIN';
   department?: 'CWIT' | 'ECT' | 'SAGT' | 'CICT';
+  cictTeam?: string;
 }
+
+const CICT_TEAMS = [
+  'Special Team',
+  'Spreader Team',
+  'QC – Electrical Team',
+  'QC – Mechanical Team',
+  'On-Duty Team',
+  'Mobile Team',
+  'RTG – Electrical Team',
+  'RTG – Mechanical Team',
+  'FAC Team',
+  'ECT Team',
+  'CWIT Team',
+  'Stores',
+  'Sgs stores',
+  'General',
+];
 
 export default function AdminOrdersPage() {
   const router = useRouter();
@@ -74,6 +92,7 @@ export default function AdminOrdersPage() {
   const [mealFilter, setMealFilter] = useState<'ALL' | 'BREAKFAST' | 'LUNCH' | 'DINNER'>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ORDERED' | 'COLLECTED' | 'CANCELLED'>('ALL');
   const [departmentFilter, setDepartmentFilter] = useState<string>('ALL');
+  const [cictTeamFilter, setCictTeamFilter] = useState<string>('ALL');
   const [dietaryFilter, setDietaryFilter] = useState<'ALL' | 'VEGETARIAN' | 'MEAT'>('ALL');
   const [showFilterDrawer, setShowFilterDrawer] = useState(false);
 
@@ -88,6 +107,7 @@ export default function AdminOrdersPage() {
   const [manualMealOption, setManualMealOption] = useState<'VEGETARIAN' | 'MEAT'>('MEAT');
   const [manualRequestDate, setManualRequestDate] = useState<string>(todayStr);
   const [manualDepartment, setManualDepartment] = useState<string>('CWIT');
+  const [manualCictTeam, setManualCictTeam] = useState<string>('General');
   const [manualNotes, setManualNotes] = useState<string>('');
   const [manualOrderMode, setManualOrderMode] = useState<'COLLECTION' | 'REPORT_ONLY'>('COLLECTION');
   const [submittingManual, setSubmittingManual] = useState(false);
@@ -189,6 +209,7 @@ export default function AdminOrdersPage() {
           mealOption: manualMealOption,
           requestDate: manualRequestDate,
           department: manualDepartment,
+          cictTeam: manualDepartment === 'CICT' ? manualCictTeam : undefined,
           notes: manualNotes,
           orderMode: manualOrderMode,
         }),
@@ -360,6 +381,7 @@ export default function AdminOrdersPage() {
       'Employee ID': o.employeeNo,
       'Employee Name': o.employeeName,
       'Work Site': o.department || 'N/A',
+      'CICT Team': o.cictTeam || 'N/A',
       'Phone Number': o.phoneNumber,
       'Dietary Option': o.mealOption || 'Standard',
       'Status': o.status,
@@ -412,6 +434,9 @@ export default function AdminOrdersPage() {
 
     // Department Filter
     if (departmentFilter !== 'ALL' && order.department !== departmentFilter) return false;
+
+    // CICT Team Filter
+    if (cictTeamFilter !== 'ALL' && order.cictTeam !== cictTeamFilter) return false;
 
     // Dietary Filter
     if (dietaryFilter !== 'ALL' && order.mealOption !== dietaryFilter) return false;
@@ -640,6 +665,65 @@ export default function AdminOrdersPage() {
           </div>
         </div>
 
+        {/* CICT Teams Breakdown (Smooth Admin View) */}
+        <div className="bg-gradient-to-r from-purple-50/90 via-indigo-50/50 to-blue-50/80 rounded-2xl p-4 border border-purple-100 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="h-7 w-7 rounded-lg bg-purple-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                CICT
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-purple-950">CICT Teams Breakdown</h3>
+                <p className="text-[10px] text-purple-700 font-medium">Click any team to filter orders</p>
+              </div>
+            </div>
+            {cictTeamFilter !== 'ALL' && (
+              <button
+                onClick={() => setCictTeamFilter('ALL')}
+                className="text-[10px] font-extrabold text-purple-700 bg-white border border-purple-200 px-2 py-1 rounded-lg hover:bg-purple-100 transition-all flex items-center gap-1"
+              >
+                Clear CICT Filter
+              </button>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            <button
+              onClick={() => setCictTeamFilter('ALL')}
+              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all ${
+                cictTeamFilter === 'ALL'
+                  ? 'bg-purple-700 text-white border-purple-700 shadow-xs'
+                  : 'bg-white text-purple-900 border-purple-200 hover:bg-purple-100/60'
+              }`}
+            >
+              All CICT ({orders.filter(o => o.department === 'CICT').length})
+            </button>
+            {CICT_TEAMS.map(teamName => {
+              const teamCount = orders.filter(o => o.department === 'CICT' && o.cictTeam === teamName).length;
+              const isSelected = cictTeamFilter === teamName;
+
+              return (
+                <button
+                  key={teamName}
+                  onClick={() => setCictTeamFilter(isSelected ? 'ALL' : teamName)}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all flex items-center gap-1 ${
+                    isSelected
+                      ? 'bg-purple-700 text-white border-purple-700 shadow-xs'
+                      : teamCount > 0
+                      ? 'bg-white text-purple-900 border-purple-200 hover:bg-purple-100/60 font-black'
+                      : 'bg-white/60 text-slate-400 border-slate-200 opacity-70'
+                  }`}
+                >
+                  <span>{teamName}</span>
+                  <span className={`px-1.5 py-0.2 rounded text-[8.5px] ${isSelected ? 'bg-purple-900 text-purple-100 font-extrabold' : teamCount > 0 ? 'bg-purple-100 text-purple-800 font-extrabold' : 'bg-slate-100 text-slate-400'}`}>
+                    {teamCount}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Search & Filters Row */}
         <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.015)] space-y-3">
           <div className="flex flex-col sm:flex-row gap-2.5">
@@ -843,6 +927,7 @@ export default function AdminOrdersPage() {
                             {order.department && (
                               <span className="text-[9.5px] font-extrabold text-blue-700 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded">
                                 {order.department}
+                                {order.department === 'CICT' && order.cictTeam ? ` • ${order.cictTeam}` : ''}
                               </span>
                             )}
                           </div>
@@ -1105,6 +1190,25 @@ export default function AdminOrdersPage() {
                   </select>
                 </div>
               </div>
+
+              {/* CICT Team Selection (If CICT is chosen) */}
+              {manualDepartment === 'CICT' && (
+                <div>
+                  <label className="text-xs font-bold text-purple-900 block mb-1 flex items-center justify-between">
+                    <span>CICT Team <span className="text-rose-500">*</span></span>
+                    <span className="text-[10px] text-purple-600 font-semibold">(14 Teams)</span>
+                  </label>
+                  <select
+                    value={manualCictTeam}
+                    onChange={(e) => setManualCictTeam(e.target.value)}
+                    className="w-full h-10 px-3 text-xs font-bold bg-purple-50/60 border border-purple-200 rounded-xl focus:outline-none focus:border-purple-600 text-purple-950 cursor-pointer"
+                  >
+                    {CICT_TEAMS.map(team => (
+                      <option key={team} value={team}>{team}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* Meal Session Selection */}
               <div>

@@ -138,8 +138,50 @@ export async function GET(request: Request) {
       ...dailyDistribution[date]
     }));
 
+    const getCictTeamStats = (ordersList: any[], prices: any) => {
+      const teams = [
+        'Special Team',
+        'Spreader Team',
+        'QC – Electrical Team',
+        'QC – Mechanical Team',
+        'On-Duty Team',
+        'Mobile Team',
+        'RTG – Electrical Team',
+        'RTG – Mechanical Team',
+        'FAC Team',
+        'ECT Team',
+        'CWIT Team',
+        'Stores',
+        'Sgs stores',
+        'General',
+      ];
+      const stats: any = {};
+      teams.forEach(t => {
+        const teamOrders = ordersList.filter(o => o.department === 'CICT' && o.cictTeam === t);
+        const breakfast = teamOrders.filter(o => o.mealType === 'BREAKFAST').length;
+        const lunch = teamOrders.filter(o => o.mealType === 'LUNCH').length;
+        const dinner = teamOrders.filter(o => o.mealType === 'DINNER').length;
+        const total = teamOrders.length;
+        const collected = teamOrders.filter(o => o.status === 'COLLECTED').length;
+        const pending = teamOrders.filter(o => o.status === 'ORDERED').length;
+        const cost = breakfast * prices.breakfast + lunch * prices.lunch + dinner * prices.dinner;
+        stats[t] = {
+          total,
+          breakfast,
+          lunch,
+          dinner,
+          collected,
+          pending,
+          cost
+        };
+      });
+      return stats;
+    };
+
     const todayDepartmentStats = getDeptStats(todayOrders, priceConfig);
     const monthlyDepartmentStats = getDeptStats(monthlyOrders, priceConfig);
+    const todayCictTeamStats = getCictTeamStats(todayOrders, priceConfig);
+    const monthlyCictTeamStats = getCictTeamStats(monthlyOrders, priceConfig);
 
     return NextResponse.json({
       employeeStats: {
@@ -150,7 +192,9 @@ export async function GET(request: Request) {
       monthlyStats,
       chartData,
       todayDepartmentStats,
-      monthlyDepartmentStats
+      monthlyDepartmentStats,
+      todayCictTeamStats,
+      monthlyCictTeamStats
     });
   } catch (error: any) {
     console.error('Reports Aggregation Error:', error);

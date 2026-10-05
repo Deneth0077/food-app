@@ -23,6 +23,23 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import * as XLSX from 'xlsx';
 
+const CICT_TEAMS = [
+  'Special Team',
+  'Spreader Team',
+  'QC – Electrical Team',
+  'QC – Mechanical Team',
+  'On-Duty Team',
+  'Mobile Team',
+  'RTG – Electrical Team',
+  'RTG – Mechanical Team',
+  'FAC Team',
+  'ECT Team',
+  'CWIT Team',
+  'Stores',
+  'Sgs stores',
+  'General',
+];
+
 interface Stats {
   total: number;
   breakfast: number;
@@ -512,6 +529,58 @@ function ReportsPageContent() {
                         <span className="block text-slate-400 font-bold text-[8px] uppercase">Total Meals</span>
                         <span className="font-bold text-slate-800">{stats?.total || 0}</span>
                       </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* CICT Teams Breakdown (14 Teams) */}
+        {reportData && (
+          <div className="bg-gradient-to-r from-purple-50/90 via-indigo-50/50 to-blue-50/80 rounded-2xl p-4 border border-purple-100 shadow-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xs font-extrabold text-purple-950 flex items-center gap-1.5">
+                  <span className="px-1.5 py-0.5 rounded bg-purple-700 text-white text-[9px] font-black">CICT</span>
+                  CICT Teams Breakdown (14 Teams)
+                </h3>
+                <p className="text-[9px] font-semibold text-purple-700 uppercase tracking-wider mt-0.5">
+                  {activeTab === 'daily' ? "Today's Team Orders" : `Monthly Team Orders (${selectedMonth})`}
+                </p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+              {CICT_TEAMS.map((teamName) => {
+                const teamStats = activeTab === 'daily' 
+                  ? (reportData as any).todayCictTeamStats?.[teamName] 
+                  : (reportData as any).monthlyCictTeamStats?.[teamName];
+
+                const total = teamStats?.total || 0;
+                const cost = teamStats?.cost || 0;
+                const breakfast = teamStats?.breakfast || 0;
+                const lunch = teamStats?.lunch || 0;
+                const dinner = teamStats?.dinner || 0;
+
+                return (
+                  <div key={teamName} className="bg-white/90 border border-purple-100 rounded-xl p-3 flex flex-col justify-between shadow-2xs">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-xs font-bold text-slate-800 truncate">{teamName}</span>
+                      <span className="text-[10px] font-black text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md shrink-0">
+                        {total} Meals
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 text-[10px] font-semibold text-slate-500">
+                      <div className="flex gap-1.5 text-[9px] font-bold">
+                        <span className="text-amber-600 bg-amber-50 px-1 py-0.2 rounded">BF: {breakfast}</span>
+                        <span className="text-blue-600 bg-blue-50 px-1 py-0.2 rounded">LH: {lunch}</span>
+                        <span className="text-indigo-600 bg-indigo-50 px-1 py-0.2 rounded">DN: {dinner}</span>
+                      </div>
+                      <span className="font-extrabold text-slate-700 text-[10px]">
+                        Rs. {cost.toLocaleString()}
+                      </span>
                     </div>
                   </div>
                 );

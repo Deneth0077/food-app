@@ -18,6 +18,7 @@ export interface IOrder extends Document {
   cancelledAt?: Date;
   cancelledBy?: 'EMPLOYEE' | 'ADMIN';
   department?: 'CWIT' | 'ECT' | 'SAGT' | 'CICT';
+  cictTeam?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -58,6 +59,10 @@ const OrderSchema: Schema = new Schema(
     department: { 
       type: String, 
       enum: ['CWIT', 'ECT', 'SAGT', 'CICT'], 
+      required: false 
+    },
+    cictTeam: { 
+      type: String, 
       required: false 
     },
   },

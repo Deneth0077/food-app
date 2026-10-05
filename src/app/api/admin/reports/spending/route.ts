@@ -41,7 +41,7 @@ export async function GET(request: Request) {
     // 2. Fetch all orders matching month prefix in requestDate (YYYY-MM-DD)
     const monthlyOrders = await Order.find({
       requestDate: { $regex: new RegExp(`^${currentMonthStr}`) }
-    }).select('employeeNo employeeName mealType status collectedAt requestDate mealOption notes department');
+    }).select('employeeNo employeeName mealType status collectedAt requestDate mealOption notes department cictTeam');
 
     // 3. Fetch all active/existing employees to initialize map
     const employees = await User.find({ role: 'EMPLOYEE' }).select('employeeNo fullName department');

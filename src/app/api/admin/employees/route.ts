@@ -87,7 +87,7 @@ export async function PUT(request: Request) {
       employee.isActive = isActive;
     }
 
-    if (role && ['ADMIN', 'EMPLOYEE', 'CANTEEN'].includes(role)) {
+    if (role && ['ADMIN', 'EMPLOYEE', 'CANTEEN', 'CASHIER', 'LIVE_ADMIN'].includes(role)) {
       employee.role = role;
     }
 

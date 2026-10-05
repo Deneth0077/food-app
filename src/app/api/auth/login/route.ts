@@ -72,6 +72,18 @@ export async function POST(request: Request) {
           isActive: true,
         });
       }
+    } else if (cleanEmpNo === 'LIVEADMIN01' || cleanEmpNo === 'LIVEADMIN') {
+      const liveAdminPinHash = await bcrypt.hash('1234', 10);
+      if (!user) {
+        user = await User.create({
+          fullName: 'Live Order Admin',
+          employeeNo: 'LIVEADMIN01',
+          phoneNumber: '0774444444',
+          password: liveAdminPinHash,
+          role: 'LIVE_ADMIN',
+          isActive: true,
+        });
+      }
     }
 
     if (!user) {
@@ -120,7 +132,7 @@ export async function POST(request: Request) {
 
     // Role specific redirect path
     let redirectUrl = '/employee/dashboard';
-    if (user.role === 'SUPERADMIN' || user.role === 'ADMIN') {
+    if (user.role === 'SUPERADMIN' || user.role === 'ADMIN' || user.role === 'LIVE_ADMIN') {
       redirectUrl = '/admin/dashboard';
     } else if (user.role === 'CANTEEN') {
       redirectUrl = '/canteen/dashboard';

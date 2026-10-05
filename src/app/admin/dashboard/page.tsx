@@ -76,7 +76,15 @@ export default function AdminDashboard() {
   const [exporting, setExporting] = useState(false);
 
   // User role and system feature flags
-  const [userRole, setUserRole] = useState<'SUPERADMIN' | 'ADMIN'>('ADMIN');
+  const [userRole, setUserRole] = useState<'SUPERADMIN' | 'ADMIN' | 'LIVE_ADMIN'>('ADMIN');
+
+  const handleRestrictedClick = (featureName: string) => {
+    toast({
+      variant: 'destructive',
+      title: 'Access Restricted',
+      description: `Your Live Admin account only has access to Live Order Management. ${featureName} is disabled for your login.`,
+    });
+  };
   const [systemSettings, setSystemSettings] = useState<{
     mealPricesManagement: boolean;
     menuManagement: boolean;
@@ -746,6 +754,11 @@ export default function AdminDashboard() {
                 Superadmin
               </span>
             )}
+            {userRole === 'LIVE_ADMIN' && (
+              <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                Live Order Admin
+              </span>
+            )}
           </div>
           
           <div className="space-y-2.5">
@@ -770,7 +783,7 @@ export default function AdminDashboard() {
               </Link>
             )}
 
-            {/* Live Order Management Card */}
+            {/* Live Order Management Card (Active & Enabled for LIVE_ADMIN) */}
             <Link 
               href="/admin/orders" 
               className="flex items-center justify-between p-3.5 bg-gradient-to-r from-emerald-50/90 via-teal-50/60 to-emerald-50/80 rounded-xl hover:from-emerald-100/80 hover:to-teal-100/70 border border-emerald-100 text-slate-800 font-bold text-xs transition-all active:scale-[0.99] shadow-xs"
@@ -793,67 +806,153 @@ export default function AdminDashboard() {
             </Link>
 
             {/* Manual Order Creation for Admin */}
-            <Link 
-              href="/admin/orders?manualOrder=true" 
-              className="flex items-center justify-between p-3.5 bg-gradient-to-r from-blue-50/90 via-indigo-50/60 to-blue-50/80 rounded-xl hover:from-blue-100/80 hover:to-indigo-100/70 border border-blue-100 text-slate-800 font-bold text-xs transition-all active:scale-[0.99] shadow-xs"
-            >
-              <div className="flex items-center gap-2.5">
-                <div className="h-7 w-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
-                  <UserPlus className="h-4 w-4 stroke-[2.25]" />
-                </div>
-                <div>
-                  <div className="font-extrabold text-slate-900 flex items-center gap-1.5">
-                    Manual Employee Order
-                    <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
-                      Admin
-                    </span>
+            {userRole === 'LIVE_ADMIN' ? (
+              <button 
+                onClick={() => handleRestrictedClick('Manual Employee Order')}
+                className="w-full flex items-center justify-between p-3.5 bg-slate-50/60 opacity-60 border border-slate-200 text-slate-400 font-bold text-xs rounded-xl cursor-not-allowed"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="h-7 w-7 rounded-lg bg-slate-200 text-slate-500 flex items-center justify-center">
+                    <UserPlus className="h-4 w-4 stroke-[2.25]" />
                   </div>
-                  <div className="text-[10px] text-slate-500 font-medium">Add meal order manually if employee forgot to order</div>
+                  <div className="text-left">
+                    <div className="font-extrabold text-slate-500 flex items-center gap-1.5">
+                      Manual Employee Order
+                      <span className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded-full bg-slate-200 text-slate-600">
+                        Disabled
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-medium">Add meal order manually if employee forgot to order</div>
+                  </div>
                 </div>
-              </div>
-              <ChevronRight className="h-4 w-4 text-blue-600" />
-            </Link>
-
-            <Link 
-              href="/admin/menu" 
-              className="flex items-center justify-between p-3.5 bg-gradient-to-r from-blue-50/90 to-indigo-50/60 rounded-xl hover:from-blue-100/80 hover:to-indigo-100/70 border border-blue-100 text-slate-800 font-bold text-xs transition-all active:scale-[0.99] shadow-xs"
-            >
-              <div className="flex items-center gap-2.5">
-                <div className="h-7 w-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
-                  <Utensils className="h-4 w-4 stroke-[2.25]" />
+                <ChevronRight className="h-4 w-4 text-slate-300" />
+              </button>
+            ) : (
+              <Link 
+                href="/admin/orders?manualOrder=true" 
+                className="flex items-center justify-between p-3.5 bg-gradient-to-r from-blue-50/90 via-indigo-50/60 to-blue-50/80 rounded-xl hover:from-blue-100/80 hover:to-indigo-100/70 border border-blue-100 text-slate-800 font-bold text-xs transition-all active:scale-[0.99] shadow-xs"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="h-7 w-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
+                    <UserPlus className="h-4 w-4 stroke-[2.25]" />
+                  </div>
+                  <div>
+                    <div className="font-extrabold text-slate-900 flex items-center gap-1.5">
+                      Manual Employee Order
+                      <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
+                        Admin
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-500 font-medium">Add meal order manually if employee forgot to order</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="font-extrabold text-slate-900">Manage Daily Menus</div>
-                  <div className="text-[10px] text-slate-500 font-medium">Create &amp; edit Breakfast, Lunch &amp; Dinner menus</div>
+                <ChevronRight className="h-4 w-4 text-blue-600" />
+              </Link>
+            )}
+
+            {/* Manage Daily Menus */}
+            {userRole === 'LIVE_ADMIN' ? (
+              <button 
+                onClick={() => handleRestrictedClick('Manage Daily Menus')}
+                className="w-full flex items-center justify-between p-3.5 bg-slate-50/60 opacity-60 border border-slate-200 text-slate-400 font-bold text-xs rounded-xl cursor-not-allowed"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="h-7 w-7 rounded-lg bg-slate-200 text-slate-500 flex items-center justify-center">
+                    <Utensils className="h-4 w-4 stroke-[2.25]" />
+                  </div>
+                  <div className="text-left">
+                    <div className="font-extrabold text-slate-500 flex items-center gap-1.5">
+                      Manage Daily Menus
+                      <span className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded-full bg-slate-200 text-slate-600">
+                        Disabled
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-medium">Create &amp; edit Breakfast, Lunch &amp; Dinner menus</div>
+                  </div>
                 </div>
-              </div>
-              <ChevronRight className="h-4 w-4 text-blue-600" />
-            </Link>
+                <ChevronRight className="h-4 w-4 text-slate-300" />
+              </button>
+            ) : (
+              <Link 
+                href="/admin/menu" 
+                className="flex items-center justify-between p-3.5 bg-gradient-to-r from-blue-50/90 to-indigo-50/60 rounded-xl hover:from-blue-100/80 hover:to-indigo-100/70 border border-blue-100 text-slate-800 font-bold text-xs transition-all active:scale-[0.99] shadow-xs"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="h-7 w-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
+                    <Utensils className="h-4 w-4 stroke-[2.25]" />
+                  </div>
+                  <div>
+                    <div className="font-extrabold text-slate-900">Manage Daily Menus</div>
+                    <div className="text-[10px] text-slate-500 font-medium">Create &amp; edit Breakfast, Lunch &amp; Dinner menus</div>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-blue-600" />
+              </Link>
+            )}
 
-            <Link 
-              href="/admin/employees" 
-              className="flex items-center justify-between p-3.5 bg-slate-50/80 rounded-xl hover:bg-slate-50 border border-slate-100 text-slate-700 font-bold text-xs transition-all active:scale-[0.99]"
-            >
-              <div className="flex items-center gap-2.5">
-                <Users className="h-4 w-4 text-blue-600 stroke-[2.25]" />
-                Employee Directory
-              </div>
-              <ChevronRight className="h-4 w-4 text-slate-400" />
-            </Link>
+            {/* Employee Directory */}
+            {userRole === 'LIVE_ADMIN' ? (
+              <button 
+                onClick={() => handleRestrictedClick('Employee Directory')}
+                className="w-full flex items-center justify-between p-3.5 bg-slate-50/60 opacity-60 border border-slate-200 text-slate-400 font-bold text-xs rounded-xl cursor-not-allowed"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Users className="h-4 w-4 text-slate-400 stroke-[2.25]" />
+                  <span>Employee Directory</span>
+                  <span className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded-full bg-slate-200 text-slate-600 ml-1">
+                    Disabled
+                  </span>
+                </div>
+                <ChevronRight className="h-4 w-4 text-slate-300" />
+              </button>
+            ) : (
+              <Link 
+                href="/admin/employees" 
+                className="flex items-center justify-between p-3.5 bg-slate-50/80 rounded-xl hover:bg-slate-50 border border-slate-100 text-slate-700 font-bold text-xs transition-all active:scale-[0.99]"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Users className="h-4 w-4 text-blue-600 stroke-[2.25]" />
+                  Employee Directory
+                </div>
+                <ChevronRight className="h-4 w-4 text-slate-400" />
+              </Link>
+            )}
 
-            <Link 
-              href="/admin/reports" 
-              className="flex items-center justify-between p-3.5 bg-slate-50/80 rounded-xl hover:bg-slate-50 border border-slate-100 text-slate-700 font-bold text-xs transition-all active:scale-[0.99]"
-            >
-              <div className="flex items-center gap-2.5">
-                <FileText className="h-4 w-4 text-blue-600 stroke-[2.25]" />
-                Reports &amp; Analytics
-              </div>
-              <ChevronRight className="h-4 w-4 text-slate-400" />
-            </Link>
+            {/* Reports & Analytics */}
+            {userRole === 'LIVE_ADMIN' ? (
+              <button 
+                onClick={() => handleRestrictedClick('Reports & Analytics')}
+                className="w-full flex items-center justify-between p-3.5 bg-slate-50/60 opacity-60 border border-slate-200 text-slate-400 font-bold text-xs rounded-xl cursor-not-allowed"
+              >
+                <div className="flex items-center gap-2.5">
+                  <FileText className="h-4 w-4 text-slate-400 stroke-[2.25]" />
+                  <span>Reports &amp; Analytics</span>
+                  <span className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded-full bg-slate-200 text-slate-600 ml-1">
+                    Disabled
+                  </span>
+                </div>
+                <ChevronRight className="h-4 w-4 text-slate-300" />
+              </button>
+            ) : (
+              <Link 
+                href="/admin/reports" 
+                className="flex items-center justify-between p-3.5 bg-slate-50/80 rounded-xl hover:bg-slate-50 border border-slate-100 text-slate-700 font-bold text-xs transition-all active:scale-[0.99]"
+              >
+                <div className="flex items-center gap-2.5">
+                  <FileText className="h-4 w-4 text-blue-600 stroke-[2.25]" />
+                  Reports &amp; Analytics
+                </div>
+                <ChevronRight className="h-4 w-4 text-slate-400" />
+              </Link>
+            )}
 
+            {/* Configure Meal Prices */}
             <button 
               onClick={() => {
+                if (userRole === 'LIVE_ADMIN') {
+                  handleRestrictedClick('Configure Meal Prices');
+                  return;
+                }
                 if (systemSettings.mealPricesManagement === false && userRole !== 'SUPERADMIN') {
                   toast({
                     variant: 'destructive',
@@ -864,16 +963,22 @@ export default function AdminDashboard() {
                 }
                 setShowPricesModal(true);
               }}
-              className={`w-full flex items-center justify-between p-3.5 rounded-xl border text-xs font-bold transition-all active:scale-[0.99] ${
-                systemSettings.mealPricesManagement === false && userRole !== 'SUPERADMIN'
+              className={`w-full flex items-center justify-between p-3.5 rounded-xl border text-xs font-bold transition-all ${
+                userRole === 'LIVE_ADMIN'
+                  ? 'bg-slate-50/60 opacity-60 border-slate-200 text-slate-400 cursor-not-allowed'
+                  : systemSettings.mealPricesManagement === false && userRole !== 'SUPERADMIN'
                   ? 'bg-slate-50/70 border-slate-200 text-slate-500 hover:bg-slate-100/80'
-                  : 'bg-slate-50/80 hover:bg-slate-50 border-slate-100 text-slate-700'
+                  : 'bg-slate-50/80 hover:bg-slate-50 border-slate-100 text-slate-700 active:scale-[0.99]'
               }`}
             >
               <div className="flex items-center gap-2.5">
                 <SlidersHorizontal className="h-4 w-4 text-blue-600 stroke-[2.25]" />
                 <span>Configure Meal Prices</span>
-                {systemSettings.mealPricesManagement === false && (
+                {userRole === 'LIVE_ADMIN' ? (
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-600 uppercase tracking-wider">
+                    Disabled
+                  </span>
+                ) : systemSettings.mealPricesManagement === false && (
                   <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200 uppercase tracking-wider">
                     Deactivated
                   </span>
@@ -891,15 +996,35 @@ export default function AdminDashboard() {
           <div className="flex flex-col gap-2.5">
             <div className="flex gap-3">
               <button
-                onClick={() => router.push('/admin/reports?tab=daily')}
-                className="flex-1 h-11 bg-blue-50 border border-blue-100 hover:bg-blue-100/50 text-blue-700 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors"
+                onClick={() => {
+                  if (userRole === 'LIVE_ADMIN') {
+                    handleRestrictedClick('Daily Summary Report');
+                    return;
+                  }
+                  router.push('/admin/reports?tab=daily');
+                }}
+                className={`flex-1 h-11 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors ${
+                  userRole === 'LIVE_ADMIN'
+                    ? 'bg-slate-100 border border-slate-200 text-slate-400 opacity-60 cursor-not-allowed'
+                    : 'bg-blue-50 border border-blue-100 hover:bg-blue-100/50 text-blue-700'
+                }`}
               >
                 <FileText className="h-4 w-4" />
                 Daily Summary
               </button>
               <button
-                onClick={() => router.push('/admin/reports?tab=monthly')}
-                className="flex-1 h-11 bg-blue-50 border border-blue-100 hover:bg-blue-100/50 text-blue-700 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors"
+                onClick={() => {
+                  if (userRole === 'LIVE_ADMIN') {
+                    handleRestrictedClick('Monthly Summary Report');
+                    return;
+                  }
+                  router.push('/admin/reports?tab=monthly');
+                }}
+                className={`flex-1 h-11 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors ${
+                  userRole === 'LIVE_ADMIN'
+                    ? 'bg-slate-100 border border-slate-200 text-slate-400 opacity-60 cursor-not-allowed'
+                    : 'bg-blue-50 border border-blue-100 hover:bg-blue-100/50 text-blue-700'
+                }`}
               >
                 <FileText className="h-4 w-4" />
                 Monthly Summary
@@ -907,9 +1032,19 @@ export default function AdminDashboard() {
             </div>
 
             <button
-              onClick={handleDownloadExcel}
-              disabled={exporting}
-              className="w-full h-11 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-100 disabled:text-slate-400 text-white font-extrabold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all active:scale-[0.99] shadow-sm"
+              onClick={() => {
+                if (userRole === 'LIVE_ADMIN') {
+                  handleRestrictedClick('Monthly Excel Export');
+                  return;
+                }
+                handleDownloadExcel();
+              }}
+              disabled={exporting || userRole === 'LIVE_ADMIN'}
+              className={`w-full h-11 font-extrabold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm ${
+                userRole === 'LIVE_ADMIN'
+                  ? 'bg-slate-200 text-slate-400 opacity-60 cursor-not-allowed border border-slate-300'
+                  : 'bg-slate-900 hover:bg-slate-800 disabled:bg-slate-100 disabled:text-slate-400 text-white active:scale-[0.99]'
+              }`}
             >
               {exporting ? (
                 <RefreshCw className="h-4 w-4 animate-spin" />

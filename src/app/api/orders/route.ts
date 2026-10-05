@@ -96,7 +96,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { mealType, mealOption, notes, requestDate, department, employeeNo, targetUserId, orderMode } = body;
+    const { mealType, mealOption, notes, requestDate, department, cictTeam, employeeNo, targetUserId, orderMode } = body;
 
     const isAdmin = authUser.role === 'ADMIN' || authUser.role === 'SUPERADMIN';
 
@@ -140,8 +140,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Please select work site (CWIT, ECT, SAGT, or CICT) first.' }, { status: 400 });
     }
 
+    const finalCictTeam = orderDepartment === 'CICT' ? (cictTeam || dbUser.cictTeam) : undefined;
+
     if (!dbUser.department && department) {
       dbUser.department = department;
+      if (finalCictTeam) dbUser.cictTeam = finalCictTeam;
       await dbUser.save();
     }
 
@@ -258,7 +261,8 @@ export async function POST(request: Request) {
       collectedAt: isReportOnly ? new Date() : undefined,
       requestDate: targetDateStr,
       requestedAt: new Date(),
-      department: department || dbUser.department,
+      department: orderDepartment,
+      cictTeam: finalCictTeam,
     });
 
     // Create Admin Notification (Skip for Superadmin or Admin manual entry)
@@ -411,7 +415,7 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json();
-    const { mealType, mealOption, notes, skipTimer, requestDate, department } = body;
+    const { mealType, mealOption, notes, skipTimer, requestDate, department, cictTeam } = body;
 
     if (!mealType || !['BREAKFAST', 'LUNCH', 'DINNER'].includes(mealType)) {
       return NextResponse.json({ error: 'Invalid or missing meal type.' }, { status: 400 });
@@ -503,6 +507,11 @@ export async function PUT(request: Request) {
     order.notes = notes !== undefined ? (notes ? notes.trim() : undefined) : order.notes;
     if (department) {
       order.department = department;
+      if (department === 'CICT') {
+        order.cictTeam = cictTeam;
+      } else {
+        order.cictTeam = undefined;
+      }
     }
     await order.save();
 

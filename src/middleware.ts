@@ -30,12 +30,12 @@ export async function middleware(request: NextRequest) {
       return response;
     }
 
-    if (payload.role === 'SUPERADMIN' || payload.role === 'ADMIN') {
+    if (payload.role === 'SUPERADMIN' || payload.role === 'ADMIN' || payload.role === 'LIVE_ADMIN') {
       return NextResponse.redirect(new URL('/admin/dashboard', request.url));
     } else if (payload.role === 'CANTEEN') {
       return NextResponse.redirect(new URL('/canteen/dashboard', request.url));
     } else if (payload.role === 'CASHIER') {
-      return NextResponse.redirect(new URL('/cashier/dashboard', request.url));
+      return NextResponse.redirect(new URL('/canteen/dashboard', request.url));
     } else {
       return NextResponse.redirect(new URL('/employee/dashboard', request.url));
     }
@@ -47,7 +47,7 @@ export async function middleware(request: NextRequest) {
       const jwtSecret = process.env.JWT_SECRET || 'fallback-jwt-secret-string-do-not-use-in-prod';
       const payload = await verifyJWT(token, jwtSecret);
       if (payload) {
-        if (payload.role === 'SUPERADMIN' || payload.role === 'ADMIN') {
+        if (payload.role === 'SUPERADMIN' || payload.role === 'ADMIN' || payload.role === 'LIVE_ADMIN') {
           return NextResponse.redirect(new URL('/admin/dashboard', request.url));
         } else if (payload.role === 'CANTEEN') {
           return NextResponse.redirect(new URL('/canteen/dashboard', request.url));
@@ -81,8 +81,16 @@ export async function middleware(request: NextRequest) {
       return redirectBasedOnRole(payload.role, request);
     }
 
-    if (isAdminRoute && payload.role !== 'ADMIN' && payload.role !== 'SUPERADMIN') {
+    if (isAdminRoute && payload.role !== 'ADMIN' && payload.role !== 'SUPERADMIN' && payload.role !== 'LIVE_ADMIN') {
       return redirectBasedOnRole(payload.role, request);
+    }
+
+    // Strict LIVE_ADMIN protection: allow only /admin/dashboard and /admin/orders
+    if (payload.role === 'LIVE_ADMIN') {
+      const isAllowedLiveAdminPath = path === '/admin/dashboard' || path.startsWith('/admin/orders');
+      if (!isAllowedLiveAdminPath && (isAdminRoute || isSuperAdminRoute)) {
+        return NextResponse.redirect(new URL('/admin/dashboard', request.url));
+      }
     }
 
     if (isEmployeeRoute && payload.role !== 'EMPLOYEE') {
@@ -102,7 +110,7 @@ export async function middleware(request: NextRequest) {
 }
 
 function redirectBasedOnRole(role: string, request: NextRequest) {
-  if (role === 'SUPERADMIN' || role === 'ADMIN') {
+  if (role === 'SUPERADMIN' || role === 'ADMIN' || role === 'LIVE_ADMIN') {
     return NextResponse.redirect(new URL('/admin/dashboard', request.url));
   } else if (role === 'CANTEEN') {
     return NextResponse.redirect(new URL('/canteen/dashboard', request.url));
