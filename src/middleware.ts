@@ -14,6 +14,7 @@ export async function middleware(request: NextRequest) {
   const isCashierRoute = path.startsWith('/cashier');
   const isAdminRoute = path.startsWith('/admin');
   const isSuperAdminRoute = path.startsWith('/superadmin');
+  const isManualOrderRoute = path.startsWith('/manual-order');
   const isRootRoute = path === '/';
 
   // If root route is hit
@@ -36,6 +37,8 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/canteen/dashboard', request.url));
     } else if (payload.role === 'CASHIER') {
       return NextResponse.redirect(new URL('/canteen/dashboard', request.url));
+    } else if (payload.role === 'MANUAL_ORDER_ADMIN') {
+      return NextResponse.redirect(new URL('/manual-order/dashboard', request.url));
     } else {
       return NextResponse.redirect(new URL('/employee/dashboard', request.url));
     }
@@ -53,6 +56,8 @@ export async function middleware(request: NextRequest) {
           return NextResponse.redirect(new URL('/canteen/dashboard', request.url));
         } else if (payload.role === 'CASHIER') {
           return NextResponse.redirect(new URL('/cashier/dashboard', request.url));
+        } else if (payload.role === 'MANUAL_ORDER_ADMIN') {
+          return NextResponse.redirect(new URL('/manual-order/dashboard', request.url));
         } else {
           return NextResponse.redirect(new URL('/employee/dashboard', request.url));
         }
@@ -62,7 +67,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Handle protected dashboards
-  if (isEmployeeRoute || isCanteenRoute || isCashierRoute || isAdminRoute || isSuperAdminRoute) {
+  if (isEmployeeRoute || isCanteenRoute || isCashierRoute || isAdminRoute || isSuperAdminRoute || isManualOrderRoute) {
     if (!token) {
       return NextResponse.redirect(new URL('/auth/login', request.url));
     }
@@ -82,6 +87,10 @@ export async function middleware(request: NextRequest) {
     }
 
     if (isAdminRoute && payload.role !== 'ADMIN' && payload.role !== 'SUPERADMIN' && payload.role !== 'LIVE_ADMIN') {
+      return redirectBasedOnRole(payload.role, request);
+    }
+
+    if (isManualOrderRoute && payload.role !== 'MANUAL_ORDER_ADMIN' && payload.role !== 'ADMIN' && payload.role !== 'SUPERADMIN') {
       return redirectBasedOnRole(payload.role, request);
     }
 
@@ -116,6 +125,8 @@ function redirectBasedOnRole(role: string, request: NextRequest) {
     return NextResponse.redirect(new URL('/canteen/dashboard', request.url));
   } else if (role === 'CASHIER') {
     return NextResponse.redirect(new URL('/cashier/dashboard', request.url));
+  } else if (role === 'MANUAL_ORDER_ADMIN') {
+    return NextResponse.redirect(new URL('/manual-order/dashboard', request.url));
   } else {
     return NextResponse.redirect(new URL('/employee/dashboard', request.url));
   }
@@ -131,5 +142,6 @@ export const config = {
     '/canteen/:path*',
     '/cashier/:path*',
     '/admin/:path*',
+    '/manual-order/:path*',
   ],
 };

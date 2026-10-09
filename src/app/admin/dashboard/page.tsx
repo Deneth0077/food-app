@@ -93,6 +93,8 @@ export default function AdminDashboard() {
     selfCollection: boolean;
     reportsExport: boolean;
     employeeDirectory: boolean;
+    liveOrderManagement: boolean;
+    manualEmployeeOrder: boolean;
     maintenanceMessage: string;
   }>({
     mealPricesManagement: false,
@@ -102,6 +104,8 @@ export default function AdminDashboard() {
     selfCollection: true,
     reportsExport: true,
     employeeDirectory: true,
+    liveOrderManagement: true,
+    manualEmployeeOrder: true,
     maintenanceMessage: 'This service is temporarily deactivated',
   });
 
@@ -783,27 +787,56 @@ export default function AdminDashboard() {
               </Link>
             )}
 
-            {/* Live Order Management Card (Active & Enabled for LIVE_ADMIN) */}
-            <Link 
-              href="/admin/orders" 
-              className="flex items-center justify-between p-3.5 bg-gradient-to-r from-emerald-50/90 via-teal-50/60 to-emerald-50/80 rounded-xl hover:from-emerald-100/80 hover:to-teal-100/70 border border-emerald-100 text-slate-800 font-bold text-xs transition-all active:scale-[0.99] shadow-xs"
-            >
-              <div className="flex items-center gap-2.5">
-                <div className="h-7 w-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-xs">
-                  <ClipboardList className="h-4 w-4 stroke-[2.25]" />
-                </div>
-                <div>
-                  <div className="font-extrabold text-slate-900 flex items-center gap-1.5">
-                    Live Order Management
-                    <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-                      Live
-                    </span>
+            {/* Live Order Management Card */}
+            {systemSettings.liveOrderManagement === false && userRole !== 'SUPERADMIN' ? (
+              <button 
+                onClick={() => {
+                  toast({
+                    variant: 'destructive',
+                    title: 'Service Unavailable',
+                    description: systemSettings.maintenanceMessage || 'This service is temporarily deactivated',
+                  });
+                }}
+                className="w-full flex items-center justify-between p-3.5 bg-slate-50/70 border border-slate-200 text-slate-500 font-bold text-xs rounded-xl hover:bg-slate-100/80 transition-all cursor-pointer"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="h-7 w-7 rounded-lg bg-slate-200 text-slate-500 flex items-center justify-center">
+                    <ClipboardList className="h-4 w-4 stroke-[2.25]" />
                   </div>
-                  <div className="text-[10px] text-slate-500 font-medium">Track who ordered, timestamps, cancellations &amp; collect</div>
+                  <div className="text-left">
+                    <div className="font-extrabold text-slate-600 flex items-center gap-1.5">
+                      Live Order Management
+                      <span className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-700 border border-rose-200">
+                        Deactivated
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-medium">Track who ordered, timestamps, cancellations &amp; collect</div>
+                  </div>
                 </div>
-              </div>
-              <ChevronRight className="h-4 w-4 text-emerald-600" />
-            </Link>
+                <ChevronRight className="h-4 w-4 text-slate-300" />
+              </button>
+            ) : (
+              <Link 
+                href="/admin/orders" 
+                className="flex items-center justify-between p-3.5 bg-gradient-to-r from-emerald-50/90 via-teal-50/60 to-emerald-50/80 rounded-xl hover:from-emerald-100/80 hover:to-teal-100/70 border border-emerald-100 text-slate-800 font-bold text-xs transition-all active:scale-[0.99] shadow-xs"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="h-7 w-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+                    <ClipboardList className="h-4 w-4 stroke-[2.25]" />
+                  </div>
+                  <div>
+                    <div className="font-extrabold text-slate-900 flex items-center gap-1.5">
+                      Live Order Management
+                      <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        Live
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-500 font-medium">Track who ordered, timestamps, cancellations &amp; collect</div>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-emerald-600" />
+              </Link>
+            )}
 
             {/* Manual Order Creation for Admin */}
             {userRole === 'LIVE_ADMIN' ? (
@@ -820,6 +853,33 @@ export default function AdminDashboard() {
                       Manual Employee Order
                       <span className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded-full bg-slate-200 text-slate-600">
                         Disabled
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-medium">Add meal order manually if employee forgot to order</div>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-slate-300" />
+              </button>
+            ) : systemSettings.manualEmployeeOrder === false && userRole !== 'SUPERADMIN' ? (
+              <button 
+                onClick={() => {
+                  toast({
+                    variant: 'destructive',
+                    title: 'Service Unavailable',
+                    description: systemSettings.maintenanceMessage || 'This service is temporarily deactivated',
+                  });
+                }}
+                className="w-full flex items-center justify-between p-3.5 bg-slate-50/70 border border-slate-200 text-slate-500 font-bold text-xs rounded-xl hover:bg-slate-100/80 transition-all cursor-pointer"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="h-7 w-7 rounded-lg bg-slate-200 text-slate-500 flex items-center justify-center">
+                    <UserPlus className="h-4 w-4 stroke-[2.25]" />
+                  </div>
+                  <div className="text-left">
+                    <div className="font-extrabold text-slate-600 flex items-center gap-1.5">
+                      Manual Employee Order
+                      <span className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-700 border border-rose-200">
+                        Deactivated
                       </span>
                     </div>
                     <div className="text-[10px] text-slate-400 font-medium">Add meal order manually if employee forgot to order</div>

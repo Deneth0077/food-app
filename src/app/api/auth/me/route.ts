@@ -30,6 +30,18 @@ export async function GET(request: Request) {
       return NextResponse.json({ user: null }, { status: 200 });
     }
 
+    if (payload.role === 'MANUAL_ORDER_ADMIN') {
+      return NextResponse.json({
+        user: {
+          _id: 'MANUAL_ORDER_ADMIN',
+          id: 'MANUAL_ORDER_ADMIN',
+          fullName: payload.fullName || 'Manual Order Admin',
+          employeeNo: payload.employeeNo || 'ORDERADMIN',
+          role: 'MANUAL_ORDER_ADMIN',
+        },
+      });
+    }
+
     const user = await User.findById(payload.userId).select('-password');
     if (!user || !user.isActive) {
       return NextResponse.json({ user: null }, { status: 200 });

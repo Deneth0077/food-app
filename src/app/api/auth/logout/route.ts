@@ -4,8 +4,13 @@ export async function POST() {
   try {
     const response = NextResponse.json({ message: 'Logged out successfully' });
     
-    // Clear the token cookie by setting its expiry to epoch
+    // Clear token cookies by setting expiry to epoch
     response.cookies.set('token', '', {
+      httpOnly: true,
+      expires: new Date(0),
+      path: '/',
+    });
+    response.cookies.set('manual_order_token', '', {
       httpOnly: true,
       expires: new Date(0),
       path: '/',

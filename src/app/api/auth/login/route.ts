@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
+import SystemSetting from '@/models/SystemSetting';
 import { signJWT } from '@/lib/jwt';
 
 export async function POST(request: Request) {
@@ -87,6 +88,64 @@ export async function POST(request: Request) {
     }
 
     if (!user) {
+      // Check if this matches configured Manual Order Admin credentials
+      const settings = await SystemSetting.findOne({ key: 'GLOBAL_SETTINGS' });
+      const configuredManualAdmin = (settings?.manualOrderAdminUsername || 'ORDERADMIN').trim().toUpperCase();
+
+      if (cleanEmpNo === configuredManualAdmin) {
+        if (settings?.manualEmployeeOrder === false) {
+          return NextResponse.json(
+            { error: 'Manual Order service is currently deactivated by the administrator.' },
+            { status: 403 }
+          );
+        }
+
+        const configuredPinHash = settings?.manualOrderAdminPin;
+        let isPinValid = false;
+        if (!configuredPinHash) {
+          isPinValid = (password === '1234');
+        } else {
+          isPinValid = await bcrypt.compare(password, configuredPinHash);
+        }
+
+        if (!isPinValid) {
+          return NextResponse.json(
+            { error: 'Invalid Employee Number or PIN' },
+            { status: 401 }
+          );
+        }
+
+        const jwtSecret = process.env.JWT_SECRET || 'fallback-jwt-secret-string-do-not-use-in-prod';
+        const tokenPayload = {
+          userId: 'MANUAL_ORDER_ADMIN',
+          fullName: 'Manual Order Admin',
+          employeeNo: configuredManualAdmin,
+          role: 'MANUAL_ORDER_ADMIN',
+        };
+        const token = await signJWT(tokenPayload, jwtSecret);
+
+        const response = NextResponse.json({
+          message: 'Login successful',
+          user: {
+            id: 'MANUAL_ORDER_ADMIN',
+            fullName: 'Manual Order Admin',
+            employeeNo: configuredManualAdmin,
+            role: 'MANUAL_ORDER_ADMIN',
+          },
+          redirectUrl: '/manual-order/dashboard',
+        });
+
+        response.cookies.set('token', token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: 60 * 60 * 24 * 365 * 2,
+          path: '/',
+        });
+
+        return response;
+      }
+
       // If user typed a numeric emp ID >= 2000, give a specific helpful message
       if (/^\d+$/.test(cleanEmpNo)) {
         const val = parseInt(cleanEmpNo, 10);

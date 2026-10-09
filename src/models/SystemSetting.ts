@@ -10,6 +10,10 @@ export interface ISystemSetting extends Document {
   selfCollection: boolean;
   reportsExport: boolean;
   employeeDirectory: boolean;
+  liveOrderManagement: boolean;
+  manualEmployeeOrder: boolean;
+  manualOrderAdminUsername?: string;
+  manualOrderAdminPin?: string;
   maintenanceMessage: string;
   breakfastCutoffTime: string;
   lunchCutoffTime: string;
@@ -31,6 +35,10 @@ const SystemSettingSchema: Schema = new Schema(
     selfCollection: { type: Boolean, default: true },
     reportsExport: { type: Boolean, default: true },
     employeeDirectory: { type: Boolean, default: true },
+    liveOrderManagement: { type: Boolean, default: true },
+    manualEmployeeOrder: { type: Boolean, default: true },
+    manualOrderAdminUsername: { type: String, default: 'ORDERADMIN' },
+    manualOrderAdminPin: { type: String, required: false },
     maintenanceMessage: { 
       type: String, 
       default: 'This service is temporarily deactivated' 

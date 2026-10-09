@@ -14,6 +14,8 @@ import {
   CheckCircle2, 
   FileText, 
   Users, 
+  ClipboardList,
+  UserPlus,
   Save, 
   Loader2, 
   AlertTriangle,
@@ -31,6 +33,10 @@ interface SystemSettingsState {
   selfCollection: boolean;
   reportsExport: boolean;
   employeeDirectory: boolean;
+  liveOrderManagement: boolean;
+  manualEmployeeOrder: boolean;
+  manualOrderAdminUsername: string;
+  manualOrderAdminPin?: string;
   maintenanceMessage: string;
   breakfastCutoffTime: string;
   lunchCutoffTime: string;
@@ -54,6 +60,10 @@ export default function SuperadminSettingsPage() {
     selfCollection: true,
     reportsExport: true,
     employeeDirectory: true,
+    liveOrderManagement: true,
+    manualEmployeeOrder: true,
+    manualOrderAdminUsername: 'ORDERADMIN',
+    manualOrderAdminPin: '',
     maintenanceMessage: 'This service is temporarily deactivated',
     breakfastCutoffTime: '22:00',
     lunchCutoffTime: '10:00',
@@ -109,6 +119,10 @@ export default function SuperadminSettingsPage() {
               selfCollection: sData.settings.selfCollection ?? true,
               reportsExport: sData.settings.reportsExport ?? true,
               employeeDirectory: sData.settings.employeeDirectory ?? true,
+              liveOrderManagement: sData.settings.liveOrderManagement ?? true,
+              manualEmployeeOrder: sData.settings.manualEmployeeOrder ?? true,
+              manualOrderAdminUsername: sData.settings.manualOrderAdminUsername || 'ORDERADMIN',
+              manualOrderAdminPin: '', // Don't pre-fill pin for security, only send if changing
               maintenanceMessage: sData.settings.maintenanceMessage || 'This service is temporarily deactivated',
               breakfastCutoffTime: sData.settings.breakfastCutoffTime || '22:00',
               lunchCutoffTime: sData.settings.lunchCutoffTime || '10:00',
@@ -229,6 +243,20 @@ export default function SuperadminSettingsPage() {
       description: 'Allows managing employee profiles and role classifications.',
       icon: Users,
       color: 'sky',
+    },
+    {
+      key: 'liveOrderManagement' as keyof SystemSettingsState,
+      title: 'Live Order Management',
+      description: 'Allows Admins to track live orders, timestamps, cancellations, and mark collection status.',
+      icon: ClipboardList,
+      color: 'emerald',
+    },
+    {
+      key: 'manualEmployeeOrder' as keyof SystemSettingsState,
+      title: 'Manual Employee Order Creation',
+      description: 'Allows Admins to manually place meal requests on behalf of employees.',
+      icon: UserPlus,
+      color: 'blue',
     },
   ];
 
@@ -549,6 +577,51 @@ export default function SuperadminSettingsPage() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Manual Order Admin Credentials Customizer */}
+        <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs space-y-4">
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
+              <UserPlus className="h-4 w-4 stroke-[2.25]" />
+            </div>
+            <div>
+              <h3 className="text-xs sm:text-sm font-bold text-slate-850">Manual Order Admin Login</h3>
+              <p className="text-[10px] text-slate-500 font-medium">Configure credentials for the dedicated manual order terminal</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-800 block mb-1">
+                Username
+              </label>
+              <input
+                type="text"
+                value={settings.manualOrderAdminUsername}
+                onChange={(e) => setSettings(prev => ({ ...prev, manualOrderAdminUsername: e.target.value.toUpperCase() }))}
+                placeholder="ORDERADMIN"
+                className="w-full h-11 px-3.5 text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all uppercase"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-800 block mb-1">
+                New PIN (Optional)
+              </label>
+              <input
+                type="password"
+                value={settings.manualOrderAdminPin || ''}
+                onChange={(e) => setSettings(prev => ({ ...prev, manualOrderAdminPin: e.target.value }))}
+                placeholder="Leave blank to keep current"
+                maxLength={6}
+                inputMode="numeric"
+                className="w-full h-11 px-3.5 text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all tracking-widest"
+              />
+            </div>
+          </div>
+          <p className="text-[10px] text-blue-600/80 font-semibold bg-blue-50 p-2 rounded-lg border border-blue-100">
+            ℹ️ Login URL: <strong>/manual-order/login</strong> (Only accesses Manual Order entry)
+          </p>
         </div>
 
         {/* Maintenance Message Customizer */}

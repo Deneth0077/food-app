@@ -59,6 +59,7 @@ interface OrderItem {
   cancelledBy?: 'EMPLOYEE' | 'ADMIN';
   department?: 'CWIT' | 'ECT' | 'SAGT' | 'CICT';
   cictTeam?: string;
+  paymentType?: 'PAID' | 'FREE';
 }
 
 const CICT_TEAMS = [
@@ -111,6 +112,7 @@ export default function AdminOrdersPage() {
   const [manualCictTeam, setManualCictTeam] = useState<string>('General');
   const [manualNotes, setManualNotes] = useState<string>('');
   const [manualOrderMode, setManualOrderMode] = useState<'COLLECTION' | 'REPORT_ONLY'>('COLLECTION');
+  const [manualPaymentType, setManualPaymentType] = useState<'FREE' | 'PAID'>('FREE');
   const [submittingManual, setSubmittingManual] = useState(false);
 
   // Action processing
@@ -211,6 +213,7 @@ export default function AdminOrdersPage() {
           requestDate: manualRequestDate,
           department: manualDepartment,
           cictTeam: manualDepartment === 'CICT' ? manualCictTeam : undefined,
+          paymentType: manualPaymentType,
           notes: manualNotes,
           orderMode: manualOrderMode,
         }),
@@ -232,6 +235,8 @@ export default function AdminOrdersPage() {
       setSelectedEmp(null);
       setEmpSearchQuery('');
       setManualNotes('');
+      setManualPaymentType('FREE');
+      setManualOrderMode('COLLECTION');
       // Refresh list
       fetchOrders();
     } catch (err: any) {
@@ -952,6 +957,17 @@ export default function AdminOrdersPage() {
                               </span>
                             )}
 
+                            {/* Payment Category Badge */}
+                            <span
+                              className={`text-[9px] font-black px-1.5 py-0.2 rounded border flex items-center gap-1 ${
+                                order.paymentType === 'PAID'
+                                  ? 'bg-amber-50 text-amber-800 border-amber-300'
+                                  : 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                              }`}
+                            >
+                              {order.paymentType === 'PAID' ? '💳 Paid Order' : '🎁 Free Meal'}
+                            </span>
+
                             <span className="text-slate-400">•</span>
                             <span className="text-slate-500 text-[10px] font-medium">{order.phoneNumber}</span>
                           </div>
@@ -1266,6 +1282,42 @@ export default function AdminOrdersPage() {
                     🟢 Vegetarian
                   </button>
                 </div>
+              </div>
+
+              {/* Meal Payment Category (Free vs Paid) */}
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  Meal Payment Type <span className="text-rose-500">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setManualPaymentType('FREE')}
+                    className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                      manualPaymentType === 'FREE'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span>🎁 Company Free</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setManualPaymentType('PAID')}
+                    className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                      manualPaymentType === 'PAID'
+                        ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span>💳 Paid Order</span>
+                  </button>
+                </div>
+                <p className="text-[10.5px] text-slate-400 font-medium mt-1">
+                  {manualPaymentType === 'FREE'
+                    ? '• Company eken free dena meal order ekak'
+                    : '• Employee pay karala ganna meal order ekak'}
+                </p>
               </div>
 
               {/* Two Requested Options: Collection vs Report Only */}

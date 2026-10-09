@@ -117,7 +117,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { mealType, mealOption, eggPreference, notes, requestDate, department, cictTeam, employeeNo, targetUserId, orderMode } = body;
+    const { mealType, mealOption, eggPreference, paymentType, notes, requestDate, department, cictTeam, employeeNo, targetUserId, orderMode } = body;
 
     const isAdmin = authUser.role === 'ADMIN' || authUser.role === 'SUPERADMIN';
 
@@ -249,6 +249,7 @@ export async function POST(request: Request) {
         existingOrder.status = initialStatus;
         existingOrder.mealOption = mealOption;
         existingOrder.eggPreference = mealOption === 'VEGETARIAN' ? (eggPreference || 'WITH_EGG') : undefined;
+        existingOrder.paymentType = paymentType || 'FREE';
         existingOrder.notes = notes ? notes.trim() : undefined;
         existingOrder.department = department || dbUser.department;
         existingOrder.requestedAt = new Date();
@@ -283,6 +284,7 @@ export async function POST(request: Request) {
       mealType,
       mealOption,
       eggPreference: mealOption === 'VEGETARIAN' ? (eggPreference || 'WITH_EGG') : undefined,
+      paymentType: paymentType || 'FREE',
       notes: notes ? notes.trim() : undefined,
       status: initialStatus,
       paymentConfirmed: isReportOnly ? true : false,

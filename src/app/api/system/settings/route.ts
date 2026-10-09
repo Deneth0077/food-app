@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import SystemSetting from '@/models/SystemSetting';
 import { getAuthUser } from '@/lib/jwt';
+import bcrypt from 'bcryptjs';
 
 // Helper to retrieve or initialize system settings
 async function getOrCreateSettings() {
@@ -17,6 +18,9 @@ async function getOrCreateSettings() {
       selfCollection: true,
       reportsExport: true,
       employeeDirectory: true,
+      liveOrderManagement: true,
+      manualEmployeeOrder: true,
+      manualOrderAdminUsername: 'ORDERADMIN',
       maintenanceMessage: 'This service is temporarily deactivated',
       breakfastCutoffTime: '22:00',
       lunchCutoffTime: '10:00',
@@ -43,6 +47,9 @@ export async function GET() {
         selfCollection: settings.selfCollection,
         reportsExport: settings.reportsExport,
         employeeDirectory: settings.employeeDirectory,
+        liveOrderManagement: settings.liveOrderManagement ?? true,
+        manualEmployeeOrder: settings.manualEmployeeOrder ?? true,
+        manualOrderAdminUsername: settings.manualOrderAdminUsername || 'ORDERADMIN',
         maintenanceMessage: settings.maintenanceMessage,
         breakfastCutoffTime: settings.breakfastCutoffTime || '22:00',
         lunchCutoffTime: settings.lunchCutoffTime || '10:00',
@@ -88,6 +95,9 @@ export async function PUT(request: Request) {
       'selfCollection',
       'reportsExport',
       'employeeDirectory',
+      'liveOrderManagement',
+      'manualEmployeeOrder',
+      'manualOrderAdminUsername',
       'maintenanceMessage',
       'breakfastCutoffTime',
       'lunchCutoffTime',
@@ -99,6 +109,10 @@ export async function PUT(request: Request) {
         settings[field] = body[field];
       }
     });
+
+    if (body.manualOrderAdminPin && body.manualOrderAdminPin.trim() !== '') {
+      settings.manualOrderAdminPin = await bcrypt.hash(body.manualOrderAdminPin, 10);
+    }
 
     settings.updatedBy = `${authUser.fullName} (${authUser.employeeNo})`;
     await settings.save();

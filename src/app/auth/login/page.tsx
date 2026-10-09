@@ -58,6 +58,8 @@ export default function LoginPage() {
               redirectUrl = '/canteen/dashboard';
             } else if (data.user.role === 'CASHIER') {
               redirectUrl = '/cashier/dashboard';
+            } else if (data.user.role === 'MANUAL_ORDER_ADMIN') {
+              redirectUrl = '/manual-order/dashboard';
             }
             router.replace(redirectUrl);
             return;

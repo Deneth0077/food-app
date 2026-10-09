@@ -20,6 +20,7 @@ export interface IOrder extends Document {
   cancelledBy?: 'EMPLOYEE' | 'ADMIN';
   department?: 'CWIT' | 'ECT' | 'SAGT' | 'CICT';
   cictTeam?: string;
+  paymentType?: 'PAID' | 'FREE';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -44,6 +45,11 @@ const OrderSchema: Schema = new Schema(
       type: String, 
       enum: ['WITH_EGG', 'WITHOUT_EGG'], 
       required: false 
+    },
+    paymentType: {
+      type: String,
+      enum: ['PAID', 'FREE'],
+      default: 'FREE'
     },
     notes: { 
       type: String, 
