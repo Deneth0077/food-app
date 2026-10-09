@@ -18,6 +18,9 @@ async function getOrCreateSettings() {
       reportsExport: true,
       employeeDirectory: true,
       maintenanceMessage: 'This service is temporarily deactivated',
+      breakfastCutoffTime: '22:00',
+      lunchCutoffTime: '10:00',
+      dinnerCutoffTime: '17:00',
     });
   }
   return settings;
@@ -41,6 +44,9 @@ export async function GET() {
         reportsExport: settings.reportsExport,
         employeeDirectory: settings.employeeDirectory,
         maintenanceMessage: settings.maintenanceMessage,
+        breakfastCutoffTime: settings.breakfastCutoffTime || '22:00',
+        lunchCutoffTime: settings.lunchCutoffTime || '10:00',
+        dinnerCutoffTime: settings.dinnerCutoffTime || '17:00',
         updatedAt: settings.updatedAt,
       },
     });
@@ -53,7 +59,7 @@ export async function GET() {
   }
 }
 
-// PUT: Update feature flags (Superadmin ONLY)
+// PUT: Update feature flags (Admin / Superadmin)
 export async function PUT(request: Request) {
   try {
     await dbConnect();
@@ -63,9 +69,9 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (authUser.role !== 'SUPERADMIN') {
+    if (authUser.role !== 'SUPERADMIN' && authUser.role !== 'ADMIN') {
       return NextResponse.json(
-        { error: 'Forbidden: Only Superadmin has permission to modify system service settings.' },
+        { error: 'Forbidden: Only Admin or Superadmin can modify system service settings.' },
         { status: 403 }
       );
     }
@@ -83,6 +89,9 @@ export async function PUT(request: Request) {
       'reportsExport',
       'employeeDirectory',
       'maintenanceMessage',
+      'breakfastCutoffTime',
+      'lunchCutoffTime',
+      'dinnerCutoffTime',
     ];
 
     allowedFields.forEach((field) => {

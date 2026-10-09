@@ -219,6 +219,23 @@ export default function EmployeeDashboard() {
   const [selectedBookingDate, setSelectedBookingDate] = useState<string>(todayStr);
   const [activeTab, setActiveTab] = useState<'ORDER' | 'HISTORY'>('ORDER');
   const [prices, setPrices] = useState({ breakfast: 300, lunch: 350, dinner: 400 });
+  const [cutoffTimes, setCutoffTimes] = useState({
+    breakfast: '22:00',
+    lunch: '10:00',
+    dinner: '17:00'
+  });
+
+  const formatCutoffTimeDisplay = useCallback((timeStr: string = '20:00') => {
+    if (!timeStr) return '';
+    const [hStr, mStr] = timeStr.split(':');
+    let h = parseInt(hStr || '20', 10);
+    const m = parseInt(mStr || '0', 10);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12;
+    if (h === 0) h = 12;
+    const mFormatted = m < 10 ? `0${m}` : `${m}`;
+    return `${h}:${mFormatted} ${ampm}`;
+  }, []);
 
   const selectedDateObj = new Date(selectedBookingDate + 'T00:00:00');
 
@@ -228,22 +245,25 @@ export default function EmployeeDashboard() {
 
     let lockTime: Date;
     if (mealType === 'BREAKFAST') {
+      const [bHours, bMins] = (cutoffTimes.breakfast || '22:00').split(':').map(Number);
       const dayBefore = new Date(targetDate.getTime());
       dayBefore.setDate(dayBefore.getDate() - 1);
-      dayBefore.setHours(20, 0, 0, 0); // 8:00 PM
+      dayBefore.setHours(bHours, bMins, 0, 0);
       lockTime = dayBefore;
     } else if (mealType === 'LUNCH') {
+      const [lHours, lMins] = (cutoffTimes.lunch || '10:00').split(':').map(Number);
       const dayOf = new Date(targetDate.getTime());
-      dayOf.setHours(10, 0, 0, 0); // 10:00 AM
+      dayOf.setHours(lHours, lMins, 0, 0);
       lockTime = dayOf;
     } else {
+      const [dHours, dMins] = (cutoffTimes.dinner || '17:00').split(':').map(Number);
       const dayOf = new Date(targetDate.getTime());
-      dayOf.setHours(17, 0, 0, 0); // 5:00 PM
+      dayOf.setHours(dHours, dMins, 0, 0);
       lockTime = dayOf;
     }
 
     return now.getTime() >= lockTime.getTime();
-  }, []);
+  }, [cutoffTimes]);
 
   const isBreakfastLocked = isMealLocked('BREAKFAST', selectedBookingDate);
   const isLunchLocked = isMealLocked('LUNCH', selectedBookingDate);
@@ -283,6 +303,19 @@ export default function EmployeeDashboard() {
             breakfast: pricesData.prices.breakfast,
             lunch: pricesData.prices.lunch,
             dinner: pricesData.prices.dinner
+          });
+        }
+      }
+
+      // Fetch cutoff settings
+      const settingsRes = await fetch('/api/system/settings');
+      if (settingsRes.ok) {
+        const sData = await settingsRes.json();
+        if (sData.settings) {
+          setCutoffTimes({
+            breakfast: sData.settings.breakfastCutoffTime || '22:00',
+            lunch: sData.settings.lunchCutoffTime || '10:00',
+            dinner: sData.settings.dinnerCutoffTime || '17:00'
           });
         }
       }
@@ -1027,7 +1060,7 @@ export default function EmployeeDashboard() {
                         {isBreakfastLocked && !activeBreakfastOrder ? (
                           <span className="text-red-500 font-bold">Booking Closed</span>
                         ) : (
-                          `Book before 8:00 PM on ${format(subDays(selectedDateObj, 1), 'MMM dd')}`
+                          `Book before ${formatCutoffTimeDisplay(cutoffTimes.breakfast)} on ${format(subDays(selectedDateObj, 1), 'MMM dd')}`
                         )}
                       </p>
                       {activeBreakfastOrder?.department && (
@@ -1118,7 +1151,7 @@ export default function EmployeeDashboard() {
                         {isLunchLocked && !activeLunchOrder ? (
                           <span className="text-red-500 font-bold">Booking Closed</span>
                         ) : (
-                          `Book before 9:00 AM on ${format(selectedDateObj, 'MMM dd')}`
+                          `Book before ${formatCutoffTimeDisplay(cutoffTimes.lunch)} on ${format(selectedDateObj, 'MMM dd')}`
                         )}
                       </p>
                       {activeLunchOrder?.department && (
@@ -1209,7 +1242,7 @@ export default function EmployeeDashboard() {
                         {isDinnerLocked && !activeDinnerOrder ? (
                           <span className="text-red-500 font-bold">Booking Closed</span>
                         ) : (
-                          `Book before 5:00 PM on ${format(selectedDateObj, 'MMM dd')}`
+                          `Book before ${formatCutoffTimeDisplay(cutoffTimes.dinner)} on ${format(selectedDateObj, 'MMM dd')}`
                         )}
                       </p>
                       {activeDinnerOrder?.department && (

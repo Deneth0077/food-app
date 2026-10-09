@@ -10,6 +10,7 @@ import {
   Utensils, 
   Clock, 
   Coffee, 
+  Moon,
   CheckCircle2, 
   FileText, 
   Users, 
@@ -31,6 +32,9 @@ interface SystemSettingsState {
   reportsExport: boolean;
   employeeDirectory: boolean;
   maintenanceMessage: string;
+  breakfastCutoffTime: string;
+  lunchCutoffTime: string;
+  dinnerCutoffTime: string;
 }
 
 export default function SuperadminSettingsPage() {
@@ -51,24 +55,39 @@ export default function SuperadminSettingsPage() {
     reportsExport: true,
     employeeDirectory: true,
     maintenanceMessage: 'This service is temporarily deactivated',
+    breakfastCutoffTime: '22:00',
+    lunchCutoffTime: '10:00',
+    dinnerCutoffTime: '17:00',
   });
+
+  const formatCutoffTimeDisplay = (timeStr: string = '20:00') => {
+    if (!timeStr) return '';
+    const [hStr, mStr] = timeStr.split(':');
+    let h = parseInt(hStr || '20', 10);
+    const m = parseInt(mStr || '0', 10);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12;
+    if (h === 0) h = 12;
+    const mFormatted = m < 10 ? `0${m}` : `${m}`;
+    return `${h}:${mFormatted} ${ampm}`;
+  };
 
   useEffect(() => {
     async function verifyAndLoad() {
       try {
         setLoading(true);
-        // 1. Verify Superadmin role
+        // 1. Verify Admin / Superadmin role
         const meRes = await fetch('/api/auth/me');
         const meData = await meRes.json();
         if (!meRes.ok || !meData.user) {
           router.push('/auth/login');
           return;
         }
-        if (meData.user.role !== 'SUPERADMIN') {
+        if (meData.user.role !== 'SUPERADMIN' && meData.user.role !== 'ADMIN') {
           toast({
             variant: 'destructive',
             title: 'Access Restricted',
-            description: 'Only Superadmin can access system feature controls.',
+            description: 'Only Admin or Superadmin can access system feature controls.',
           });
           router.replace('/admin/dashboard');
           return;
@@ -91,6 +110,9 @@ export default function SuperadminSettingsPage() {
               reportsExport: sData.settings.reportsExport ?? true,
               employeeDirectory: sData.settings.employeeDirectory ?? true,
               maintenanceMessage: sData.settings.maintenanceMessage || 'This service is temporarily deactivated',
+              breakfastCutoffTime: sData.settings.breakfastCutoffTime || '22:00',
+              lunchCutoffTime: sData.settings.lunchCutoffTime || '10:00',
+              dinnerCutoffTime: sData.settings.dinnerCutoffTime || '17:00',
             });
           }
         }
@@ -371,6 +393,161 @@ export default function SuperadminSettingsPage() {
                 </div>
               );
             })}
+          </div>
+        </div>
+
+        {/* Meal Order Cutoff Times Section */}
+        <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center">
+                <Clock className="h-4 w-4 stroke-[2.25]" />
+              </div>
+              <div>
+                <h3 className="text-xs sm:text-sm font-bold text-slate-850">Meal Order Cutoff Times</h3>
+                <p className="text-[10px] text-slate-500 font-medium">Set when employee order booking locks for each meal</p>
+              </div>
+            </div>
+            <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+              Cutoff Config
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {/* Breakfast Cutoff Card */}
+            <div className="p-3.5 rounded-xl border border-amber-200/80 bg-gradient-to-r from-amber-50/70 via-orange-50/40 to-amber-50/50 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-8 w-8 rounded-lg bg-amber-500 text-white flex items-center justify-center shadow-xs">
+                    <Coffee className="h-4 w-4 stroke-[2.25]" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-850">Breakfast Cutoff</h4>
+                    <p className="text-[10px] text-amber-800 font-medium">Orders close night before target date</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-black text-amber-900 bg-amber-100 px-2.5 py-1 rounded-lg border border-amber-200">
+                    {formatCutoffTimeDisplay(settings.breakfastCutoffTime)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <input
+                  type="time"
+                  value={settings.breakfastCutoffTime}
+                  onChange={(e) => setSettings((prev) => ({ ...prev, breakfastCutoffTime: e.target.value }))}
+                  className="h-8 px-2.5 text-xs font-bold bg-white border border-amber-300 rounded-lg text-slate-800 focus:ring-1 focus:ring-amber-500 outline-none"
+                />
+                <div className="flex items-center gap-1.5 flex-wrap flex-1 min-w-[200px]">
+                  {['20:00', '21:00', '22:00', '23:00'].map((time) => (
+                    <button
+                      key={time}
+                      type="button"
+                      onClick={() => setSettings((prev) => ({ ...prev, breakfastCutoffTime: time }))}
+                      className={`px-2 py-1 text-[10px] font-bold rounded-lg border transition-all cursor-pointer ${
+                        settings.breakfastCutoffTime === time
+                          ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
+                          : 'bg-white text-slate-600 border-amber-200 hover:bg-amber-100/60'
+                      }`}
+                    >
+                      {formatCutoffTimeDisplay(time)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Lunch Cutoff Card */}
+            <div className="p-3.5 rounded-xl border border-sky-200/80 bg-gradient-to-r from-sky-50/70 via-blue-50/40 to-sky-50/50 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-8 w-8 rounded-lg bg-sky-500 text-white flex items-center justify-center shadow-xs">
+                    <Utensils className="h-4 w-4 stroke-[2.25]" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-850">Lunch Cutoff</h4>
+                    <p className="text-[10px] text-sky-800 font-medium">Orders close morning of target date</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-black text-sky-900 bg-sky-100 px-2.5 py-1 rounded-lg border border-sky-200">
+                    {formatCutoffTimeDisplay(settings.lunchCutoffTime)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <input
+                  type="time"
+                  value={settings.lunchCutoffTime}
+                  onChange={(e) => setSettings((prev) => ({ ...prev, lunchCutoffTime: e.target.value }))}
+                  className="h-8 px-2.5 text-xs font-bold bg-white border border-sky-300 rounded-lg text-slate-800 focus:ring-1 focus:ring-sky-500 outline-none"
+                />
+                <div className="flex items-center gap-1.5 flex-wrap flex-1 min-w-[200px]">
+                  {['08:00', '09:00', '10:00', '11:00'].map((time) => (
+                    <button
+                      key={time}
+                      type="button"
+                      onClick={() => setSettings((prev) => ({ ...prev, lunchCutoffTime: time }))}
+                      className={`px-2 py-1 text-[10px] font-bold rounded-lg border transition-all cursor-pointer ${
+                        settings.lunchCutoffTime === time
+                          ? 'bg-sky-600 text-white border-sky-600 shadow-2xs'
+                          : 'bg-white text-slate-600 border-sky-200 hover:bg-sky-100/60'
+                      }`}
+                    >
+                      {formatCutoffTimeDisplay(time)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Dinner Cutoff Card */}
+            <div className="p-3.5 rounded-xl border border-indigo-200/80 bg-gradient-to-r from-indigo-50/70 via-purple-50/40 to-indigo-50/50 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-8 w-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-xs">
+                    <Moon className="h-4 w-4 stroke-[2.25]" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-850">Dinner Cutoff</h4>
+                    <p className="text-[10px] text-indigo-800 font-medium">Orders close evening of target date</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-black text-indigo-900 bg-indigo-100 px-2.5 py-1 rounded-lg border border-indigo-200">
+                    {formatCutoffTimeDisplay(settings.dinnerCutoffTime)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <input
+                  type="time"
+                  value={settings.dinnerCutoffTime}
+                  onChange={(e) => setSettings((prev) => ({ ...prev, dinnerCutoffTime: e.target.value }))}
+                  className="h-8 px-2.5 text-xs font-bold bg-white border border-indigo-300 rounded-lg text-slate-800 focus:ring-1 focus:ring-indigo-500 outline-none"
+                />
+                <div className="flex items-center gap-1.5 flex-wrap flex-1 min-w-[200px]">
+                  {['16:00', '17:00', '18:00', '19:00'].map((time) => (
+                    <button
+                      key={time}
+                      type="button"
+                      onClick={() => setSettings((prev) => ({ ...prev, dinnerCutoffTime: time }))}
+                      className={`px-2 py-1 text-[10px] font-bold rounded-lg border transition-all cursor-pointer ${
+                        settings.dinnerCutoffTime === time
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                          : 'bg-white text-slate-600 border-indigo-200 hover:bg-indigo-100/60'
+                      }`}
+                    >
+                      {formatCutoffTimeDisplay(time)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 

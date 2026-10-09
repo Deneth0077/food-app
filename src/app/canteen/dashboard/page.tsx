@@ -69,6 +69,11 @@ export default function CanteenDashboard() {
   const [tomorrowOrders, setTomorrowOrders] = useState<Order[]>([]);
   const [dailyMenu, setDailyMenu] = useState<DailyMenu | null>(null);
   const [tomorrowDailyMenu, setTomorrowDailyMenu] = useState<DailyMenu | null>(null);
+  const [cutoffTimes, setCutoffTimes] = useState({
+    breakfast: '22:00',
+    lunch: '10:00',
+    dinner: '17:00'
+  });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMealFilter, setSelectedMealFilter] = useState<'ALL' | 'BREAKFAST' | 'LUNCH' | 'DINNER'>('ALL');
@@ -367,6 +372,19 @@ export default function CanteenDashboard() {
       setTomorrowOrders(dataTomorrow.orders || []);
       setDailyMenu(dataMenuToday.menu || null);
       setTomorrowDailyMenu(dataMenuTomorrow.menu || null);
+
+      // Fetch system settings for dynamic cutoffs
+      const settingsRes = await fetch('/api/system/settings');
+      if (settingsRes.ok) {
+        const sData = await settingsRes.json();
+        if (sData.settings) {
+          setCutoffTimes({
+            breakfast: sData.settings.breakfastCutoffTime || '22:00',
+            lunch: sData.settings.lunchCutoffTime || '10:00',
+            dinner: sData.settings.dinnerCutoffTime || '17:00'
+          });
+        }
+      }
     } catch (err: any) {
       toast({
         variant: 'destructive',
@@ -531,17 +549,20 @@ export default function CanteenDashboard() {
     
     let lockTime: Date;
     if (mealType === 'BREAKFAST') {
+      const [bHours, bMins] = (cutoffTimes.breakfast || '22:00').split(':').map(Number);
       const dayBefore = new Date(targetDate.getTime());
       dayBefore.setDate(dayBefore.getDate() - 1);
-      dayBefore.setHours(20, 0, 0, 0); // 8:00 PM the day before
+      dayBefore.setHours(bHours, bMins, 0, 0);
       lockTime = dayBefore;
     } else if (mealType === 'LUNCH') {
+      const [lHours, lMins] = (cutoffTimes.lunch || '10:00').split(':').map(Number);
       const dayOf = new Date(targetDate.getTime());
-      dayOf.setHours(9, 0, 0, 0); // 9:00 AM the day of
+      dayOf.setHours(lHours, lMins, 0, 0);
       lockTime = dayOf;
     } else {
+      const [dHours, dMins] = (cutoffTimes.dinner || '17:00').split(':').map(Number);
       const dayOf = new Date(targetDate.getTime());
-      dayOf.setHours(17, 0, 0, 0); // 5:00 PM the day of
+      dayOf.setHours(dHours, dMins, 0, 0);
       lockTime = dayOf;
     }
     
@@ -556,25 +577,28 @@ export default function CanteenDashboard() {
     let prepEnd: Date;
     
     if (mealType === 'BREAKFAST') {
+      const [bHours, bMins] = (cutoffTimes.breakfast || '22:00').split(':').map(Number);
       const dayBefore = new Date(targetDate.getTime());
       dayBefore.setDate(dayBefore.getDate() - 1);
-      dayBefore.setHours(20, 0, 0, 0); // 8:00 PM the day before
+      dayBefore.setHours(bHours, bMins, 0, 0);
       prepStart = dayBefore;
       
       const dayOf = new Date(targetDate.getTime());
       dayOf.setHours(9, 0, 0, 0); // 9:00 AM the day of
       prepEnd = dayOf;
     } else if (mealType === 'LUNCH') {
+      const [lHours, lMins] = (cutoffTimes.lunch || '10:00').split(':').map(Number);
       const dayOf = new Date(targetDate.getTime());
-      dayOf.setHours(9, 0, 0, 0); // 9:00 AM the day of
+      dayOf.setHours(lHours, lMins, 0, 0);
       prepStart = dayOf;
       
       const dayOfEnd = new Date(targetDate.getTime());
       dayOfEnd.setHours(14, 0, 0, 0); // 2:00 PM the day of
       prepEnd = dayOfEnd;
     } else {
+      const [dHours, dMins] = (cutoffTimes.dinner || '17:00').split(':').map(Number);
       const dayOf = new Date(targetDate.getTime());
-      dayOf.setHours(17, 0, 0, 0); // 5:00 PM the day of
+      dayOf.setHours(dHours, dMins, 0, 0);
       prepStart = dayOf;
       
       const dayOfEnd = new Date(targetDate.getTime());

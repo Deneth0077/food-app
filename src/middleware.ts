@@ -77,7 +77,7 @@ export async function middleware(request: NextRequest) {
     }
 
     // Role verification
-    if (isSuperAdminRoute && payload.role !== 'SUPERADMIN') {
+    if (isSuperAdminRoute && payload.role !== 'SUPERADMIN' && payload.role !== 'ADMIN') {
       return redirectBasedOnRole(payload.role, request);
     }
 

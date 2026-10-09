@@ -11,6 +11,9 @@ export interface ISystemSetting extends Document {
   reportsExport: boolean;
   employeeDirectory: boolean;
   maintenanceMessage: string;
+  breakfastCutoffTime: string;
+  lunchCutoffTime: string;
+  dinnerCutoffTime: string;
   updatedBy?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -32,6 +35,9 @@ const SystemSettingSchema: Schema = new Schema(
       type: String, 
       default: 'This service is temporarily deactivated' 
     },
+    breakfastCutoffTime: { type: String, default: '22:00' },
+    lunchCutoffTime: { type: String, default: '10:00' },
+    dinnerCutoffTime: { type: String, default: '17:00' },
     updatedBy: { type: String, required: false },
   },
   { timestamps: true }

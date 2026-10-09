@@ -9,6 +9,27 @@ import { format } from 'date-fns';
 
 export const dynamic = 'force-dynamic';
 
+function formatCutoffTime(timeStr: string = '20:00'): string {
+  const [hStr, mStr] = (timeStr || '20:00').split(':');
+  let h = parseInt(hStr || '20', 10);
+  const m = parseInt(mStr || '0', 10);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12;
+  if (h === 0) h = 12;
+  const mFormatted = m < 10 ? `0${m}` : `${m}`;
+  return `${h}:${mFormatted} ${ampm}`;
+}
+
+async function getMealCutoffSettings() {
+  const settings = await SystemSetting.findOne({ key: 'GLOBAL_SETTINGS' });
+  return {
+    breakfast: settings?.breakfastCutoffTime || '22:00',
+    lunch: settings?.lunchCutoffTime || '10:00',
+    dinner: settings?.dinnerCutoffTime || '17:00',
+    cancellationWindowMinutes: settings?.cancellationWindowMinutes ?? 60,
+  };
+}
+
 
 // GET: Fetch orders based on role and filters
 export async function GET(request: Request) {
@@ -170,33 +191,40 @@ export async function POST(request: Request) {
         );
       }
 
+      const cutoffs = await getMealCutoffSettings();
       const targetDate = new Date(targetDateStr + 'T00:00:00');
       if (mealType === 'BREAKFAST') {
+        const [bHours, bMins] = cutoffs.breakfast.split(':').map(Number);
         const dayBefore = new Date(targetDate.getTime());
         dayBefore.setDate(dayBefore.getDate() - 1);
-        dayBefore.setHours(20, 0, 0, 0); // 8:00 PM
+        dayBefore.setHours(bHours, bMins, 0, 0);
         if (now.getTime() >= dayBefore.getTime()) {
-          const displayTime = targetDateStr === tomorrowStr ? '8:00 PM today' : `8:00 PM on ${format(dayBefore, 'yyyy-MM-dd')}`;
+          const displayCutoff = formatCutoffTime(cutoffs.breakfast);
+          const displayTime = targetDateStr === tomorrowStr ? `${displayCutoff} today` : `${displayCutoff} on ${format(dayBefore, 'yyyy-MM-dd')}`;
           return NextResponse.json(
             { error: `Breakfast orders for ${targetDateStr} closed at ${displayTime}.` },
             { status: 400 }
           );
         }
       } else if (mealType === 'LUNCH') {
+        const [lHours, lMins] = cutoffs.lunch.split(':').map(Number);
         const dayOf = new Date(targetDate.getTime());
-        dayOf.setHours(10, 0, 0, 0); // 10:00 AM
+        dayOf.setHours(lHours, lMins, 0, 0);
         if (now.getTime() >= dayOf.getTime()) {
-          const displayTime = targetDateStr === todayStr ? '10:00 AM today' : `10:00 AM on ${targetDateStr}`;
+          const displayCutoff = formatCutoffTime(cutoffs.lunch);
+          const displayTime = targetDateStr === todayStr ? `${displayCutoff} today` : `${displayCutoff} on ${targetDateStr}`;
           return NextResponse.json(
             { error: `Lunch orders for ${targetDateStr} closed at ${displayTime}.` },
             { status: 400 }
           );
         }
       } else if (mealType === 'DINNER') {
+        const [dHours, dMins] = cutoffs.dinner.split(':').map(Number);
         const dayOf = new Date(targetDate.getTime());
-        dayOf.setHours(17, 0, 0, 0); // 5:00 PM
+        dayOf.setHours(dHours, dMins, 0, 0);
         if (now.getTime() >= dayOf.getTime()) {
-          const displayTime = targetDateStr === todayStr ? '5:00 PM today' : `5:00 PM on ${targetDateStr}`;
+          const displayCutoff = formatCutoffTime(cutoffs.dinner);
+          const displayTime = targetDateStr === todayStr ? `${displayCutoff} today` : `${displayCutoff} on ${targetDateStr}`;
           return NextResponse.json(
             { error: `Dinner orders for ${targetDateStr} closed at ${displayTime}.` },
             { status: 400 }
@@ -446,32 +474,39 @@ export async function PUT(request: Request) {
     }
 
     // Unified lock validation
+    const cutoffs = await getMealCutoffSettings();
     const targetDate = new Date(targetDateStr + 'T00:00:00');
     if (mealType === 'BREAKFAST') {
+      const [bHours, bMins] = cutoffs.breakfast.split(':').map(Number);
       const dayBefore = new Date(targetDate.getTime());
       dayBefore.setDate(dayBefore.getDate() - 1);
-      dayBefore.setHours(20, 0, 0, 0); // 8:00 PM
+      dayBefore.setHours(bHours, bMins, 0, 0);
       if (now.getTime() >= dayBefore.getTime()) {
+        const displayCutoff = formatCutoffTime(cutoffs.breakfast);
         return NextResponse.json(
-          { error: `Breakfast orders for ${targetDateStr} closed at 8:00 PM on ${format(dayBefore, 'yyyy-MM-dd')}.` },
+          { error: `Breakfast orders for ${targetDateStr} closed at ${displayCutoff} on ${format(dayBefore, 'yyyy-MM-dd')}.` },
           { status: 400 }
         );
       }
     } else if (mealType === 'LUNCH') {
+      const [lHours, lMins] = cutoffs.lunch.split(':').map(Number);
       const dayOf = new Date(targetDate.getTime());
-      dayOf.setHours(10, 0, 0, 0); // 10:00 AM
+      dayOf.setHours(lHours, lMins, 0, 0);
       if (now.getTime() >= dayOf.getTime()) {
+        const displayCutoff = formatCutoffTime(cutoffs.lunch);
         return NextResponse.json(
-          { error: `Lunch orders for ${targetDateStr} closed at 10:00 AM on ${targetDateStr}.` },
+          { error: `Lunch orders for ${targetDateStr} closed at ${displayCutoff} on ${targetDateStr}.` },
           { status: 400 }
         );
       }
     } else if (mealType === 'DINNER') {
+      const [dHours, dMins] = cutoffs.dinner.split(':').map(Number);
       const dayOf = new Date(targetDate.getTime());
-      dayOf.setHours(17, 0, 0, 0); // 5:00 PM
+      dayOf.setHours(dHours, dMins, 0, 0);
       if (now.getTime() >= dayOf.getTime()) {
+        const displayCutoff = formatCutoffTime(cutoffs.dinner);
         return NextResponse.json(
-          { error: `Dinner orders for ${targetDateStr} closed at 5:00 PM on ${targetDateStr}.` },
+          { error: `Dinner orders for ${targetDateStr} closed at ${displayCutoff} on ${targetDateStr}.` },
           { status: 400 }
         );
       }
@@ -593,44 +628,50 @@ export async function DELETE(request: Request) {
 
     // Lock time check (for non-admins)
     if (authUser.role !== 'ADMIN' && authUser.role !== 'SUPERADMIN') {
+      const cutoffs = await getMealCutoffSettings();
       const now = new Date();
       const todayStr = format(now, 'yyyy-MM-dd');
       const targetDateStr = order.requestDate || todayStr;
       const targetDate = new Date(targetDateStr + 'T00:00:00');
 
       if (order.mealType === 'BREAKFAST') {
+        const [bHours, bMins] = cutoffs.breakfast.split(':').map(Number);
         const dayBefore = new Date(targetDate.getTime());
         dayBefore.setDate(dayBefore.getDate() - 1);
-        dayBefore.setHours(20, 0, 0, 0); // 8:00 PM
+        dayBefore.setHours(bHours, bMins, 0, 0);
         if (now.getTime() >= dayBefore.getTime()) {
+          const displayCutoff = formatCutoffTime(cutoffs.breakfast);
           return NextResponse.json(
-            { error: `Breakfast orders for ${targetDateStr} closed at 8:00 PM on ${format(dayBefore, 'yyyy-MM-dd')}.` },
+            { error: `Breakfast orders for ${targetDateStr} closed at ${displayCutoff} on ${format(dayBefore, 'yyyy-MM-dd')}.` },
             { status: 400 }
           );
         }
       } else if (order.mealType === 'LUNCH') {
+        const [lHours, lMins] = cutoffs.lunch.split(':').map(Number);
         const dayOf = new Date(targetDate.getTime());
-        dayOf.setHours(10, 0, 0, 0); // 10:00 AM
+        dayOf.setHours(lHours, lMins, 0, 0);
         if (now.getTime() >= dayOf.getTime()) {
+          const displayCutoff = formatCutoffTime(cutoffs.lunch);
           return NextResponse.json(
-            { error: `Lunch orders for ${targetDateStr} closed at 10:00 AM on ${targetDateStr}.` },
+            { error: `Lunch orders for ${targetDateStr} closed at ${displayCutoff} on ${targetDateStr}.` },
             { status: 400 }
           );
         }
       } else if (order.mealType === 'DINNER') {
+        const [dHours, dMins] = cutoffs.dinner.split(':').map(Number);
         const dayOf = new Date(targetDate.getTime());
-        dayOf.setHours(17, 0, 0, 0); // 5:00 PM
+        dayOf.setHours(dHours, dMins, 0, 0);
         if (now.getTime() >= dayOf.getTime()) {
+          const displayCutoff = formatCutoffTime(cutoffs.dinner);
           return NextResponse.json(
-            { error: `Dinner orders for ${targetDateStr} closed at 5:00 PM on ${targetDateStr}.` },
+            { error: `Dinner orders for ${targetDateStr} closed at ${displayCutoff} on ${targetDateStr}.` },
             { status: 400 }
           );
         }
       }
 
-      // Fetch system settings for dynamic cancellation window
-      const sysSettings = await SystemSetting.findOne({ key: 'GLOBAL_SETTINGS' });
-      const cancellationWindowMins = sysSettings?.cancellationWindowMinutes ?? 60;
+      // Check time difference against dynamic cancellation window
+      const cancellationWindowMins = cutoffs.cancellationWindowMinutes;
 
       // Check time difference against dynamic cancellation window
       const orderTime = new Date(order.requestedAt).getTime();
