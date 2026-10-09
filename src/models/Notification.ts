@@ -5,6 +5,7 @@ export interface INotification extends Document {
   employeeNo: string;
   mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER';
   mealOption?: 'VEGETARIAN' | 'MEAT';
+  eggPreference?: 'WITH_EGG' | 'WITHOUT_EGG';
   type?: 'ORDER_PLACED' | 'ORDER_CANCELLED' | 'PRICE_CHANGED' | 'SYSTEM_ANNOUNCEMENT';
   notes?: string;
   isRead: boolean;
@@ -18,6 +19,7 @@ const NotificationSchema: Schema = new Schema(
     employeeNo: { type: String, required: true },
     mealType: { type: String, enum: ['BREAKFAST', 'LUNCH', 'DINNER'], required: true },
     mealOption: { type: String, enum: ['VEGETARIAN', 'MEAT'], required: false },
+    eggPreference: { type: String, enum: ['WITH_EGG', 'WITHOUT_EGG'], required: false },
     type: {
       type: String,
       enum: ['ORDER_PLACED', 'ORDER_CANCELLED', 'PRICE_CHANGED', 'SYSTEM_ANNOUNCEMENT'],

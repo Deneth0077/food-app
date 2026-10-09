@@ -7,6 +7,7 @@ export interface IOrder extends Document {
   phoneNumber: string;
   mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER';
   mealOption?: 'VEGETARIAN' | 'MEAT';
+  eggPreference?: 'WITH_EGG' | 'WITHOUT_EGG';
   notes?: string;
   status: 'ORDERED' | 'COLLECTED' | 'CANCELLED';
   paymentConfirmed?: boolean;
@@ -37,6 +38,11 @@ const OrderSchema: Schema = new Schema(
     mealOption: { 
       type: String, 
       enum: ['VEGETARIAN', 'MEAT'], 
+      required: false 
+    },
+    eggPreference: { 
+      type: String, 
+      enum: ['WITH_EGG', 'WITHOUT_EGG'], 
       required: false 
     },
     notes: { 

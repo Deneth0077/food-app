@@ -46,6 +46,7 @@ interface OrderItem {
   phoneNumber: string;
   mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER';
   mealOption?: 'VEGETARIAN' | 'MEAT';
+  eggPreference?: 'WITH_EGG' | 'WITHOUT_EGG';
   notes?: string;
   status: 'ORDERED' | 'COLLECTED' | 'CANCELLED';
   paymentConfirmed?: boolean;
@@ -945,7 +946,9 @@ export default function AdminOrdersPage() {
                                     : 'bg-rose-50 text-rose-800 border-rose-200'
                                 }`}
                               >
-                                {order.mealOption === 'VEGETARIAN' ? '🟢 VEG' : '🔴 NON-VEG'}
+                                {order.mealOption === 'VEGETARIAN'
+                                  ? (order.eggPreference === 'WITHOUT_EGG' ? '🟢 VEG (No Egg)' : '🟢 VEG (With Egg)')
+                                  : '🔴 NON-VEG'}
                               </span>
                             )}
 

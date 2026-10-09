@@ -19,6 +19,7 @@ interface Order {
   _id: string;
   mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER';
   mealOption?: 'VEGETARIAN' | 'MEAT';
+  eggPreference?: 'WITH_EGG' | 'WITHOUT_EGG';
   status: 'ORDERED' | 'COLLECTED' | 'CANCELLED';
   cancelledAt?: string;
   cancelledBy?: 'EMPLOYEE' | 'ADMIN';
@@ -216,7 +217,9 @@ export default function EmployeeHistoryPage() {
                     <div>
                       <span className="block text-slate-400 text-[9px] uppercase tracking-wider font-bold">Meal Choice</span>
                       <span className={`block mt-0.5 font-bold ${item.mealOption === 'VEGETARIAN' ? 'text-green-600' : 'text-rose-600'}`}>
-                        {item.mealOption === 'VEGETARIAN' ? 'Vegetarian' : 'Non vegetarian'}
+                        {item.mealOption === 'VEGETARIAN'
+                          ? (item.eggPreference === 'WITHOUT_EGG' ? 'Vegetarian (Without Egg)' : 'Vegetarian (With Egg)')
+                          : 'Non vegetarian'}
                       </span>
                     </div>
                   )}

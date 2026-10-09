@@ -40,6 +40,7 @@ interface Order {
   _id: string;
   mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER';
   mealOption?: 'VEGETARIAN' | 'MEAT';
+  eggPreference?: 'WITH_EGG' | 'WITHOUT_EGG';
   status: 'ORDERED' | 'COLLECTED' | 'CANCELLED';
   paymentConfirmed?: boolean;
   paymentConfirmedAt?: string;
@@ -129,6 +130,7 @@ export default function EmployeeDashboard() {
   const [submittingMeal, setSubmittingMeal] = useState<string | null>(null);
   const [activeMealSelection, setActiveMealSelection] = useState<'BREAKFAST' | 'LUNCH' | 'DINNER' | null>(null);
   const [selectedOption, setSelectedOption] = useState<'VEGETARIAN' | 'MEAT' | null>(null);
+  const [selectedEggPreference, setSelectedEggPreference] = useState<'WITH_EGG' | 'WITHOUT_EGG'>('WITH_EGG');
   const [orderNotes, setOrderNotes] = useState('');
   const [selectedOrderDepartment, setSelectedOrderDepartment] = useState<'CWIT' | 'ECT' | 'SAGT' | 'CICT' | null>(null);
   const [mealModalStep, setMealModalStep] = useState<'PREFERENCE' | 'SITE' | 'CICT_TEAM'>('PREFERENCE');
@@ -372,10 +374,11 @@ export default function EmployeeDashboard() {
     setSubmittingMeal(mealType);
     try {
       const targetDateStr = selectedBookingDate;
+      const eggPref = mealOption === 'VEGETARIAN' ? selectedEggPreference : undefined;
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mealType, mealOption, notes, requestDate: targetDateStr, department, cictTeam }),
+        body: JSON.stringify({ mealType, mealOption, eggPreference: eggPref, notes, requestDate: targetDateStr, department, cictTeam }),
       });
 
       const data = await res.json();
@@ -425,10 +428,11 @@ export default function EmployeeDashboard() {
   const handleUpdateOrder = async (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER', mealOption: 'VEGETARIAN' | 'MEAT', notes: string, department?: string, cictTeam?: string) => {
     try {
       const targetDateStr = selectedBookingDate;
+      const eggPref = mealOption === 'VEGETARIAN' ? selectedEggPreference : undefined;
       const res = await fetch('/api/orders', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mealType, mealOption, notes, requestDate: targetDateStr, department, cictTeam }),
+        body: JSON.stringify({ mealType, mealOption, eggPreference: eggPref, notes, requestDate: targetDateStr, department, cictTeam }),
       });
 
       const data = await res.json();
@@ -1330,7 +1334,9 @@ export default function EmployeeDashboard() {
                             ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
                             : 'bg-rose-50 text-rose-700 border border-rose-100'
                           }`}>
-                          {activeBreakfastOrder.mealOption === 'VEGETARIAN' ? 'Veg' : 'Non-Veg'}
+                          {activeBreakfastOrder.mealOption === 'VEGETARIAN'
+                            ? (activeBreakfastOrder.eggPreference === 'WITHOUT_EGG' ? 'Veg (No Egg)' : 'Veg (With Egg)')
+                            : 'Non-Veg'}
                         </span>
                       )}
                       {activeBreakfastOrder?.department && (
@@ -1430,7 +1436,9 @@ export default function EmployeeDashboard() {
                             ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
                             : 'bg-rose-50 text-rose-700 border border-rose-100'
                           }`}>
-                          {activeLunchOrder.mealOption === 'VEGETARIAN' ? 'Veg' : 'Non-Veg'}
+                          {activeLunchOrder.mealOption === 'VEGETARIAN'
+                            ? (activeLunchOrder.eggPreference === 'WITHOUT_EGG' ? 'Veg (No Egg)' : 'Veg (With Egg)')
+                            : 'Non-Veg'}
                         </span>
                       )}
                       {activeLunchOrder?.department && (
@@ -1530,7 +1538,9 @@ export default function EmployeeDashboard() {
                             ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
                             : 'bg-rose-50 text-rose-700 border border-rose-100'
                           }`}>
-                          {activeDinnerOrder.mealOption === 'VEGETARIAN' ? 'Veg' : 'Non-Veg'}
+                          {activeDinnerOrder.mealOption === 'VEGETARIAN'
+                            ? (activeDinnerOrder.eggPreference === 'WITHOUT_EGG' ? 'Veg (No Egg)' : 'Veg (With Egg)')
+                            : 'Non-Veg'}
                         </span>
                       )}
                       {activeDinnerOrder?.department && (
@@ -1821,7 +1831,9 @@ export default function EmployeeDashboard() {
                                   ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
                                   : 'bg-rose-50 text-rose-700 border border-rose-100'
                                 }`}>
-                                {item.mealOption === 'VEGETARIAN' ? 'Veg' : 'Non-Veg'}
+                                {item.mealOption === 'VEGETARIAN'
+                                  ? (item.eggPreference === 'WITHOUT_EGG' ? 'Veg (No Egg)' : 'Veg (With Egg)')
+                                  : 'Non-Veg'}
                               </span>
                             )}
                           </div>
@@ -1844,7 +1856,7 @@ export default function EmployeeDashboard() {
       {/* Meal Preference Selection Modal */}
       {activeMealSelection && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 ease-out animate-in fade-in">
-          <div className="absolute inset-0" onClick={() => { setActiveMealSelection(null); setSelectedOption(null); setOrderNotes(''); setSelectedOrderDepartment(null); setMealModalStep('PREFERENCE'); }}></div>
+          <div className="absolute inset-0" onClick={() => { setActiveMealSelection(null); setSelectedOption(null); setSelectedEggPreference('WITH_EGG'); setOrderNotes(''); setSelectedOrderDepartment(null); setMealModalStep('PREFERENCE'); }}></div>
 
           {mealModalStep === 'PREFERENCE' ? (
             <div className="relative bg-white w-full max-w-sm max-h-[90vh] overflow-y-auto rounded-3xl p-6 shadow-2xl border border-slate-100 transition-all duration-300 ease-out transform animate-in zoom-in-95">
@@ -1913,7 +1925,10 @@ export default function EmployeeDashboard() {
                 {/* Vegetarian Option Card with Image */}
                 <button
                   type="button"
-                  onClick={() => setSelectedOption('VEGETARIAN')}
+                  onClick={() => {
+                    setSelectedOption('VEGETARIAN');
+                    if (!selectedEggPreference) setSelectedEggPreference('WITH_EGG');
+                  }}
                   className={`flex flex-col items-center justify-between p-3 sm:p-3.5 rounded-2xl border-2 transition-all duration-300 transform shadow-[0_2px_8px_rgba(0,0,0,0.01)] text-center overflow-hidden group ${selectedOption === 'VEGETARIAN'
                       ? 'border-emerald-500 bg-emerald-50/50 text-emerald-800 shadow-emerald-100/50 shadow-md -translate-y-0.5 scale-[1.02]'
                       : 'border-slate-200 hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] bg-white text-slate-700'
@@ -1960,6 +1975,78 @@ export default function EmployeeDashboard() {
                   </div>
                 </button>
               </div>
+
+              {/* Egg Preference Selector for Vegetarian Choice */}
+              {selectedOption === 'VEGETARIAN' && (
+                <div className="mt-4 pt-3.5 border-t border-slate-100 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="flex items-center justify-between mb-2 px-0.5">
+                    <span className="text-[11px] sm:text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      Egg Preference:
+                    </span>
+                    <span className={`text-[9.5px] font-extrabold px-2 py-0.5 rounded-full border ${
+                      selectedEggPreference === 'WITH_EGG'
+                        ? 'bg-amber-100 text-amber-900 border-amber-300'
+                        : 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                    }`}>
+                      {selectedEggPreference === 'WITH_EGG' ? '🥚 With Egg' : '🥗 Without Egg'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {/* With Egg Option Card */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedEggPreference('WITH_EGG')}
+                      className={`flex flex-col items-center justify-between p-2.5 rounded-2xl border-2 transition-all duration-300 transform text-center overflow-hidden group cursor-pointer ${
+                        selectedEggPreference === 'WITH_EGG'
+                          ? 'border-amber-500 bg-amber-50/70 text-amber-900 shadow-amber-100/50 shadow-md scale-[1.02]'
+                          : 'border-slate-200 hover:border-amber-300 bg-white text-slate-700 opacity-80 hover:opacity-100'
+                      }`}
+                    >
+                      <div className="w-full h-20 sm:h-24 rounded-xl overflow-hidden mb-1.5 relative">
+                        <img
+                          src="/images/veg_with_egg.jpg"
+                          alt="With Egg"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <div className="absolute top-1 left-1 bg-amber-600/90 backdrop-blur-xs text-white text-[8.5px] font-extrabold px-1.5 py-0.5 rounded-md shadow-xs">
+                          With Egg
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+                        <span className="text-[10.5px] sm:text-xs font-extrabold uppercase tracking-tight">With Egg</span>
+                      </div>
+                    </button>
+
+                    {/* Without Egg Option Card */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedEggPreference('WITHOUT_EGG')}
+                      className={`flex flex-col items-center justify-between p-2.5 rounded-2xl border-2 transition-all duration-300 transform text-center overflow-hidden group cursor-pointer ${
+                        selectedEggPreference === 'WITHOUT_EGG'
+                          ? 'border-emerald-500 bg-emerald-50/70 text-emerald-900 shadow-emerald-100/50 shadow-md scale-[1.02]'
+                          : 'border-slate-200 hover:border-emerald-300 bg-white text-slate-700 opacity-80 hover:opacity-100'
+                      }`}
+                    >
+                      <div className="w-full h-20 sm:h-24 rounded-xl overflow-hidden mb-1.5 relative">
+                        <img
+                          src="/images/veg_without_egg.jpg"
+                          alt="Without Egg"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <div className="absolute top-1 left-1 bg-emerald-600/90 backdrop-blur-xs text-white text-[8.5px] font-extrabold px-1.5 py-0.5 rounded-md shadow-xs">
+                          Without Egg
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+                        <span className="text-[10.5px] sm:text-xs font-extrabold uppercase tracking-tight">Without Egg</span>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Cancel countdown timer inside the modal */}
               {isUpdatingNotesOnly && (() => {
@@ -2008,7 +2095,7 @@ export default function EmployeeDashboard() {
               <div className="flex gap-2.5 sm:gap-3 mt-4 sm:mt-6">
                 <button
                   type="button"
-                  onClick={() => { setActiveMealSelection(null); setSelectedOption(null); setOrderNotes(''); setSelectedOrderDepartment(null); setMealModalStep('PREFERENCE'); }}
+                  onClick={() => { setActiveMealSelection(null); setSelectedOption(null); setSelectedEggPreference('WITH_EGG'); setOrderNotes(''); setSelectedOrderDepartment(null); setMealModalStep('PREFERENCE'); }}
                   className="flex-1 h-10 sm:h-11 border border-slate-200 text-slate-500 font-bold rounded-xl text-xs hover:bg-slate-50 active:scale-98 transition-all"
                 >
                   Cancel

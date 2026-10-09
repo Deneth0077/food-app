@@ -33,6 +33,7 @@ interface Order {
   phoneNumber: string;
   mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER';
   mealOption?: 'VEGETARIAN' | 'MEAT';
+  eggPreference?: 'WITH_EGG' | 'WITHOUT_EGG';
   status: 'ORDERED' | 'COLLECTED' | 'CANCELLED';
   cancelledAt?: string;
   cancelledBy?: 'EMPLOYEE' | 'ADMIN';
@@ -1900,7 +1901,9 @@ export default function CanteenDashboard() {
                               ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
                               : 'bg-rose-50 text-rose-700 border border-rose-100'
                           }`}>
-                            {order.mealOption === 'VEGETARIAN' ? 'VEG' : 'NON-VEG'}
+                            {order.mealOption === 'VEGETARIAN'
+                              ? (order.eggPreference === 'WITHOUT_EGG' ? 'VEG (NO EGG)' : 'VEG (WITH EGG)')
+                              : 'NON-VEG'}
                           </span>
                         )}
                         {order.notes && (
