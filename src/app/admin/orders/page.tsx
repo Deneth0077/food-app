@@ -131,7 +131,7 @@ export default function AdminOrdersPage() {
     isOpen: false,
     title: '',
     description: '',
-    onConfirm: () => {},
+    onConfirm: () => { },
   });
 
   // Auto open modal if manualOrder=true in query param
@@ -531,33 +531,30 @@ export default function AdminOrdersPage() {
               <button
                 type="button"
                 onClick={() => setSelectedDate(format(subDays(new Date(), 1), 'yyyy-MM-dd'))}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  selectedDate === format(subDays(new Date(), 1), 'yyyy-MM-dd')
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${selectedDate === format(subDays(new Date(), 1), 'yyyy-MM-dd')
                     ? 'bg-blue-600 text-white shadow-xs'
                     : 'bg-slate-100 text-slate-650 hover:bg-slate-200/70'
-                }`}
+                  }`}
               >
                 Yesterday
               </button>
               <button
                 type="button"
                 onClick={() => setSelectedDate(todayStr)}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  selectedDate === todayStr
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${selectedDate === todayStr
                     ? 'bg-blue-600 text-white shadow-xs'
                     : 'bg-slate-100 text-slate-650 hover:bg-slate-200/70'
-                }`}
+                  }`}
               >
                 Today
               </button>
               <button
                 type="button"
                 onClick={() => setSelectedDate(format(addDays(new Date(), 1), 'yyyy-MM-dd'))}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  selectedDate === format(addDays(new Date(), 1), 'yyyy-MM-dd')
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${selectedDate === format(addDays(new Date(), 1), 'yyyy-MM-dd')
                     ? 'bg-blue-600 text-white shadow-xs'
                     : 'bg-slate-100 text-slate-650 hover:bg-slate-200/70'
-                }`}
+                  }`}
               >
                 Tomorrow
               </button>
@@ -696,11 +693,10 @@ export default function AdminOrdersPage() {
           <div className="flex flex-wrap gap-1.5 pt-1">
             <button
               onClick={() => setCictTeamFilter('ALL')}
-              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all ${
-                cictTeamFilter === 'ALL'
+              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all ${cictTeamFilter === 'ALL'
                   ? 'bg-purple-700 text-white border-purple-700 shadow-xs'
                   : 'bg-white text-purple-900 border-purple-200 hover:bg-purple-100/60'
-              }`}
+                }`}
             >
               All CICT ({orders.filter(o => o.department === 'CICT').length})
             </button>
@@ -712,13 +708,12 @@ export default function AdminOrdersPage() {
                 <button
                   key={teamName}
                   onClick={() => setCictTeamFilter(isSelected ? 'ALL' : teamName)}
-                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all flex items-center gap-1 ${
-                    isSelected
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all flex items-center gap-1 ${isSelected
                       ? 'bg-purple-700 text-white border-purple-700 shadow-xs'
                       : teamCount > 0
-                      ? 'bg-white text-purple-900 border-purple-200 hover:bg-purple-100/60 font-black'
-                      : 'bg-white/60 text-slate-400 border-slate-200 opacity-70'
-                  }`}
+                        ? 'bg-white text-purple-900 border-purple-200 hover:bg-purple-100/60 font-black'
+                        : 'bg-white/60 text-slate-400 border-slate-200 opacity-70'
+                    }`}
                 >
                   <span>{teamName}</span>
                   <span className={`px-1.5 py-0.2 rounded text-[8.5px] ${isSelected ? 'bg-purple-900 text-purple-100 font-extrabold' : teamCount > 0 ? 'bg-purple-100 text-purple-800 font-extrabold' : 'bg-slate-100 text-slate-400'}`}>
@@ -760,11 +755,10 @@ export default function AdminOrdersPage() {
                   key={meal}
                   type="button"
                   onClick={() => setMealFilter(meal)}
-                  className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all ${
-                    mealFilter === meal
+                  className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all ${mealFilter === meal
                       ? 'bg-white text-blue-600 shadow-xs'
                       : 'text-slate-500 hover:text-slate-800'
-                  }`}
+                    }`}
                 >
                   {meal === 'ALL' ? 'All Meals' : meal.charAt(0) + meal.slice(1).toLowerCase()}
                 </button>
@@ -775,11 +769,10 @@ export default function AdminOrdersPage() {
             <button
               type="button"
               onClick={() => setShowFilterDrawer(!showFilterDrawer)}
-              className={`h-9 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shrink-0 ${
-                showFilterDrawer || statusFilter !== 'ALL' || departmentFilter !== 'ALL' || dietaryFilter !== 'ALL'
+              className={`h-9 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shrink-0 ${showFilterDrawer || statusFilter !== 'ALL' || departmentFilter !== 'ALL' || dietaryFilter !== 'ALL'
                   ? 'border-blue-500 bg-blue-50 text-blue-700'
                   : 'border-slate-200 text-slate-650 hover:bg-slate-50'
-              }`}
+                }`}
             >
               <Filter className="h-3.5 w-3.5" />
               <span>Filters</span>
@@ -891,26 +884,24 @@ export default function AdminOrdersPage() {
                 return (
                   <div
                     key={order._id}
-                    className={`bg-white rounded-2xl p-3.5 sm:p-4 border transition-all duration-200 shadow-[0_2px_8px_rgba(0,0,0,0.015)] ${
-                      order.status === 'CANCELLED'
+                    className={`bg-white rounded-2xl p-3.5 sm:p-4 border transition-all duration-200 shadow-[0_2px_8px_rgba(0,0,0,0.015)] ${order.status === 'CANCELLED'
                         ? 'border-rose-100 bg-rose-50/20 opacity-80'
                         : order.status === 'COLLECTED'
-                        ? 'border-emerald-100/80 bg-emerald-50/10'
-                        : 'border-slate-100 hover:border-slate-200'
-                    }`}
+                          ? 'border-emerald-100/80 bg-emerald-50/10'
+                          : 'border-slate-100 hover:border-slate-200'
+                      }`}
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       {/* Left: Employee Details & Meal Session */}
                       <div className="flex items-start gap-3 min-w-0">
                         {/* Meal Session Icon */}
                         <div
-                          className={`h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center shrink-0 ${
-                            order.mealType === 'BREAKFAST'
+                          className={`h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center shrink-0 ${order.mealType === 'BREAKFAST'
                               ? 'bg-amber-50 text-amber-600 border border-amber-100/60'
                               : order.mealType === 'LUNCH'
-                              ? 'bg-blue-50 text-blue-600 border border-blue-100/60'
-                              : 'bg-indigo-50 text-indigo-600 border border-indigo-100/60'
-                          }`}
+                                ? 'bg-blue-50 text-blue-600 border border-blue-100/60'
+                                : 'bg-indigo-50 text-indigo-600 border border-indigo-100/60'
+                            }`}
                         >
                           {order.mealType === 'BREAKFAST' ? (
                             <Coffee className="h-4.5 w-4.5" />
@@ -945,11 +936,10 @@ export default function AdminOrdersPage() {
 
                             {order.mealOption && (
                               <span
-                                className={`text-[9px] font-black px-1.5 py-0.2 rounded border ${
-                                  order.mealOption === 'VEGETARIAN'
+                                className={`text-[9px] font-black px-1.5 py-0.2 rounded border ${order.mealOption === 'VEGETARIAN'
                                     ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                                     : 'bg-rose-50 text-rose-800 border-rose-200'
-                                }`}
+                                  }`}
                               >
                                 {order.mealOption === 'VEGETARIAN'
                                   ? (order.eggPreference === 'WITHOUT_EGG' ? '🟢 VEG (No Egg)' : '🟢 VEG (With Egg)')
@@ -959,11 +949,10 @@ export default function AdminOrdersPage() {
 
                             {/* Payment Category Badge */}
                             <span
-                              className={`text-[9px] font-black px-1.5 py-0.2 rounded border flex items-center gap-1 ${
-                                order.paymentType === 'PAID'
+                              className={`text-[9px] font-black px-1.5 py-0.2 rounded border flex items-center gap-1 ${order.paymentType === 'PAID'
                                   ? 'bg-amber-50 text-amber-800 border-amber-300'
                                   : 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                              }`}
+                                }`}
                             >
                               {order.paymentType === 'PAID' ? '💳 Paid Order' : '🎁 Free Meal'}
                             </span>
@@ -987,15 +976,14 @@ export default function AdminOrdersPage() {
                         {/* Status Badge */}
                         <div className="flex items-center gap-2">
                           <span
-                            className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1 border ${
-                              order.paymentConfirmed || order.confirmedByCashier
+                            className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1 border ${order.paymentConfirmed || order.confirmedByCashier
                                 ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
                                 : order.status === 'COLLECTED'
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                : order.status === 'CANCELLED'
-                                ? 'bg-rose-50 text-rose-700 border-rose-200'
-                                : 'bg-amber-50 text-amber-700 border-amber-200'
-                            }`}
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : order.status === 'CANCELLED'
+                                    ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                    : 'bg-amber-50 text-amber-700 border-amber-200'
+                              }`}
                           >
                             {order.paymentConfirmed || order.confirmedByCashier ? (
                               <>
@@ -1023,11 +1011,10 @@ export default function AdminOrdersPage() {
                                 type="button"
                                 disabled={isProcessing}
                                 onClick={() => handleToggleCollected(order)}
-                                className={`h-7 px-2 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all active:scale-95 ${
-                                  order.status === 'COLLECTED'
+                                className={`h-7 px-2 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all active:scale-95 ${order.status === 'COLLECTED'
                                     ? 'bg-slate-100 hover:bg-slate-200 text-slate-650'
                                     : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs'
-                                }`}
+                                  }`}
                                 title={order.status === 'COLLECTED' ? 'Undo Collection' : 'Mark as Collected'}
                               >
                                 {isProcessing ? (
@@ -1240,11 +1227,10 @@ export default function AdminOrdersPage() {
                       key={m}
                       type="button"
                       onClick={() => setManualMealType(m)}
-                      className={`p-2.5 rounded-xl border text-xs font-bold flex flex-col items-center gap-1 transition-all cursor-pointer ${
-                        manualMealType === m
+                      className={`p-2.5 rounded-xl border text-xs font-bold flex flex-col items-center gap-1 transition-all cursor-pointer ${manualMealType === m
                           ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
                           : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                      }`}
+                        }`}
                     >
                       {m === 'BREAKFAST' ? <Coffee className="h-4 w-4" /> : m === 'LUNCH' ? <Utensils className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                       <span className="capitalize">{m.toLowerCase()}</span>
@@ -1262,22 +1248,20 @@ export default function AdminOrdersPage() {
                   <button
                     type="button"
                     onClick={() => setManualMealOption('MEAT')}
-                    className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                      manualMealOption === 'MEAT'
+                    className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${manualMealOption === 'MEAT'
                         ? 'bg-rose-500 text-white border-rose-500 shadow-xs'
                         : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                    }`}
+                      }`}
                   >
                     🔴 Non-Vegetarian
                   </button>
                   <button
                     type="button"
                     onClick={() => setManualMealOption('VEGETARIAN')}
-                    className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                      manualMealOption === 'VEGETARIAN'
+                    className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${manualMealOption === 'VEGETARIAN'
                         ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
                         : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                    }`}
+                      }`}
                   >
                     🟢 Vegetarian
                   </button>
@@ -1293,31 +1277,24 @@ export default function AdminOrdersPage() {
                   <button
                     type="button"
                     onClick={() => setManualPaymentType('FREE')}
-                    className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                      manualPaymentType === 'FREE'
+                    className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${manualPaymentType === 'FREE'
                         ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
                         : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                    }`}
+                      }`}
                   >
                     <span>🎁 Company Free</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setManualPaymentType('PAID')}
-                    className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                      manualPaymentType === 'PAID'
+                    className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${manualPaymentType === 'PAID'
                         ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
                         : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                    }`}
+                      }`}
                   >
                     <span>💳 Paid Order</span>
                   </button>
                 </div>
-                <p className="text-[10.5px] text-slate-400 font-medium mt-1">
-                  {manualPaymentType === 'FREE'
-                    ? '• Company eken free dena meal order ekak'
-                    : '• Employee pay karala ganna meal order ekak'}
-                </p>
               </div>
 
               {/* Two Requested Options: Collection vs Report Only */}
@@ -1328,11 +1305,10 @@ export default function AdminOrdersPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <div
                     onClick={() => setManualOrderMode('COLLECTION')}
-                    className={`p-3 rounded-xl border cursor-pointer transition-all space-y-1 ${
-                      manualOrderMode === 'COLLECTION'
+                    className={`p-3 rounded-xl border cursor-pointer transition-all space-y-1 ${manualOrderMode === 'COLLECTION'
                         ? 'bg-blue-50/80 border-blue-600 ring-2 ring-blue-500/20'
                         : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center gap-2 font-bold text-xs text-slate-800">
                       <PackageCheck className="h-4 w-4 text-blue-600" />
@@ -1345,11 +1321,10 @@ export default function AdminOrdersPage() {
 
                   <div
                     onClick={() => setManualOrderMode('REPORT_ONLY')}
-                    className={`p-3 rounded-xl border cursor-pointer transition-all space-y-1 ${
-                      manualOrderMode === 'REPORT_ONLY'
+                    className={`p-3 rounded-xl border cursor-pointer transition-all space-y-1 ${manualOrderMode === 'REPORT_ONLY'
                         ? 'bg-purple-50/80 border-purple-600 ring-2 ring-purple-500/20'
                         : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center gap-2 font-bold text-xs text-slate-800">
                       <FileText className="h-4 w-4 text-purple-600" />
