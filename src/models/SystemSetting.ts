@@ -15,6 +15,9 @@ export interface ISystemSetting extends Document {
   manualOrderAdminUsername?: string;
   manualOrderAdminPin?: string;
   maintenanceMessage: string;
+  breakfastEnabled: boolean;
+  lunchEnabled: boolean;
+  dinnerEnabled: boolean;
   breakfastCutoffTime: string;
   lunchCutoffTime: string;
   dinnerCutoffTime: string;
@@ -43,6 +46,9 @@ const SystemSettingSchema: Schema = new Schema(
       type: String, 
       default: 'This service is temporarily deactivated' 
     },
+    breakfastEnabled: { type: Boolean, default: true },
+    lunchEnabled: { type: Boolean, default: true },
+    dinnerEnabled: { type: Boolean, default: true },
     breakfastCutoffTime: { type: String, default: '22:00' },
     lunchCutoffTime: { type: String, default: '10:00' },
     dinnerCutoffTime: { type: String, default: '17:00' },

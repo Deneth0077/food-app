@@ -226,6 +226,11 @@ export default function EmployeeDashboard() {
     lunch: '10:00',
     dinner: '17:00'
   });
+  const [mealEnabled, setMealEnabled] = useState({
+    breakfast: true,
+    lunch: true,
+    dinner: true,
+  });
 
   const formatCutoffTimeDisplay = useCallback((timeStr: string = '20:00') => {
     if (!timeStr) return '';
@@ -277,6 +282,13 @@ export default function EmployeeDashboard() {
     return isDinnerLocked;
   }, [isBreakfastLocked, isLunchLocked, isDinnerLocked]);
 
+  const isMealDisabled = useCallback((mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER') => {
+    if (mealType === 'BREAKFAST') return !mealEnabled.breakfast;
+    if (mealType === 'LUNCH') return !mealEnabled.lunch;
+    if (mealType === 'DINNER') return !mealEnabled.dinner;
+    return false;
+  }, [mealEnabled]);
+
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
@@ -318,6 +330,11 @@ export default function EmployeeDashboard() {
             breakfast: sData.settings.breakfastCutoffTime || '22:00',
             lunch: sData.settings.lunchCutoffTime || '10:00',
             dinner: sData.settings.dinnerCutoffTime || '17:00'
+          });
+          setMealEnabled({
+            breakfast: sData.settings.breakfastEnabled ?? true,
+            lunch: sData.settings.lunchEnabled ?? true,
+            dinner: sData.settings.dinnerEnabled ?? true,
           });
         }
       }
@@ -371,6 +388,14 @@ export default function EmployeeDashboard() {
 
   // Handle meal request submission
   const handleRequestMeal = async (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER', mealOption?: 'VEGETARIAN' | 'MEAT', notes?: string, department?: string, cictTeam?: string) => {
+    if (isMealDisabled(mealType)) {
+      toast({
+        variant: 'destructive',
+        title: `${mealType.charAt(0) + mealType.slice(1).toLowerCase()} Disabled`,
+        description: `${mealType.charAt(0) + mealType.slice(1).toLowerCase()} ordering is currently disabled by administration.`,
+      });
+      return;
+    }
     setSubmittingMeal(mealType);
     try {
       const targetDateStr = selectedBookingDate;
@@ -626,6 +651,15 @@ export default function EmployeeDashboard() {
   // isMealLocked is now defined dynamically above
 
   const handleCardClick = (mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER') => {
+    if (isMealDisabled(mealType)) {
+      toast({
+        variant: 'destructive',
+        title: `${mealType.charAt(0) + mealType.slice(1).toLowerCase()} Disabled`,
+        description: `${mealType.charAt(0) + mealType.slice(1).toLowerCase()} ordering is currently disabled by the Superadmin.`,
+      });
+      return;
+    }
+
     let existingOrder;
     if (mealType === 'BREAKFAST') {
       existingOrder = orders.find(o => o.requestDate === selectedBookingDate && o.mealType === 'BREAKFAST' && o.status !== 'CANCELLED');
@@ -1040,28 +1074,44 @@ export default function EmployeeDashboard() {
                 {/* Breakfast Request Card */}
                 <div
                   onClick={() => handleCardClick('BREAKFAST')}
-                  className={`p-3.5 sm:p-4 rounded-2xl border flex items-center justify-between gap-2 sm:gap-3.5 transition-all duration-300 transform cursor-pointer hover:shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 active:scale-[0.99] ${isBreakfastLocked && !activeBreakfastOrder
-                      ? 'bg-slate-100/50 border-slate-200 opacity-60'
-                      : 'bg-white border-slate-100 hover:border-blue-300'
-                    }`}
+                  className={`p-3.5 sm:p-4 rounded-2xl border flex items-center justify-between gap-2 sm:gap-3.5 transition-all duration-300 transform cursor-pointer hover:shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 active:scale-[0.99] ${
+                    !mealEnabled.breakfast && !activeBreakfastOrder
+                      ? 'bg-rose-50/40 border-rose-200/80 hover:border-rose-300 opacity-80'
+                      : isBreakfastLocked && !activeBreakfastOrder
+                        ? 'bg-slate-100/50 border-slate-200 opacity-60'
+                        : 'bg-white border-slate-100 hover:border-blue-300'
+                  }`}
                 >
                   <div className="flex items-center gap-3 sm:gap-3.5 flex-1 min-w-0">
-                    <div className={`h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center shrink-0 ${isBreakfastLocked && !activeBreakfastOrder ? 'bg-slate-200 text-slate-400' : 'bg-amber-50 text-amber-500'
-                      }`}>
+                    <div className={`h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center shrink-0 ${
+                      !mealEnabled.breakfast && !activeBreakfastOrder
+                        ? 'bg-rose-100 text-rose-500'
+                        : isBreakfastLocked && !activeBreakfastOrder
+                          ? 'bg-slate-200 text-slate-400'
+                          : 'bg-amber-50 text-amber-500'
+                    }`}>
                       <Coffee className="h-5 w-5 stroke-[2.25]" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-1.5">
                         <h4 className="text-xs sm:text-sm font-bold text-slate-855">Breakfast</h4>
-                        <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700">
-                          {selectedBookingDate === tomorrowStr
-                            ? `For Tomorrow (${format(selectedDateObj, 'MMM dd')})`
-                            : `For Today (${format(selectedDateObj, 'MMM dd')})`
-                          }
-                        </span>
+                        {!mealEnabled.breakfast ? (
+                          <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-700 border border-rose-200 uppercase tracking-wider">
+                            Deactivated by Admin
+                          </span>
+                        ) : (
+                          <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700">
+                            {selectedBookingDate === tomorrowStr
+                              ? `For Tomorrow (${format(selectedDateObj, 'MMM dd')})`
+                              : `For Today (${format(selectedDateObj, 'MMM dd')})`
+                            }
+                          </span>
+                        )}
                       </div>
                       <p className="text-[10px] text-slate-400 font-semibold mt-1">
-                        {isBreakfastLocked && !activeBreakfastOrder ? (
+                        {!mealEnabled.breakfast ? (
+                          <span className="text-rose-600 font-bold">This meal is temporarily disabled by management</span>
+                        ) : isBreakfastLocked && !activeBreakfastOrder ? (
                           <span className="text-red-500 font-bold">Booking Closed</span>
                         ) : (
                           `Book before ${formatCutoffTimeDisplay(cutoffTimes.breakfast)} on ${format(subDays(selectedDateObj, 1), 'MMM dd')}`
@@ -1114,7 +1164,11 @@ export default function EmployeeDashboard() {
                     </div>
                   </div>
                   <div className="shrink-0 ml-1">
-                    {breakfastStatus !== 'Not Requested' ? (
+                    {!mealEnabled.breakfast && !activeBreakfastOrder ? (
+                      <span className="text-[10px] sm:text-xs font-extrabold text-rose-600 bg-rose-50 px-2 py-1 rounded-lg border border-rose-200">
+                        Disabled
+                      </span>
+                    ) : breakfastStatus !== 'Not Requested' ? (
                       <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full flex items-center justify-center bg-green-50 text-green-600 border border-green-100">
                         <Check className="h-4 w-4 stroke-[2.5]" />
                       </div>
@@ -1131,28 +1185,44 @@ export default function EmployeeDashboard() {
                 {/* Lunch Request Card */}
                 <div
                   onClick={() => handleCardClick('LUNCH')}
-                  className={`p-3.5 sm:p-4 rounded-2xl border flex items-center justify-between gap-2 sm:gap-3.5 transition-all duration-300 transform cursor-pointer hover:shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 active:scale-[0.99] ${isLunchLocked && !activeLunchOrder
-                      ? 'bg-slate-100/50 border-slate-200 opacity-60'
-                      : 'bg-white border-slate-100 hover:border-blue-300'
-                    }`}
+                  className={`p-3.5 sm:p-4 rounded-2xl border flex items-center justify-between gap-2 sm:gap-3.5 transition-all duration-300 transform cursor-pointer hover:shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 active:scale-[0.99] ${
+                    !mealEnabled.lunch && !activeLunchOrder
+                      ? 'bg-rose-50/40 border-rose-200/80 hover:border-rose-300 opacity-80'
+                      : isLunchLocked && !activeLunchOrder
+                        ? 'bg-slate-100/50 border-slate-200 opacity-60'
+                        : 'bg-white border-slate-100 hover:border-blue-300'
+                  }`}
                 >
                   <div className="flex items-center gap-3 sm:gap-3.5 flex-1 min-w-0">
-                    <div className={`h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center shrink-0 ${isLunchLocked && !activeLunchOrder ? 'bg-slate-200 text-slate-400' : 'bg-blue-50 text-blue-600'
-                      }`}>
+                    <div className={`h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center shrink-0 ${
+                      !mealEnabled.lunch && !activeLunchOrder
+                        ? 'bg-rose-100 text-rose-500'
+                        : isLunchLocked && !activeLunchOrder
+                          ? 'bg-slate-200 text-slate-400'
+                          : 'bg-blue-50 text-blue-600'
+                    }`}>
                       <Utensils className="h-5 w-5 stroke-[2.25]" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-1.5">
                         <h4 className="text-xs sm:text-sm font-bold text-slate-855">Lunch</h4>
-                        <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700">
-                          {selectedBookingDate === todayStr
-                            ? `For Today (${format(selectedDateObj, 'MMM dd')})`
-                            : `For ${format(selectedDateObj, 'EEE, MMM dd')}`
-                          }
-                        </span>
+                        {!mealEnabled.lunch ? (
+                          <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-700 border border-rose-200 uppercase tracking-wider">
+                            Deactivated by Admin
+                          </span>
+                        ) : (
+                          <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700">
+                            {selectedBookingDate === todayStr
+                              ? `For Today (${format(selectedDateObj, 'MMM dd')})`
+                              : `For ${format(selectedDateObj, 'EEE, MMM dd')}`
+                            }
+                          </span>
+                        )}
                       </div>
                       <p className="text-[10px] text-slate-400 font-semibold mt-1">
-                        {isLunchLocked && !activeLunchOrder ? (
+                        {!mealEnabled.lunch ? (
+                          <span className="text-rose-600 font-bold">This meal is temporarily disabled by management</span>
+                        ) : isLunchLocked && !activeLunchOrder ? (
                           <span className="text-red-500 font-bold">Booking Closed</span>
                         ) : (
                           `Book before ${formatCutoffTimeDisplay(cutoffTimes.lunch)} on ${format(selectedDateObj, 'MMM dd')}`
@@ -1205,7 +1275,11 @@ export default function EmployeeDashboard() {
                     </div>
                   </div>
                   <div className="shrink-0 ml-1">
-                    {lunchStatus !== 'Not Requested' ? (
+                    {!mealEnabled.lunch && !activeLunchOrder ? (
+                      <span className="text-[10px] sm:text-xs font-extrabold text-rose-600 bg-rose-50 px-2 py-1 rounded-lg border border-rose-200">
+                        Disabled
+                      </span>
+                    ) : lunchStatus !== 'Not Requested' ? (
                       <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full flex items-center justify-center bg-green-50 text-green-600 border border-green-100">
                         <Check className="h-4 w-4 stroke-[2.5]" />
                       </div>
@@ -1222,28 +1296,44 @@ export default function EmployeeDashboard() {
                 {/* Dinner Request Card */}
                 <div
                   onClick={() => handleCardClick('DINNER')}
-                  className={`p-3.5 sm:p-4 rounded-2xl border flex items-center justify-between gap-2 sm:gap-3.5 transition-all duration-300 transform cursor-pointer hover:shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 active:scale-[0.99] ${isDinnerLocked && !activeDinnerOrder
-                      ? 'bg-slate-100/50 border-slate-200 opacity-60'
-                      : 'bg-white border-slate-100 hover:border-blue-300'
-                    }`}
+                  className={`p-3.5 sm:p-4 rounded-2xl border flex items-center justify-between gap-2 sm:gap-3.5 transition-all duration-300 transform cursor-pointer hover:shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 active:scale-[0.99] ${
+                    !mealEnabled.dinner && !activeDinnerOrder
+                      ? 'bg-rose-50/40 border-rose-200/80 hover:border-rose-300 opacity-80'
+                      : isDinnerLocked && !activeDinnerOrder
+                        ? 'bg-slate-100/50 border-slate-200 opacity-60'
+                        : 'bg-white border-slate-100 hover:border-blue-300'
+                  }`}
                 >
                   <div className="flex items-center gap-3 sm:gap-3.5 flex-1 min-w-0">
-                    <div className={`h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center shrink-0 ${isDinnerLocked && !activeDinnerOrder ? 'bg-slate-200 text-slate-400' : 'bg-indigo-50 text-indigo-500'
-                      }`}>
+                    <div className={`h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center shrink-0 ${
+                      !mealEnabled.dinner && !activeDinnerOrder
+                        ? 'bg-rose-100 text-rose-500'
+                        : isDinnerLocked && !activeDinnerOrder
+                          ? 'bg-slate-200 text-slate-400'
+                          : 'bg-indigo-50 text-indigo-500'
+                    }`}>
                       <Moon className="h-5 w-5 stroke-[2.25]" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-1.5">
                         <h4 className="text-xs sm:text-sm font-bold text-slate-855">Dinner</h4>
-                        <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700">
-                          {selectedBookingDate === todayStr
-                            ? `For Today (${format(selectedDateObj, 'MMM dd')})`
-                            : `For ${format(selectedDateObj, 'EEE, MMM dd')}`
-                          }
-                        </span>
+                        {!mealEnabled.dinner ? (
+                          <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-700 border border-rose-200 uppercase tracking-wider">
+                            Deactivated by Admin
+                          </span>
+                        ) : (
+                          <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700">
+                            {selectedBookingDate === todayStr
+                              ? `For Today (${format(selectedDateObj, 'MMM dd')})`
+                              : `For ${format(selectedDateObj, 'EEE, MMM dd')}`
+                            }
+                          </span>
+                        )}
                       </div>
                       <p className="text-[10px] text-slate-400 font-semibold mt-1">
-                        {isDinnerLocked && !activeDinnerOrder ? (
+                        {!mealEnabled.dinner ? (
+                          <span className="text-rose-600 font-bold">This meal is temporarily disabled by management</span>
+                        ) : isDinnerLocked && !activeDinnerOrder ? (
                           <span className="text-red-500 font-bold">Booking Closed</span>
                         ) : (
                           `Book before ${formatCutoffTimeDisplay(cutoffTimes.dinner)} on ${format(selectedDateObj, 'MMM dd')}`
@@ -1296,7 +1386,11 @@ export default function EmployeeDashboard() {
                     </div>
                   </div>
                   <div className="shrink-0 ml-1">
-                    {dinnerStatus !== 'Not Requested' ? (
+                    {!mealEnabled.dinner && !activeDinnerOrder ? (
+                      <span className="text-[10px] sm:text-xs font-extrabold text-rose-600 bg-rose-50 px-2 py-1 rounded-lg border border-rose-200">
+                        Disabled
+                      </span>
+                    ) : dinnerStatus !== 'Not Requested' ? (
                       <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full flex items-center justify-center bg-green-50 text-green-600 border border-green-100">
                         <Check className="h-4 w-4 stroke-[2.5]" />
                       </div>

@@ -42,6 +42,7 @@ export default function ManualOrderDashboard() {
   const [cictTeam, setCictTeam] = useState('General');
   const [orderMode, setOrderMode] = useState<'COLLECTION' | 'REPORT_ONLY'>('COLLECTION');
   const [notes, setNotes] = useState('');
+  const [mealEnabled, setMealEnabled] = useState({ breakfast: true, lunch: true, dinner: true });
 
   // Auth check
   useEffect(() => {
@@ -53,6 +54,23 @@ export default function ManualOrderDashboard() {
           if (data.authenticated) {
             setAdminName(data.user?.fullName || 'Manual Order Admin');
             setChecking(false);
+
+            // Fetch system settings
+            try {
+              const sRes = await fetch('/api/system/settings');
+              if (sRes.ok) {
+                const sData = await sRes.json();
+                if (sData.settings) {
+                  setMealEnabled({
+                    breakfast: sData.settings.breakfastEnabled ?? true,
+                    lunch: sData.settings.lunchEnabled ?? true,
+                    dinner: sData.settings.dinnerEnabled ?? true,
+                  });
+                }
+              }
+            } catch {
+              // ignore
+            }
             return;
           }
         }
@@ -315,14 +333,28 @@ export default function ManualOrderDashboard() {
             <div>
               <label className="text-xs font-bold text-slate-700 block mb-1">Meal Session</label>
               <div className="grid grid-cols-3 gap-2">
-                {(['BREAKFAST', 'LUNCH', 'DINNER'] as const).map((m) => (
-                  <button key={m} type="button" onClick={() => setMealType(m)}
-                    className={`p-2.5 rounded-xl border text-xs font-bold flex flex-col items-center gap-1 transition-all cursor-pointer ${mealType === m ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'}`}
-                  >
-                    {m === 'BREAKFAST' ? <Coffee className="h-4 w-4" /> : m === 'LUNCH' ? <Utensils className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                    <span className="capitalize">{m.toLowerCase()}</span>
-                  </button>
-                ))}
+                {(['BREAKFAST', 'LUNCH', 'DINNER'] as const).map((m) => {
+                  const isDeactivated = m === 'BREAKFAST' ? !mealEnabled.breakfast : m === 'LUNCH' ? !mealEnabled.lunch : !mealEnabled.dinner;
+                  return (
+                    <button key={m} type="button" onClick={() => setMealType(m)}
+                      className={`p-2.5 rounded-xl border text-xs font-bold flex flex-col items-center gap-1 transition-all cursor-pointer ${
+                        mealType === m
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                          : isDeactivated
+                            ? 'bg-rose-50/70 text-rose-700 border-rose-200 hover:bg-rose-100/70'
+                            : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {m === 'BREAKFAST' ? <Coffee className="h-4 w-4" /> : m === 'LUNCH' ? <Utensils className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                      <span className="capitalize">{m.toLowerCase()}</span>
+                      {isDeactivated && (
+                        <span className="text-[8.5px] font-black uppercase text-rose-700 px-1 py-0.2 rounded bg-rose-100 border border-rose-200">
+                          Disabled
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

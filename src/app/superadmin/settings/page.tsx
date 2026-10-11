@@ -38,6 +38,9 @@ interface SystemSettingsState {
   manualOrderAdminUsername: string;
   manualOrderAdminPin?: string;
   maintenanceMessage: string;
+  breakfastEnabled: boolean;
+  lunchEnabled: boolean;
+  dinnerEnabled: boolean;
   breakfastCutoffTime: string;
   lunchCutoffTime: string;
   dinnerCutoffTime: string;
@@ -65,6 +68,9 @@ export default function SuperadminSettingsPage() {
     manualOrderAdminUsername: 'ORDERADMIN',
     manualOrderAdminPin: '',
     maintenanceMessage: 'This service is temporarily deactivated',
+    breakfastEnabled: true,
+    lunchEnabled: true,
+    dinnerEnabled: true,
     breakfastCutoffTime: '22:00',
     lunchCutoffTime: '10:00',
     dinnerCutoffTime: '17:00',
@@ -124,6 +130,9 @@ export default function SuperadminSettingsPage() {
               manualOrderAdminUsername: sData.settings.manualOrderAdminUsername || 'ORDERADMIN',
               manualOrderAdminPin: '', // Don't pre-fill pin for security, only send if changing
               maintenanceMessage: sData.settings.maintenanceMessage || 'This service is temporarily deactivated',
+              breakfastEnabled: sData.settings.breakfastEnabled ?? true,
+              lunchEnabled: sData.settings.lunchEnabled ?? true,
+              dinnerEnabled: sData.settings.dinnerEnabled ?? true,
               breakfastCutoffTime: sData.settings.breakfastCutoffTime || '22:00',
               lunchCutoffTime: sData.settings.lunchCutoffTime || '10:00',
               dinnerCutoffTime: sData.settings.dinnerCutoffTime || '17:00',
@@ -150,6 +159,36 @@ export default function SuperadminSettingsPage() {
       ...prev,
       [field]: !prev[field],
     }));
+  };
+
+  const handleMealToggle = async (mealKey: 'breakfastEnabled' | 'lunchEnabled' | 'dinnerEnabled') => {
+    const nextVal = !settings[mealKey];
+    const updated = { ...settings, [mealKey]: nextVal };
+    setSettings(updated);
+
+    try {
+      const res = await fetch('/api/system/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update');
+
+      const mealName = mealKey === 'breakfastEnabled' ? 'Breakfast' : mealKey === 'lunchEnabled' ? 'Lunch' : 'Dinner';
+      toast({
+        title: `${mealName} ${nextVal ? 'Enabled' : 'Disabled'}`,
+        description: nextVal 
+          ? `${mealName} orders are now OPEN for employees.` 
+          : `${mealName} orders are now DISABLED platform-wide.`,
+      });
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Update Failed',
+        description: err.message || 'Could not update meal availability',
+      });
+    }
   };
 
   const handleSaveSettings = async () => {
@@ -421,6 +460,189 @@ export default function SuperadminSettingsPage() {
                 </div>
               );
             })}
+          </div>
+        </div>
+
+        {/* On-Demand Meal Availability Controls */}
+        <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs space-y-3.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 text-white flex items-center justify-center shadow-xs">
+                <Utensils className="h-4 w-4 stroke-[2.25]" />
+              </div>
+              <div>
+                <h3 className="text-xs sm:text-sm font-bold text-slate-850">Meal Session On-Demand Controls</h3>
+                <p className="text-[10px] text-slate-500 font-medium">Instantly enable or disable Breakfast, Lunch, or Dinner anytime</p>
+              </div>
+            </div>
+            <span className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${
+              [settings.breakfastEnabled, settings.lunchEnabled, settings.dinnerEnabled].every(Boolean)
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                : 'bg-amber-50 text-amber-700 border-amber-200'
+            }`}>
+              {[settings.breakfastEnabled, settings.lunchEnabled, settings.dinnerEnabled].filter(Boolean).length} of 3 Open
+            </span>
+          </div>
+
+          <div className="space-y-2.5">
+            {/* Breakfast Control Card */}
+            <div className={`p-3.5 rounded-2xl border transition-all duration-200 ${
+              settings.breakfastEnabled
+                ? 'bg-gradient-to-r from-amber-50/70 via-orange-50/30 to-amber-50/50 border-amber-200/80 shadow-xs'
+                : 'bg-slate-50 border-slate-200 opacity-80'
+            }`}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${
+                    settings.breakfastEnabled
+                      ? 'bg-amber-500 text-white shadow-xs'
+                      : 'bg-slate-200 text-slate-400'
+                  }`}>
+                    <Coffee className="h-4.5 w-4.5 stroke-[2.25]" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="text-xs sm:text-sm font-bold text-slate-850">Breakfast</h4>
+                      <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                        settings.breakfastEnabled
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : 'bg-rose-50 text-rose-700 border border-rose-200'
+                      }`}>
+                        {settings.breakfastEnabled ? 'Open for Orders' : 'Deactivated'}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 font-medium mt-0.5 leading-snug">
+                      {settings.breakfastEnabled
+                        ? 'Employees can order breakfast according to the cutoff schedule.'
+                        : 'Breakfast ordering is stopped immediately. Employees cannot place breakfast orders.'}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={settings.breakfastEnabled}
+                  onClick={() => handleMealToggle('breakfastEnabled')}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    settings.breakfastEnabled ? 'bg-amber-500' : 'bg-slate-300'
+                  }`}
+                  title={settings.breakfastEnabled ? 'Click to disable Breakfast' : 'Click to enable Breakfast'}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                      settings.breakfastEnabled ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+
+            {/* Lunch Control Card */}
+            <div className={`p-3.5 rounded-2xl border transition-all duration-200 ${
+              settings.lunchEnabled
+                ? 'bg-gradient-to-r from-sky-50/70 via-blue-50/30 to-sky-50/50 border-sky-200/80 shadow-xs'
+                : 'bg-slate-50 border-slate-200 opacity-80'
+            }`}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${
+                    settings.lunchEnabled
+                      ? 'bg-sky-500 text-white shadow-xs'
+                      : 'bg-slate-200 text-slate-400'
+                  }`}>
+                    <Utensils className="h-4.5 w-4.5 stroke-[2.25]" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="text-xs sm:text-sm font-bold text-slate-850">Lunch</h4>
+                      <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                        settings.lunchEnabled
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : 'bg-rose-50 text-rose-700 border border-rose-200'
+                      }`}>
+                        {settings.lunchEnabled ? 'Open for Orders' : 'Deactivated'}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 font-medium mt-0.5 leading-snug">
+                      {settings.lunchEnabled
+                        ? 'Employees can order lunch according to the cutoff schedule.'
+                        : 'Lunch ordering is stopped immediately. Employees cannot place lunch orders.'}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={settings.lunchEnabled}
+                  onClick={() => handleMealToggle('lunchEnabled')}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    settings.lunchEnabled ? 'bg-sky-500' : 'bg-slate-300'
+                  }`}
+                  title={settings.lunchEnabled ? 'Click to disable Lunch' : 'Click to enable Lunch'}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                      settings.lunchEnabled ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+
+            {/* Dinner Control Card */}
+            <div className={`p-3.5 rounded-2xl border transition-all duration-200 ${
+              settings.dinnerEnabled
+                ? 'bg-gradient-to-r from-indigo-50/70 via-purple-50/30 to-indigo-50/50 border-indigo-200/80 shadow-xs'
+                : 'bg-slate-50 border-slate-200 opacity-80'
+            }`}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${
+                    settings.dinnerEnabled
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'bg-slate-200 text-slate-400'
+                  }`}>
+                    <Moon className="h-4.5 w-4.5 stroke-[2.25]" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="text-xs sm:text-sm font-bold text-slate-850">Dinner</h4>
+                      <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                        settings.dinnerEnabled
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : 'bg-rose-50 text-rose-700 border border-rose-200'
+                      }`}>
+                        {settings.dinnerEnabled ? 'Open for Orders' : 'Deactivated'}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 font-medium mt-0.5 leading-snug">
+                      {settings.dinnerEnabled
+                        ? 'Employees can order dinner according to the cutoff schedule.'
+                        : 'Dinner ordering is stopped immediately. Employees cannot place dinner orders.'}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={settings.dinnerEnabled}
+                  onClick={() => handleMealToggle('dinnerEnabled')}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    settings.dinnerEnabled ? 'bg-indigo-600' : 'bg-slate-300'
+                  }`}
+                  title={settings.dinnerEnabled ? 'Click to disable Dinner' : 'Click to enable Dinner'}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                      settings.dinnerEnabled ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 

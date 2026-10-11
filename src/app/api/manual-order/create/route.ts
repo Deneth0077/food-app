@@ -40,6 +40,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid meal type' }, { status: 400 });
     }
 
+    if (mealType === 'BREAKFAST' && settings?.breakfastEnabled === false) {
+      return NextResponse.json({ error: 'Breakfast service is currently disabled by Superadmin.' }, { status: 400 });
+    }
+    if (mealType === 'LUNCH' && settings?.lunchEnabled === false) {
+      return NextResponse.json({ error: 'Lunch service is currently disabled by Superadmin.' }, { status: 400 });
+    }
+    if (mealType === 'DINNER' && settings?.dinnerEnabled === false) {
+      return NextResponse.json({ error: 'Dinner service is currently disabled by Superadmin.' }, { status: 400 });
+    }
+
     if (!mealOption || !['VEGETARIAN', 'MEAT'].includes(mealOption)) {
       return NextResponse.json({ error: 'Please select Vegetarian or Non-Vegetarian' }, { status: 400 });
     }

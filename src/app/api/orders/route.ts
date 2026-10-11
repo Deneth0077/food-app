@@ -23,6 +23,11 @@ function formatCutoffTime(timeStr: string = '20:00'): string {
 async function getMealCutoffSettings() {
   const settings = await SystemSetting.findOne({ key: 'GLOBAL_SETTINGS' });
   return {
+    mealOrdering: settings?.mealOrdering ?? true,
+    breakfastEnabled: settings?.breakfastEnabled ?? true,
+    lunchEnabled: settings?.lunchEnabled ?? true,
+    dinnerEnabled: settings?.dinnerEnabled ?? true,
+    maintenanceMessage: settings?.maintenanceMessage || 'Meal ordering is temporarily deactivated.',
     breakfast: settings?.breakfastCutoffTime || '22:00',
     lunch: settings?.lunchCutoffTime || '10:00',
     dinner: settings?.dinnerCutoffTime || '17:00',
@@ -178,8 +183,38 @@ export async function POST(request: Request) {
 
     const targetDateStr = requestDate || todayStr;
 
-    // Time lock checks (Bypassed for Admin manual additions)
+    // Time lock checks and feature availability (Bypassed for Admin manual additions)
     if (!isAdmin) {
+      const cutoffs = await getMealCutoffSettings();
+
+      if (!cutoffs.mealOrdering) {
+        return NextResponse.json(
+          { error: cutoffs.maintenanceMessage || 'Meal ordering is temporarily disabled by administrator.' },
+          { status: 403 }
+        );
+      }
+
+      if (mealType === 'BREAKFAST' && !cutoffs.breakfastEnabled) {
+        return NextResponse.json(
+          { error: 'Breakfast ordering is currently disabled by Superadmin.' },
+          { status: 400 }
+        );
+      }
+
+      if (mealType === 'LUNCH' && !cutoffs.lunchEnabled) {
+        return NextResponse.json(
+          { error: 'Lunch ordering is currently disabled by Superadmin.' },
+          { status: 400 }
+        );
+      }
+
+      if (mealType === 'DINNER' && !cutoffs.dinnerEnabled) {
+        return NextResponse.json(
+          { error: 'Dinner ordering is currently disabled by Superadmin.' },
+          { status: 400 }
+        );
+      }
+
       if (targetDateStr < todayStr) {
         return NextResponse.json({ error: 'Cannot place orders for past dates.' }, { status: 400 });
       }
@@ -190,8 +225,6 @@ export async function POST(request: Request) {
           { status: 400 }
         );
       }
-
-      const cutoffs = await getMealCutoffSettings();
       const targetDate = new Date(targetDateStr + 'T00:00:00');
       if (mealType === 'BREAKFAST') {
         const [bHours, bMins] = cutoffs.breakfast.split(':').map(Number);
